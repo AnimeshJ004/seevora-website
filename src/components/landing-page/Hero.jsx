@@ -9,8 +9,8 @@ export default function Hero() {
       <div className="bg-grid" />
       <div className="hero-noise" />
 
-      <div className="container">
-        <div className="hero-content" data-animate="slide-left">
+          <div className="container hero-container-stacked">
+        <div className="hero-content hero-content-centered" data-animate="scale-in">
           <div className="hero-eyebrow">
             <span className="dot" />
             Enterprise AI Automation
@@ -43,19 +43,36 @@ export default function Hero() {
               Explore Solutions
             </button>
           </div>
+
+          <div className="hero-subtext">
+            <span>Intelligent automation for scaling enterprises</span>
+          </div>
         </div>
 
-        <div className="hero-visual" data-animate="slide-right">
-          <Suspense fallback={
-            <div className="orb-scene">
-              <div className="orb-main" />
-              <div className="orb-ring" />
-              <div className="orb-ring" />
-              <div className="orb-ring" />
+        <div className="hero-visual-centered" data-animate="scale-in" style={{ transitionDelay: '0.15s' }}>
+          <div className="hero-model-container">
+            <div className="hero-model-header">
+              <div className="hero-model-dots">
+                <span /><span /><span />
+              </div>
+              <div className="hero-model-address">seevora.ai/engine-room</div>
+              <div className="hero-model-status">
+                <span className="hero-model-status-dot" /> Live Simulation
+              </div>
             </div>
-          }>
-            <AIScene3D />
-          </Suspense>
+            <div className="hero-model-content">
+              <Suspense fallback={
+                <div className="orb-scene">
+                  <div className="orb-main" />
+                  <div className="orb-ring" />
+                  <div className="orb-ring" />
+                  <div className="orb-ring" />
+                </div>
+              }>
+                <AIScene3D />
+              </Suspense>
+            </div>
+          </div>
         </div>
       </div>
     </section>
