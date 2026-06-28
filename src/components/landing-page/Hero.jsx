@@ -9,22 +9,28 @@ export default function Hero() {
       <div className="bg-grid" />
       <div className="hero-noise" />
 
-          <div className="container hero-container-stacked">
-        <div className="hero-content hero-content-centered" data-animate="scale-in">
+      <div className="container">
+        <div className="hero-content" data-animate="slide-left">
           <div className="hero-eyebrow">
             <span className="dot" />
-            Enterprise AI Automation
+            AI Growth Platform
           </div>
 
           <h1 className="hero-title">
-            Turn Business Processes into{' '}
-            <span className="gradient-text">Profit Centers</span>
+            <span style={{ whiteSpace: 'nowrap' }}>Turn Your Business</span><br />
+            <span style={{ whiteSpace: 'nowrap' }}>Processes into</span><br />
+            <span style={{ whiteSpace: 'nowrap' }}><span className="gradient-text">Profit Centers</span></span><br />
+            <span style={{ whiteSpace: 'nowrap' }}> With AI.</span>
           </h1>
 
-          <p className="hero-description">
-            Seevora builds custom AI SaaS solutions that solve real business problems.
-            We automate one process at a time, intelligently, and make sure it pays for itself.
-          </p>
+          <div style={{ marginBottom: '32px' }}>
+            <p className="hero-description" style={{ marginBottom: '10px' }}>
+              Seevora builds custom AI SaaS solutions designed to solve real business problems, not generic chatbot tools or overpriced consulting decks.
+            </p>
+            <p className="hero-description" style={{ marginBottom: 0 }}>
+              We focus on one process at a time, automate it intelligently, and make sure it pays for itself.
+            </p>
+          </div>
 
           <div className="hero-buttons">
             <button
@@ -36,43 +42,20 @@ export default function Hero() {
                 <path d="M5 12h14M12 5l7 7-7 7" />
               </svg>
             </button>
-            <button
-              className="btn-glass"
-              onClick={() => document.getElementById('solutions')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Explore Solutions
-            </button>
-          </div>
-
-          <div className="hero-subtext">
-            <span>Intelligent automation for scaling enterprises</span>
           </div>
         </div>
 
-        <div className="hero-visual-centered" data-animate="scale-in" style={{ transitionDelay: '0.15s' }}>
-          <div className="hero-model-container">
-            <div className="hero-model-header">
-              <div className="hero-model-dots">
-                <span /><span /><span />
-              </div>
-              <div className="hero-model-address">seevora.ai/engine-room</div>
-              <div className="hero-model-status">
-                <span className="hero-model-status-dot" /> Live Simulation
-              </div>
+        <div className="hero-visual" data-animate="slide-right">
+          <Suspense fallback={
+            <div className="orb-scene">
+              <div className="orb-main" />
+              <div className="orb-ring" />
+              <div className="orb-ring" />
+              <div className="orb-ring" />
             </div>
-            <div className="hero-model-content">
-              <Suspense fallback={
-                <div className="orb-scene">
-                  <div className="orb-main" />
-                  <div className="orb-ring" />
-                  <div className="orb-ring" />
-                  <div className="orb-ring" />
-                </div>
-              }>
-                <AIScene3D />
-              </Suspense>
-            </div>
-          </div>
+          }>
+            <AIScene3D />
+          </Suspense>
         </div>
       </div>
     </section>

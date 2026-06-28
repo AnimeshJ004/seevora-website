@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const modules = [
   {
@@ -46,15 +46,18 @@ const modules = [
 ];
 
 export default function Modules() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeModule = modules[activeIndex];
+
   return (
     <section className="modules section" id="modules">
       <div className="bg-glow bg-glow-2" style={{ bottom: '-200px', right: '-100px' }} />
       <div className="container">
-        <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '50px' }}>
+          <div className="section-label" style={{ margin: '0 auto 66px' }}>
             <span className="dot" />Six Core Modules
           </div>
-          <h2 className="section-title">
+          <h2 className="section-title" style={{ marginBottom: '18px' }}>
             Six AI Modules. <span className="gradient-text">One Platform.</span>
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
@@ -62,26 +65,53 @@ export default function Modules() {
           </p>
         </div>
 
-        <div className="modules-grid">
-          {modules.map((m, i) => (
-            <div key={i} className={`module-card module-card--${m.color}`} data-animate="tilt-in" style={{ transitionDelay: `${i * 0.08}s` }}>
-              <div className="module-top">
-                <span className={`module-tag module-tag--${m.color}`}>{m.tag}</span>
-              </div>
-              <h3>{m.title}</h3>
-              <p>{m.desc}</p>
-              <ul className="module-features">
-                {m.features.map((f, j) => (
-                  <li key={j}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
+        <div className="modules-showcase">
+          <div className="module-title-rail" role="tablist" aria-label="SeeVora modules">
+            {modules.map((m, i) => (
+              <button
+                key={m.title}
+                type="button"
+                className={`module-title-tab module-title-tab--${m.color}${activeIndex === i ? ' active' : ''}`}
+                onClick={() => setActiveIndex(i)}
+                role="tab"
+                aria-selected={activeIndex === i}
+                aria-controls="module-detail-card"
+              >
+                <span className={`module-tab-dot module-tab-dot--${m.color}`} />
+                <span>
+                  <span className="module-tab-tag">{m.tag}</span>
+                  <span className="module-tab-title">{m.title}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div
+            id="module-detail-card"
+            key={activeModule.title}
+            className={`module-detail-card module-detail-card--${activeModule.color}`}
+            role="tabpanel"
+          >
+            <div className="module-detail-top">
+              <span className={`module-tag module-tag--${activeModule.color}`}>{activeModule.tag}</span>
+              <span className="module-detail-count">
+                {String(activeIndex + 1).padStart(2, '0')} / {String(modules.length).padStart(2, '0')}
+              </span>
             </div>
-          ))}
+            <h3>{activeModule.title}</h3>
+            <p>{activeModule.desc}</p>
+            <div className="module-detail-divider" />
+            <ul className="module-features module-detail-features">
+              {activeModule.features.map((f) => (
+                <li key={f}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </section>

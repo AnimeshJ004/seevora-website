@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import Navbar from './components/landing-page/Navbar';
 import Hero from './components/landing-page/Hero';
+import WhySeevora from './components/landing-page/WhySeevora';
 import Problems from './components/landing-page/Problems';
 import Modules from './components/landing-page/Modules';
 import Workflow from './components/landing-page/Workflow';
 import Industries from './components/landing-page/Industries';
-import DashboardPreview from './components/landing-page/DashboardPreview';
-import TrustSecurity from './components/landing-page/TrustSecurity';
 import Stats from './components/landing-page/Stats';
-import Testimonials from './components/landing-page/Testimonials';
 import About from './components/landing-page/About';
 import Contact from './components/landing-page/Contact';
-import FinalCTA from './components/landing-page/FinalCTA';
 import Footer from './components/landing-page/Footer';
+import Outcomes from './components/landing-page/Outcomes';
 import FAQ from './components/landing-page/FAQ';
+import Solutions from './components/landing-page/Solutions';
+import PrivacyPolicy from './components/landing-page/PrivacyPolicy';
+import TermsConditions from './components/landing-page/TermsConditions';
 
 export default function App() {
   const [locationKey, setLocationKey] = useState(() => `${window.location.pathname}${window.location.hash}`);
@@ -36,6 +37,10 @@ export default function App() {
   }, [locationKey]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [locationKey]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -49,26 +54,31 @@ export default function App() {
   }, [locationKey]);
 
   const isFaqPage = window.location.pathname === '/faqs';
+  const isPrivacyPage = window.location.pathname === '/privacy-policy';
+  const isTermsPage = window.location.pathname === '/terms-and-conditions';
 
   return (
     <>
       <Navbar />
       {isFaqPage ? (
         <FAQ isPage />
+      ) : isPrivacyPage ? (
+        <PrivacyPolicy />
+      ) : isTermsPage ? (
+        <TermsConditions />
       ) : (
         <>
           <Hero />
-          <Problems />
-          <Modules />
-          <Workflow />
-          <Industries />
-          <DashboardPreview />
-          <TrustSecurity />
-          <Stats />
-          <Testimonials />
           <About />
+          <Problems />
+          <Solutions />
+          <Industries />
+          <Modules />
+          <WhySeevora />
+          <Workflow />
+          <Outcomes />
+          <Stats />
           <Contact />
-          <FinalCTA />
         </>
       )}
       <Footer />

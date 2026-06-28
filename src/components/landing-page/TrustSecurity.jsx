@@ -26,11 +26,21 @@ export default function TrustSecurity() {
           </p>
         </div>
 
-        <div className="trust-grid">
+        <div className="trust-ledger">
           {trustItems.map((t, i) => (
-            <div key={i} className="trust-card" data-animate="tilt-in" style={{ transitionDelay: `${i * 0.07}s` }}>
-              <div className="trust-icon">{t.icon}</div>
-              <h4>{t.title}</h4>
+            <div
+              key={i}
+              className="trust-ledger-item"
+              data-animate="slide-up"
+              style={{ transitionDelay: `${i * 0.06}s` }}
+            >
+              <div className="trust-ledger-marker">
+                <span className="trust-icon">{t.icon}</span>
+              </div>
+              <div className="trust-ledger-title">
+                <span>{String(i + 1).padStart(2, '0')}</span>
+                <h4>{t.title}</h4>
+              </div>
               <p>{t.desc}</p>
             </div>
           ))}

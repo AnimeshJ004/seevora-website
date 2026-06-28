@@ -54,6 +54,7 @@ export default function Stats() {
             </div>
           ))}
         </div>
+        <p className="stat-disclaimer" data-animate>* Disclaimer: Statistics are based on audited average outcomes across active Seevora client deployments within 90 days of launch.</p>
       </div>
     </section>
   );

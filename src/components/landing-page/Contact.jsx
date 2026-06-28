@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 export default function Contact() {
-  const [formData, setFormData] = useState({ name: '', email: '', company: '', message: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', company: '', phone: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -10,7 +10,7 @@ export default function Contact() {
     e.preventDefault();
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 4000);
-    setFormData({ name: '', email: '', company: '', message: '' });
+    setFormData({ name: '', email: '', company: '', phone: '', message: '' });
   };
 
   return (
@@ -30,26 +30,56 @@ export default function Contact() {
             {[
               {
                 icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
-                title: 'Email Us', value: 'info@seevora.in',
+                title: 'Email Us', value: 'docivoseevora@gmail.com', link: 'mailto:docivoseevora@gmail.com'
               },
               {
                 icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.19 12 19.79 19.79 0 0 1 1.12 3.38 2 2 0 0 1 3.1 1.21h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>,
-                title: 'Call Us', value: '+91 89822 00895',
+                title: 'Call Us', value: '+91 82692 97967, +91 98273 05577', link: 'tel:+918269297967'
               },
               {
                 icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-                title: 'Location', value: 'Indore, India',
+                title: 'Location', value: 'Indore, India'
               },
-            ].map((item, i) => (
-              <div key={i} className="glass-card contact-info-card">
-                <div className="info-icon">{item.icon}</div>
-                <div className="info-text"><h4>{item.title}</h4><p>{item.value}</p></div>
-              </div>
-            ))}
+            ].map((item, i) => {
+              const content = (
+                <>
+                  <div className="info-icon">{item.icon}</div>
+                  <div className="info-text">
+                    <h4>{item.title}</h4>
+                    <p>{item.value}</p>
+                  </div>
+                </>
+              );
+
+              if (item.link) {
+                return (
+                  <a
+                    key={i}
+                    href={item.link}
+                    className="glass-card contact-info-card"
+                    data-animate="contact-card-3d"
+                    style={{ transitionDelay: `${i * 0.1}s`, textDecoration: 'none', display: 'flex' }}
+                  >
+                    {content}
+                  </a>
+                );
+              }
+
+              return (
+                <div
+                  key={i}
+                  className="glass-card contact-info-card"
+                  data-animate="contact-card-3d"
+                  style={{ transitionDelay: `${i * 0.1}s` }}
+                >
+                  {content}
+                </div>
+              );
+            })}
           </div>
 
           <div className="contact-form" data-animate="slide-right">
-            <div className="glass-card">
+            <div className="glass-card contact-form-card" data-animate="contact-form-3d">
               {submitted && (
                 <div style={{
                   padding: '14px 18px', marginBottom: 18,
@@ -70,9 +100,15 @@ export default function Contact() {
                   <label htmlFor="email">Email</label>
                   <input id="email" name="email" type="email" className="form-input" placeholder="you@company.com" value={formData.email} onChange={handleChange} required />
                 </div>
-                <div className="form-group">
-                  <label htmlFor="company">Company</label>
-                  <input id="company" name="company" type="text" className="form-input" placeholder="Your company name" value={formData.company} onChange={handleChange} />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="company">Company</label>
+                    <input id="company" name="company" type="text" className="form-input" placeholder="Your company name" value={formData.company} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="phone">Phone Number</label>
+                    <input id="phone" name="phone" type="tel" className="form-input" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} />
+                  </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="message">Message</label>
