@@ -14,6 +14,7 @@ import Contact from './components/landing-page/Contact';
 import FinalCTA from './components/landing-page/FinalCTA';
 import Footer from './components/landing-page/Footer';
 import FAQ from './components/landing-page/FAQ';
+import AdminPage from './components/admin/AdminPage';
 
 export default function App() {
   const [locationKey, setLocationKey] = useState(() => `${window.location.pathname}${window.location.hash}`);
@@ -48,7 +49,10 @@ export default function App() {
     return () => observer.disconnect();
   }, [locationKey]);
 
+  const isAdminPage = window.location.pathname === '/admin';
   const isFaqPage = window.location.pathname === '/faqs';
+
+  if (isAdminPage) return <AdminPage />;
 
   return (
     <>
