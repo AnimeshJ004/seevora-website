@@ -1,16 +1,50 @@
-# React + Vite
+# Seevora App
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/Vite frontend with a Node.js, Express, and PostgreSQL authentication API.
 
-Currently, two official plugins are available:
+## Backend Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Install PostgreSQL and create the app database:
 
-## React Compiler
+```sql
+CREATE DATABASE seevora_app;
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Copy the environment example and set real values:
 
-## Expanding the Oxlint configuration
+```bash
+cp .env.example .env
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Set `JWT_SECRET` to a long random value and update `DATABASE_URL` if your PostgreSQL username, password, host, port, or database name is different.
+
+3. Start the backend API:
+
+```bash
+npm run dev:server
+```
+
+The API runs on `http://localhost:4000` and creates the `users` table automatically.
+
+4. Start the frontend in another terminal:
+
+```bash
+npm run dev
+```
+
+Vite proxies `/api/*` requests to the Express backend.
+
+## Auth API
+
+- `POST /api/auth/signup` creates a user with a bcrypt-encrypted password.
+- `POST /api/auth/login` validates credentials and returns a JWT.
+- `GET /api/auth/me` returns the current user when called with `Authorization: Bearer <token>`.
+
+## Scripts
+
+```bash
+npm run dev
+npm run dev:server
+npm run build
+npm run lint
+```

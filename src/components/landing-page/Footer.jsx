@@ -9,9 +9,41 @@ const socials = [
   { label:'YouTube', href:'https://www.youtube.com/@Seevora1', icon:<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
 ];
 
+const contactIconStyle = { width: '16px', height: '16px', flexShrink: 0, marginRight: '8px', verticalAlign: 'text-bottom' };
+
+const PhoneIcon = () => (
+  <svg style={contactIconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.78 19.78 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.64a16 16 0 0 0 6.27 6.27l1.2-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+
+const MailIcon = () => (
+  <svg style={contactIconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+    <path d="m22 6-10 7L2 6" />
+  </svg>
+);
+
+const LocationIcon = () => (
+  <svg style={contactIconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+
 export default function Footer() {
   const handleScrollTo = (e, id) => {
     e.preventDefault();
+    if (id.startsWith('services#')) {
+      const hash = id.substring(9);
+      window.location.assign(`/services#${hash}`);
+      return;
+    }
+    if (id.startsWith('modules#')) {
+      const hash = id.substring(8);
+      window.location.assign(`/modules#${hash}`);
+      return;
+    }
     if (window.location.pathname === '/') {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
     } else {
@@ -34,42 +66,42 @@ export default function Footer() {
             </a>
             <p className="footer-tagline">Custom AI SaaS, intelligent automations, and AI products designed around the way your business actually works.</p>
             <div className="footer-contact-list">
-              <span>📞 <a href="tel:+918269297967">+91 82692 97967</a>, <a href="tel:+919827305577">+91 98273 05577</a></span>
-              <a href="mailto:docivoseevora@gmail.com">✉️ docivoseevora@gmail.com</a>
-              <span>📍 Indore, Madhya Pradesh</span>
+              <span><PhoneIcon /><a href="tel:+918269297967">+91 82692 97967</a>, <a href="tel:+919827305577">+91 98273 05577</a></span>
+              <a href="mailto:docivoseevora@gmail.com"><MailIcon />docivoseevora@gmail.com</a>
+              <span><LocationIcon />Indore, Madhya Pradesh</span>
             </div>
           </div>
 
           {/* Services Column */}
           <div className="footer-col">
             <h5>Services</h5>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Healthcare</a>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Education</a>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Personal Care</a>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Diagnostics</a>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Fitness & Gyms</a>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Legal & CA</a>
-            <a href="#industries" onClick={e => handleScrollTo(e, 'industries')}>Real Estate</a>
+            <a href="/services#healthcare" onClick={e => handleScrollTo(e, 'services#healthcare')}>Healthcare</a>
+            <a href="/services#education" onClick={e => handleScrollTo(e, 'services#education')}>Education</a>
+            <a href="/services#wellness" onClick={e => handleScrollTo(e, 'services#wellness')}>Personal Care</a>
+            <a href="/services#diagnostics" onClick={e => handleScrollTo(e, 'services#diagnostics')}>Diagnostics</a>
+            <a href="/services#fitness" onClick={e => handleScrollTo(e, 'services#fitness')}>Fitness & Gyms</a>
+            <a href="/services#legal" onClick={e => handleScrollTo(e, 'services#legal')}>Legal & CA</a>
+            <a href="/services#property" onClick={e => handleScrollTo(e, 'services#property')}>Real Estate</a>
           </div>
 
           {/* Modules Column */}
           <div className="footer-col">
             <h5>Modules</h5>
-            <a href="#modules" onClick={e => handleScrollTo(e, 'modules')}>AI Receptionist</a>
-            <a href="#modules" onClick={e => handleScrollTo(e, 'modules')}>Lead Intake Bot</a>
-            <a href="#modules" onClick={e => handleScrollTo(e, 'modules')}>Auto Scheduler</a>
-            <a href="#modules" onClick={e => handleScrollTo(e, 'modules')}>Voice Assistants</a>
-            <a href="#modules" onClick={e => handleScrollTo(e, 'modules')}>CRM Syncing</a>
-            <a href="#modules" onClick={e => handleScrollTo(e, 'modules')}>Reputation Builder</a>
+            <a href="/modules#ai-receptionist" onClick={e => handleScrollTo(e, 'modules#ai-receptionist')}>AI Receptionist</a>
+            <a href="/modules#lead-intake" onClick={e => handleScrollTo(e, 'modules#lead-intake')}>Lead Intake Bot</a>
+            <a href="/modules#auto-scheduler" onClick={e => handleScrollTo(e, 'modules#auto-scheduler')}>Auto Scheduler</a>
+            <a href="/modules#ai-receptionist" onClick={e => handleScrollTo(e, 'modules#ai-receptionist')}>Voice Assistants</a>
+            <a href="/modules#lead-intake" onClick={e => handleScrollTo(e, 'modules#lead-intake')}>CRM Syncing</a>
+            <a href="/modules#reputation-builder" onClick={e => handleScrollTo(e, 'modules#reputation-builder')}>Reputation Builder</a>
           </div>
 
           {/* Company Column */}
           <div className="footer-col">
             <h5>Company</h5>
-            <a href="#about" onClick={e => handleScrollTo(e, 'about')}>About Us</a>
-            <a href="#why" onClick={e => handleScrollTo(e, 'why')}>Why Seevora</a>
+            <a href="/about">About Us</a>
+            <a href="#why-seevora" onClick={e => handleScrollTo(e, 'why-seevora')}>Why Seevora</a>
             <a href="/faqs">FAQs</a>
-            <a href="#contact" onClick={e => handleScrollTo(e, 'contact')}>Contact</a>
+            <a href="/book-a-call">Book a Call</a>
           </div>
         </div>
 

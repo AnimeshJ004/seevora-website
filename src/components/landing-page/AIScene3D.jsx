@@ -249,22 +249,29 @@ function SceneController({ children }) {
 
 export default function AIScene3D() {
   return (
-    <div style={{
-      position: 'absolute', top: '50%', left: '50%',
-      width: 780, height: 780,
-      transform: 'translate(-50%, -50%)',
-      pointerEvents: 'none', zIndex: 0,
-    }}>
-      <Canvas style={{ background: 'transparent' }} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }} dpr={[1, 2]}>
-        <PerspectiveCamera makeDefault position={[0, 0, 11.5]} fov={45} />
+    <div className="ai-scene-canvas">
+      <Canvas
+        style={{ background: 'transparent' }}
+        gl={{
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance',
+          outputColorSpace: THREE.SRGBColorSpace,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.08,
+        }}
+        dpr={[2, 3]}
+        shadows
+      >
+        <PerspectiveCamera makeDefault position={[0, 0, 9.4]} fov={42} />
         <ambientLight intensity={0.65} />
-        <directionalLight position={[5, 8, 5]} intensity={1.8} castShadow />
+        <directionalLight position={[5, 8, 5]} intensity={1.8} castShadow shadow-mapSize={[2048, 2048]} />
         <pointLight position={[-4, 3, 2]} intensity={1.5} color="#0ea5e9" />
         <pointLight position={[4, -2, 2]} intensity={1.5} color="#7c3aed" />
         <pointLight position={[0, 1, 4]} intensity={0.8} color="#ffffff" />
 
         <SceneController>
-          <group scale={1.55} position={[0, 1.55, 0]}>
+          <group scale={1.95} position={[0, 0.35, 0]}>
             <Float speed={1.8} rotationIntensity={0.15} floatIntensity={0.4}>
               <AIRobot />
             </Float>

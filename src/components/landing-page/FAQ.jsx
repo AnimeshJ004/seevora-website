@@ -51,7 +51,7 @@ export default function FAQ({ isPage = false }) {
   };
 
   const goToContact = () => {
-    window.location.assign('/#contact');
+    window.location.assign('/book-a-call');
   };
 
   return (

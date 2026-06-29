@@ -44,10 +44,10 @@ export default function Navbar() {
   };
 
   const links = [
-    { label: 'About', id: 'about' },
-    { label: 'Solutions', id: 'problems' },
-    { label: 'Services', id: 'industries' },
-    { label: 'Process', id: 'workflow' },
+    { label: 'About', path: '/about' },
+    { label: 'Modules', path: '/modules' },
+    { label: 'Services', path: '/services' },
+    { label: 'Impact', path: '/impact' },
     { label: 'FAQs', path: '/faqs' },
   ];
 
@@ -69,12 +69,18 @@ export default function Navbar() {
             ))}
           </div>
 
-          <button className="jnav-cta" onClick={(e) => handleNav(e, { id: 'contact' })}>
-            Book a call
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </button>
+          <div className="jnav-actions">
+            <button className="jnav-login" onClick={(e) => handleNav(e, { path: '/login' })}>
+              Login
+            </button>
+            <span className="jnav-action-separator" aria-hidden="true">|</span>
+            <button className="jnav-cta" onClick={(e) => handleNav(e, { path: '/book-a-call' })}>
+              Book a call
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
           <button
             className={`jnav-hamburger jnav-hamburger--full${mobileOpen ? ' active' : ''}`}
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -97,9 +103,11 @@ export default function Navbar() {
               </a>
             ))}
           </div>
-          <button className="jnav-cta jnav-cta--compact" onClick={(e) => handleNav(e, { id: 'contact' })}>
-            Book a call
-          </button>
+          <div className="jnav-actions jnav-actions--compact">
+            <button className="jnav-cta jnav-cta--compact" onClick={(e) => handleNav(e, { path: '/book-a-call' })}>
+              Book a call
+            </button>
+          </div>
           <button
             className={`jnav-hamburger-circle${isExpanded ? ' active' : ''}`}
             onClick={() => setIsExpanded(!isExpanded)}
@@ -128,7 +136,10 @@ export default function Navbar() {
             </svg>
             Call +91 82692 97967
           </a>
-          <button className="btn-primary" style={{ width: '100%' }} onClick={(e) => handleNav(e, { id: 'contact' })}>
+          <button className="btn-primary" style={{ width: '100%' }} onClick={(e) => handleNav(e, { path: '/login' })}>
+            Login
+          </button>
+          <button className="btn-primary" style={{ width: '100%' }} onClick={(e) => handleNav(e, { path: '/book-a-call' })}>
             Book a call
           </button>
         </div>
