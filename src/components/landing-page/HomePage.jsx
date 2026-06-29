@@ -1,5 +1,4 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react';
-import AIScene3D from './AIScene3D';
+import React, { useEffect, useRef, useState } from 'react';
 
 const problemTabs = [
   {
@@ -373,31 +372,21 @@ function WhySeevora() {
           </p>
         </div>
 
-        <div className="why-seevora-split">
-          <div className="why-seevora-visual" data-animate="slide-left">
-            <div className="visual-orb-frame">
-              <Suspense fallback={
-                <div className="orb-scene">
-                  <div className="orb-main" />
-                  <div className="orb-ring" />
-                  <div className="orb-ring" />
-                  <div className="orb-ring" />
-                </div>
-              }>
-                <AIScene3D />
-              </Suspense>
-            </div>
-          </div>
-
-          <div className="why-seevora-grid">
-            {benefits.map((b, i) => (
-              <div key={i} className="why-card" data-animate="tilt-in" style={{ transitionDelay: `${i * 0.06}s` }}>
-                <div className="why-card-icon">{b.icon}</div>
+        <div className="why-seevora-grid why-seevora-grid--cards">
+          {benefits.map((b, i) => (
+            <div
+              key={i}
+              className={`why-card ${i < 2 ? 'why-card--featured' : ''}`}
+              data-animate="tilt-in"
+              style={{ transitionDelay: `${i * 0.06}s` }}
+            >
+              <div className="why-card-icon">{b.icon}</div>
+              <div>
                 <h3>{b.title}</h3>
                 <p>{b.desc}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
