@@ -1,0 +1,610 @@
+/* ============================================
+   SEEVORA — HR PANEL STYLES
+   Reuses design tokens from index.css
+   ============================================ */
+
+.hr-layout {
+  /* Local theme overrides for the HR module matching admin dashboard */
+  --sidebar-bg: #090a1a;
+  --sidebar-hover: #161833;
+  --sidebar-active: #4f46e5;
+  --sidebar-text: #8a8ea8;
+  --sidebar-text-active: #ffffff;
+  --sidebar-section-title: #4e5374;
+  
+  --main-bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --border-color: #f1f5f9;
+  --border-color-darker: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-pink: #ec4899;
+  --accent-purple: #8b5cf6;
+  --accent-teal: #14b8a6;
+
+  --border-radius-card: 16px;
+  --border-radius-pill: 100px;
+  --box-shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--main-bg);
+  color: var(--text-secondary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Sidebar ── */
+.hr-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  height: 100vh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.hr-sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.hr-sidebar-logo-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.hr-sidebar-logo-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.hr-sidebar-role-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(79, 70, 229, 0.15);
+  color: var(--sidebar-active);
+  margin-left: 4px;
+}
+
+.hr-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  margin-top: 16px;
+}
+
+.hr-nav-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sidebar-section-title);
+  padding: 4px 14px 8px;
+  margin-top: 12px;
+}
+
+.hr-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.hr-nav-item:hover {
+  background: var(--sidebar-hover);
+  color: #ffffff;
+}
+
+.hr-nav-item.active {
+  background: var(--sidebar-active);
+  color: var(--sidebar-text-active);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.hr-nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.hr-nav-badge {
+  margin-left: auto;
+  background: var(--accent-orange);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+}
+
+/* ── Sidebar user ── */
+.hr-sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #0d0f26;
+  margin-top: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.hr-sidebar-user:hover {
+  background: #11132f;
+}
+
+.hr-sidebar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+  color: white;
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hr-sidebar-user-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.hr-sidebar-user-role {
+  font-size: 0.68rem;
+  color: #5d6185;
+  margin-top: 1px;
+}
+
+/* ── Main ── */
+.hr-main {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── Header ── */
+.hr-header {
+  height: 64px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border-color-darker);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.hr-header-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.hr-header-date {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.hr-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hr-search {
+  background: #f8fafc;
+  border: 1px solid var(--border-color-darker);
+  border-radius: 100px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  width: 220px;
+  color: var(--text-primary);
+  transition: all 0.2s;
+  outline: none;
+}
+
+.hr-search:focus {
+  border-color: var(--sidebar-active);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.hr-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color-darker);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  position: relative;
+  transition: all 0.2s;
+}
+
+.hr-icon-btn:hover {
+  background: #f8fafc;
+  color: var(--text-primary);
+}
+
+.hr-notif-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-orange);
+  border: 1.5px solid var(--panel-bg);
+}
+
+/* ── Content ── */
+.hr-content {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+}
+
+/* ── Reuse admin panel/table/stat styles ── */
+.hr-panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color-darker);
+  border-radius: var(--border-radius-card);
+  padding: 24px;
+  box-shadow: var(--box-shadow-soft);
+}
+
+.hr-panel-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hr-panel-meta {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.hr-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.hr-stat-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color-darker);
+  border-radius: var(--border-radius-card);
+  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--box-shadow-soft);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hr-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+.hr-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  border-radius: 0 2px 2px 0;
+}
+
+.hr-stat-card.green::before  { background: var(--accent-green); }
+.hr-stat-card.cyan::before   { background: var(--accent-cyan); }
+.hr-stat-card.orange::before { background: var(--accent-orange); }
+.hr-stat-card.purple::before { background: var(--accent-purple); }
+.hr-stat-card.pink::before   { background: var(--accent-pink); }
+.hr-stat-card.blue::before   { background: var(--accent-blue); }
+
+.hr-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.hr-stat-card.green  .hr-stat-icon { background: rgba(16,185,129,0.1);  color: var(--accent-green); }
+.hr-stat-card.cyan   .hr-stat-icon { background: rgba(20,201,225,0.1);  color: var(--accent-cyan); }
+.hr-stat-card.orange .hr-stat-icon { background: rgba(249,115,21,0.1);  color: var(--accent-orange); }
+.hr-stat-card.purple .hr-stat-icon { background: rgba(158,60,236,0.1);  color: var(--accent-purple); }
+.hr-stat-card.pink   .hr-stat-icon { background: rgba(236,72,153,0.1);  color: var(--accent-pink); }
+.hr-stat-card.blue   .hr-stat-icon { background: rgba(59,130,246,0.1);  color: var(--accent-blue); }
+
+.hr-stat-value {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.9rem;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.hr-stat-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.hr-stat-sub {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-green);
+  margin-top: 10px;
+}
+
+/* ── Table ── */
+.hr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hr-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0 12px 12px 0;
+  border-bottom: 1px solid var(--border-color-darker);
+}
+
+.hr-table td {
+  padding: 12px 12px 12px 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.hr-table tr:last-child td { border-bottom: none; }
+.hr-table tbody tr:hover td { background: #f8fafc; }
+
+/* ── Badges ── */
+.hr-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hr-badge.active     { background: rgba(16,185,129,0.1);  color: var(--accent-green); }
+.hr-badge.inactive   { background: rgba(139,139,137,0.1); color: var(--text-muted); }
+.hr-badge.pending    { background: rgba(249,115,21,0.1);  color: var(--accent-orange); }
+.hr-badge.approved   { background: rgba(16,185,129,0.1);  color: var(--accent-green); }
+.hr-badge.rejected   { background: rgba(236,72,153,0.1);  color: var(--accent-pink); }
+.hr-badge.present    { background: rgba(16,185,129,0.1);  color: var(--accent-green); }
+.hr-badge.absent     { background: rgba(236,72,153,0.1);  color: var(--accent-pink); }
+.hr-badge.late       { background: rgba(249,115,21,0.1);  color: var(--accent-orange); }
+.hr-badge.wfh        { background: rgba(59,130,246,0.1);  color: var(--accent-blue); }
+.hr-badge.open       { background: rgba(20,201,225,0.1);  color: var(--accent-cyan); }
+.hr-badge.shortlisted{ background: rgba(158,60,236,0.1);  color: var(--accent-purple); }
+.hr-badge.hired      { background: rgba(16,185,129,0.1);  color: var(--accent-green); }
+.hr-badge.paid       { background: rgba(16,185,129,0.1);  color: var(--accent-green); }
+.hr-badge.processing { background: rgba(249,115,21,0.1);  color: var(--accent-orange); }
+
+/* ── Row layout ── */
+.hr-row { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; }
+.hr-row.equal { grid-template-columns: 1fr 1fr; }
+
+/* ── Filter bar ── */
+.hr-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.hr-filter-bar input {
+  flex: 1;
+  min-width: 160px;
+  max-width: 260px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-color-darker);
+  border-radius: 100px;
+  font-size: 0.82rem;
+  background: #ffffff;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.hr-filter-bar select {
+  padding: 8px 14px;
+  border: 1px solid var(--border-color-darker);
+  border-radius: 100px;
+  font-size: 0.82rem;
+  background: #ffffff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+}
+
+.hr-btn-primary {
+  padding: 9px 20px;
+  background: var(--text-primary);
+  color: #fff;
+  border: none;
+  border-radius: 100px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.hr-btn-primary:hover { background: #2a2a29; transform: translateY(-1px); }
+
+.hr-btn-secondary {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color-darker);
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #ffffff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.hr-btn-secondary:hover { background: #f8fafc; color: var(--text-primary); }
+
+/* ── Avatar ── */
+.hr-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Progress bar ── */
+.hr-progress-track {
+  flex: 1;
+  height: 6px;
+  background: #f8fafc;
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.hr-progress-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: var(--sidebar-active);
+}
+
+/* ── Tab bar ── */
+.hr-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color-darker);
+}
+
+.hr-tab {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.hr-tab.active {
+  color: var(--sidebar-active);
+  border-bottom-color: var(--sidebar-active);
+  background: var(--panel-bg);
+}
+
+/* ── Action buttons in table ── */
+.hr-action-btn {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color-darker);
+  border-radius: 6px;
+  cursor: pointer;
+  background: #ffffff;
+  color: var(--text-secondary);
+  margin-right: 4px;
+  transition: all 0.2s;
+}
+
+.hr-action-btn:hover { background: #f8fafc; color: var(--text-primary); }
+.hr-action-btn.danger { border-color: rgba(236,72,153,0.2); color: var(--accent-pink); background: rgba(236,72,153,0.05); }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .hr-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .hr-row, .hr-row.equal { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .hr-sidebar { display: none; }
+  .hr-stats-grid { grid-template-columns: 1fr 1fr; }
+  .hr-header { padding: 0 16px; }
+  .hr-content { padding: 16px; }
+}

@@ -15,49 +15,85 @@ import FinalCTA from './components/landing-page/FinalCTA';
 import Footer from './components/landing-page/Footer';
 import FAQ from './components/landing-page/FAQ';
 import AdminPage from './components/admin/AdminPage';
+import LoginPage from './components/dashboard/LoginPage';
+import DashboardShell from './components/dashboard/DashboardShell';
+import { getSession, logout } from './auth/roles';
+
+/* ── Unified dashboard route (login + shell) ── */
+function DashboardRoute() {
+  const [session, setSession] = useState(() => getSession());
+
+  const handleLogin = (user) => {
+    setSession(user);
+    window.history.pushState({}, '', '/dashboard');
+  };
+
+  const handleLogout = () => {
+    logout();
+    setSession(null);
+    window.history.pushState({}, '', '/login');
+  };
+
+  if (session) return <DashboardShell user={session} onLogout={handleLogout} />;
+  return <LoginPage onLogin={handleLogin} />;
+}
+
+/* ── HR dashboard route (login + shell, HR roles only) ── */
+function HRRoute() {
+  const [session, setSession] = useState(() => getSession());
+
+  const handleLogin = (user) => {
+    setSession(user);
+    window.history.pushState({}, '', '/hr');
+  };
+
+  const handleLogout = () => {
+    logout();
+    setSession(null);
+    window.history.pushState({}, '', '/hr');
+  };
+
+  const hrRoles = ['hr', 'super_admin'];
+  if (session && hrRoles.includes(session.role)) {
+    return <DashboardShell user={session} onLogout={handleLogout} />;
+  }
+
+  return <LoginPage onLogin={handleLogin} />;
+}
 
 export default function App() {
-  const [locationKey, setLocationKey] = useState(() => `${window.location.pathname}${window.location.hash}`);
+  const [path, setPath] = useState(() => window.location.pathname);
 
   useEffect(() => {
-    const syncLocation = () => setLocationKey(`${window.location.pathname}${window.location.hash}`);
-    window.addEventListener('popstate', syncLocation);
-    window.addEventListener('hashchange', syncLocation);
-    return () => {
-      window.removeEventListener('popstate', syncLocation);
-      window.removeEventListener('hashchange', syncLocation);
-    };
+    const sync = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
   }, []);
 
   useEffect(() => {
     if (window.location.hash === '#faq') {
       window.history.replaceState(null, '', '/faqs');
-      setLocationKey('/faqs');
+      setPath('/faqs');
     }
-  }, [locationKey]);
+  }, [path]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add('visible');
-        });
-      },
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
       { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
     );
     document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [locationKey]);
+  }, [path]);
 
-  const isAdminPage = window.location.pathname === '/admin';
-  const isFaqPage = window.location.pathname === '/faqs';
-
-  if (isAdminPage) return <AdminPage />;
+  if (path === '/admin')     return <AdminPage />;
+  if (path === '/hr')        return <HRRoute />;
+  if (path === '/dashboard' || path === '/login') return <DashboardRoute />;
 
   return (
     <>
       <Navbar />
-      {isFaqPage ? (
+      {path === '/faqs' ? (
         <FAQ isPage />
       ) : (
         <>

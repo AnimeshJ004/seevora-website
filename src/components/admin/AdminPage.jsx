@@ -499,233 +499,11 @@ function AIInsightsStrip({ items }) {
 
 /* ─── Demo / Mock Data ─────────────────────────────────────────────────── */
 
-const VOICE_CALL_LOGS = [
-  {
-    id: 1,
-    caller: { name: 'Priya Sharma', phone: '+91 98765 43210' },
-    business: 'Glow Salon — Bandra',
-    duration: '4m 32s',
-    callTime: 'Today, 10:42 AM',
-    sentiment: 'positive',
-    intent: 'Book appointment',
-    summary: 'Caller wants bridal facial package for next Saturday; slot confirmed for 3 PM.',
-    confidence: 94,
-  },
-  {
-    id: 2,
-    caller: { name: 'Rahul Mehta', phone: '+91 98200 11876' },
-    business: 'SmileCare Dental — Andheri',
-    duration: '2m 18s',
-    callTime: 'Today, 9:15 AM',
-    sentiment: 'neutral',
-    intent: 'Pricing inquiry',
-    summary: 'Asked about teeth whitening cost; AI shared price range and offered callback from clinic.',
-    confidence: 88,
-  },
-  {
-    id: 3,
-    caller: { name: 'Ananya Reddy', phone: '+91 99887 66554' },
-    business: 'Glow Salon — Bandra',
-    duration: '6m 05s',
-    callTime: 'Yesterday, 6:48 PM',
-    sentiment: 'negative',
-    intent: 'Complaint / reschedule',
-    summary: 'Unhappy about cancelled slot; AI apologised and rebooked for Tuesday 11 AM with stylist Meera.',
-    confidence: 91,
-  },
-  {
-    id: 4,
-    caller: { name: 'Vikram Singh', phone: '+91 98112 33445' },
-    business: 'FitLife Gym — Powai',
-    duration: '1m 52s',
-    callTime: 'Yesterday, 4:22 PM',
-    sentiment: 'positive',
-    intent: 'Membership inquiry',
-    summary: 'Interested in annual plan; AI sent WhatsApp brochure and booked trial session for Friday.',
-    confidence: 86,
-  },
-  {
-    id: 5,
-    caller: { name: 'Sneha Patel', phone: '+91 97654 32109' },
-    business: 'SmileCare Dental — Andheri',
-    duration: '3m 41s',
-    callTime: 'Yesterday, 2:10 PM',
-    sentiment: 'positive',
-    intent: 'Book appointment',
-    summary: 'Root canal follow-up scheduled; patient confirmed insurance details on call.',
-    confidence: 96,
-  },
-  {
-    id: 6,
-    caller: { name: 'Arjun Nair', phone: '+91 99001 22334' },
-    business: 'Glow Salon — Bandra',
-    duration: '2m 07s',
-    callTime: 'Jun 26, 11:30 AM',
-    sentiment: 'neutral',
-    intent: 'General inquiry',
-    summary: 'Asked about salon timings on Sundays; AI provided hours and parking info.',
-    confidence: 79,
-  },
-  {
-    id: 7,
-    caller: { name: 'Kavita Desai', phone: '+91 98331 44556' },
-    business: 'AyurWell Clinic — Juhu',
-    duration: '5m 14s',
-    callTime: 'Jun 26, 9:05 AM',
-    sentiment: 'positive',
-    intent: 'Book appointment',
-    summary: 'Panchakarma consultation booked for July 2; dietary form link sent via SMS.',
-    confidence: 93,
-  },
-  {
-    id: 8,
-    caller: { name: 'Mohit Agarwal', phone: '+91 98198 77665' },
-    business: 'FitLife Gym — Powai',
-    duration: '0m 48s',
-    callTime: 'Jun 25, 7:55 PM',
-    sentiment: 'negative',
-    intent: 'Wrong number',
-    summary: 'Misdial — caller looking for pizza delivery; call ended politely by AI.',
-    confidence: 72,
-  },
-];
+const VOICE_CALL_LOGS = [];
 
-const WHATSAPP_CAMPAIGNS = [
-  {
-    id: 1,
-    name: 'Diwali Glow Package — Bandra Salon',
-    business: 'Glow Salon',
-    messagesSent: 1240,
-    readRate: 78,
-    replyRate: 34,
-    status: 'active',
-    aiOptimized: true,
-    aiReplyPrediction: 42,
-    aiFollowUp: 'Send Hindi reminder 24h before offer expiry — predicted +8% replies',
-    aiMessagePreview: 'Hi {{name}}! ✨ Diwali glow package still available at ₹1,999. Book before 5 Nov →',
-  },
-  {
-    id: 2,
-    name: 'Dental Check-up Reminder — Andheri',
-    business: 'SmileCare Dental',
-    messagesSent: 856,
-    readRate: 82,
-    replyRate: 41,
-    status: 'completed',
-    aiOptimized: true,
-    aiReplyPrediction: 38,
-    aiFollowUp: 'Follow up non-responders with "free X-ray" hook on Thursday 6 PM',
-    aiMessagePreview: 'Namaste {{name}}, 6-month check-up due at SmileCare. Reply YES to confirm slot.',
-  },
-  {
-    id: 3,
-    name: 'Monsoon Fitness Offer — Powai',
-    business: 'FitLife Gym',
-    messagesSent: 2100,
-    readRate: 71,
-    replyRate: 28,
-    status: 'active',
-    aiOptimized: false,
-    aiReplyPrediction: 31,
-    aiFollowUp: 'AI suggests A/B test: emoji vs no-emoji subject for 15% lift',
-    aiMessagePreview: 'Hey {{name}}, monsoon membership @ ₹999/mo — limited slots. Tap to claim 💪',
-  },
-  {
-    id: 4,
-    name: 'Panchakarma Wellness Week — Juhu',
-    business: 'AyurWell Clinic',
-    messagesSent: 432,
-    readRate: 89,
-    replyRate: 52,
-    status: 'completed',
-    aiOptimized: true,
-    aiReplyPrediction: 55,
-    aiFollowUp: 'Upsell post-consultation Ayurveda kit to high-engagement segment',
-    aiMessagePreview: '{{name}}, exclusive Panchakarma slots open Jul 1–7. Reply BOOK for callback.',
-  },
-  {
-    id: 5,
-    name: 'Birthday Treat — VIP Clients',
-    business: 'Glow Salon',
-    messagesSent: 186,
-    readRate: 94,
-    replyRate: 61,
-    status: 'scheduled',
-    aiOptimized: true,
-    aiReplyPrediction: 58,
-    aiFollowUp: 'Schedule send at 10 AM IST — AI peak engagement window for this segment',
-    aiMessagePreview: 'Happy Birthday {{name}}! 🎂 20% off any service this week. Code: BDAY20',
-  },
-];
+const WHATSAPP_CAMPAIGNS = [];
 
-const WHATSAPP_MESSAGE_LOGS = [
-  {
-    id: 1,
-    contact: 'Priya Sharma',
-    phone: '+91 98765 43210',
-    campaign: 'Diwali Glow Package',
-    direction: 'outbound',
-    preview: 'Hi Priya! ✨ Diwali glow package still available...',
-    status: 'read',
-    time: 'Today, 11:02 AM',
-    aiSuggested: false,
-  },
-  {
-    id: 2,
-    contact: 'Priya Sharma',
-    phone: '+91 98765 43210',
-    campaign: 'Diwali Glow Package',
-    direction: 'inbound',
-    preview: 'Yes, book me for Saturday 3 PM please',
-    status: 'replied',
-    time: 'Today, 11:08 AM',
-    aiSuggested: false,
-  },
-  {
-    id: 3,
-    contact: 'Rahul Mehta',
-    phone: '+91 98200 11876',
-    campaign: 'Dental Check-up Reminder',
-    direction: 'outbound',
-    preview: 'Namaste Rahul, 6-month check-up due at SmileCare...',
-    status: 'delivered',
-    time: 'Today, 9:30 AM',
-    aiSuggested: true,
-  },
-  {
-    id: 4,
-    contact: 'Ananya Reddy',
-    phone: '+91 99887 66554',
-    campaign: 'Diwali Glow Package',
-    direction: 'outbound',
-    preview: 'Hi Ananya! ✨ Diwali glow package still available...',
-    status: 'read',
-    time: 'Yesterday, 6:15 PM',
-    aiSuggested: true,
-  },
-  {
-    id: 5,
-    contact: 'Vikram Singh',
-    phone: '+91 98112 33445',
-    campaign: 'Monsoon Fitness Offer',
-    direction: 'inbound',
-    preview: 'Interested — send me trial pass details',
-    status: 'replied',
-    time: 'Yesterday, 4:45 PM',
-    aiSuggested: false,
-  },
-  {
-    id: 6,
-    contact: 'Sneha Patel',
-    phone: '+91 97654 32109',
-    campaign: 'Dental Check-up Reminder',
-    direction: 'outbound',
-    preview: 'Namaste Sneha, 6-month check-up due at SmileCare...',
-    status: 'failed',
-    time: 'Yesterday, 2:00 PM',
-    aiSuggested: false,
-  },
-];
+const WHATSAPP_MESSAGE_LOGS = [];
 
 function normalizeText(value) {
   return String(value ?? '').toLowerCase();
@@ -781,10 +559,10 @@ function generateAdminAIResponse(query, activeNav = 'dashboard') {
     const best = [...WHATSAPP_CAMPAIGNS].sort((a, b) => b.replyRate - a.replyRate)[0];
     return {
       title: 'AI WhatsApp search',
-      summary: whatsappMatches.length ? createCompactSummary(whatsappMatches, 'WhatsApp records') : `Best campaign is ${best.name} with ${best.replyRate}% replies.`,
+      summary: whatsappMatches.length ? createCompactSummary(whatsappMatches, 'WhatsApp records') : (best ? `Best campaign is ${best.name} with ${best.replyRate}% replies.` : 'No WhatsApp campaigns available.'),
       bullets: [
-        `Best next step: ${best.aiFollowUp}`,
-        `Suggested template: ${best.aiMessagePreview}`,
+        `Best next step: ${best?.aiFollowUp ?? 'None'}`,
+        `Suggested template: ${best?.aiMessagePreview ?? 'None'}`,
         'Use the WhatsApp AI chat box to draft a reply for any customer message.',
       ],
     };
@@ -798,7 +576,7 @@ function generateAdminAIResponse(query, activeNav = 'dashboard') {
       summary: voiceMatches.length ? createCompactSummary(voiceMatches.map((log) => ({ title: `${log.caller.name} - ${log.intent}` })), 'voice calls') : `${VOICE_CALL_LOGS.length} voice call logs are available for analysis.`,
       bullets: [
         `${urgent.length} calls need priority follow-up because sentiment is negative.`,
-        `Most confident call: ${strongest.caller.name}.`,
+        strongest ? `Most confident call: ${strongest.caller.name}.` : 'No voice calls handled yet.',
         'Open AI Voice Agent to generate customer-ready call scripts.',
       ],
     };
@@ -1042,7 +820,7 @@ function ViewAIVoiceAgent() {
           <textarea value={voiceInstruction} onChange={(e) => setVoiceInstruction(e.target.value)} aria-label="Voice agent instruction" />
           <div className="admin-ai-action-buttons">
             <button type="button" onClick={() => setVoiceReply(generateVoiceAgentReply(selectedCall, voiceInstruction))}>Generate Call Script</button>
-            <button type="button" onClick={() => setVoiceReply(`Summary: ${selectedCall.summary} Suggested follow-up: ${selectedCall.sentiment === 'negative' ? 'Escalate to human staff today.' : 'Send confirmation on WhatsApp.'}`)}>Summarize Call</button>
+            <button type="button" onClick={() => setVoiceReply(selectedCall ? `Summary: ${selectedCall.summary} Suggested follow-up: ${selectedCall.sentiment === 'negative' ? 'Escalate to human staff today.' : 'Send confirmation on WhatsApp.'}` : 'No call log selected.')}>Summarize Call</button>
           </div>
           {voiceReply && <div className="admin-ai-output">{voiceReply}</div>}
         </div>
