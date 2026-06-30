@@ -2,28 +2,44 @@ import React, { useState } from 'react';
 
 const faqs = [
   {
-    q: 'How is Seevora different from other AI companies?',
-    a: 'We don\'t sell generic AI tools or produce consulting decks. Seevora builds custom, production-grade AI solutions tailored to a specific business process. We own the outcome — from discovery to deployment to ongoing optimization.',
+    q: 'Does Seevora replace my staff?',
+    a: 'No. Seevora acts as a 24/7 assistant. It handles missed phone calls, answers repetitive WhatsApp questions, and books appointments automatically so your physical staff can focus on the in-person clients inside your clinic, salon, or studio.',
   },
   {
-    q: 'What industries do you serve?',
-    a: 'We work across healthcare, finance, manufacturing, retail, and logistics. Our solutions are built around your industry\'s specific data types, workflows, and compliance requirements.',
+    q: 'Can the AI work in Hindi and local languages?',
+    a: 'Yes! Our voice receptionist and WhatsApp chat agents are fully bilingual. They communicate fluently in Hindi, English, and regional dialect variations (Hinglish), ensuring your local customers get natural replies.',
   },
   {
-    q: 'How long does implementation take?',
-    a: 'Most solutions go from discovery to production in 6-12 weeks, depending on complexity. We focus on one process at a time to ensure rapid, high-quality deployment with measurable results.',
+    q: 'How quickly can it launch?',
+    a: 'We map your specific business rules, train the AI model, set up your WhatsApp automation, and launch the system live on your domain within 5 business days.',
   },
   {
-    q: 'What kind of ROI can we expect?',
-    a: 'Our clients typically see 30-50% cost reduction on the automated process within 90 days. We define ROI metrics upfront and track them throughout — every solution is designed to pay for itself.',
+    q: 'Is our customer data secure?',
+    a: 'Absolutely. We follow strict data privacy standards. All customer contact details, reservation history, and conversation transcripts are fully encrypted and belong exclusively to your business.',
   },
   {
-    q: 'Do we need to replace our existing systems?',
-    a: 'No. Seevora solutions integrate with your current tech stack — CRMs, ERPs, databases, and internal tools. We augment your existing infrastructure rather than replacing it.',
+    q: 'What kind of support do you provide?',
+    a: 'We do not use ticketing systems. You get direct WhatsApp access to our Indore-based engineering team for any adjustments, workflow updates, or integrations, with same-day resolution guaranteed.',
   },
   {
-    q: 'What happens after deployment?',
-    a: 'We provide ongoing monitoring, optimization, and support. Our AI systems continuously learn and improve, and we deliver regular ROI reports so you always know the impact.',
+    q: 'What communication channels does the AI support?',
+    a: 'Our systems deploy across standard customer touchpoints. This includes automated inbound/outbound phone receptionists, WhatsApp Business API chat, Instagram DMs, SMS, and website booking widgets, all synced together to the same dashboard.',
+  },
+  {
+    q: 'Do I need a developer or technical skills to get started?',
+    a: 'No coding is required on your part. Our team of Indore-based developers handles 100% of the technical setup, database configuration, CRM integrations, and voice training as part of our onboarding workflow.',
+  },
+  {
+    q: 'How does the AI handle payment verification and alerts?',
+    a: 'Seevora integrates with UPI payment gateways and bank text notifications. The moment a booking deposit or customer transfer is received, the AI matches it against the ledger, updates the calendar, and texts a confirmation alert.',
+  },
+  {
+    q: 'Can we customize the AI voice agent\'s tone and script?',
+    a: 'Absolutely. During onboarding, we translate your existing business script and preferences into the AI model. You can select standard voice styles (e.g., friendly, professional, or formal) and tweak replies via WhatsApp support.',
+  },
+  {
+    q: 'Is there a free trial or audit available?',
+    a: 'Yes! We offer a free, comprehensive AI Workflow Audit. Our engineers will audit your current manual bottlenecks and draft a tailored automation blueprint mapping out potential cost reductions for your business.',
   },
 ];
 
@@ -35,17 +51,13 @@ export default function FAQ({ isPage = false }) {
   };
 
   const goToContact = () => {
-    window.location.assign('/#contact');
+    window.location.assign('/book-a-call');
   };
 
   return (
     <section className={`faq section${isPage ? ' faq-page' : ''}`} id="faqs">
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 24px' }}>
-            <span className="dot" />
-            FAQ
-          </div>
           <h2 className="section-title">
             Frequently Asked <span className="gradient-text">Questions</span>
           </h2>
@@ -54,13 +66,11 @@ export default function FAQ({ isPage = false }) {
           </p>
         </div>
 
-        <div className="faq-list">
+        <div className="faq-list" data-animate>
           {faqs.map((faq, i) => (
             <div
               key={i}
-              className={`faq-item${activeIndex === i ? ' active' : ''}`}
-              data-animate
-              style={{ transitionDelay: `${i * 0.06}s` }}
+              className={`faq-item ${activeIndex === i ? 'active' : ''}`}
             >
               <div className="glass-card" onClick={() => toggle(i)}>
                 <div className="faq-question">

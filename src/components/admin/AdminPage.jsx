@@ -244,6 +244,12 @@ export default function AdminPage() {
   const [activeNav, setActiveNav] = useState('dashboard');
   const [currentDate, setCurrentDate] = useState('');
 
+  const handleLogout = () => {
+    localStorage.removeItem('seevoraAuthToken');
+    localStorage.removeItem('seevoraUser');
+    window.location.assign('/login');
+  };
+
   useEffect(() => {
     const formatted = new Date().toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -292,6 +298,13 @@ export default function AdminPage() {
             <IconCaretDown />
           </div>
         </div>
+        <button type="button" className="admin-sidebar-logout" onClick={handleLogout}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 17l1.5-1.5L8 12h12" />
+            <path d="M20 12a8 8 0 1 1-8-8" />
+          </svg>
+          <span>Logout</span>
+        </button>
       </aside>
 
       {/* Main content body */}
@@ -404,7 +417,7 @@ function SectionHeader({ title, subtitle, action }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
       <div>
-        <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: 4 }}>{title}</h2>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: 4 }}>{title}</h2>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{subtitle}</p>
       </div>
       {action && (
