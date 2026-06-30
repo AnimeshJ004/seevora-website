@@ -1,21 +1,97 @@
 import React, { useState } from 'react';
-import logoIcon from '../../assets/logo-icon.png';
-import { login, DEMO_USERS, ROLE_META } from '../../auth/roles';
+import logoIcon from '../../assets/logo-icon-clean.png';
+import {
+  login,
+  DEMO_USERS,
+  ROLE_META,
+  createDemoResetRequest,
+  consumeDemoResetRequest,
+} from '../../auth/roles';
 
 export default function LoginPage({ onLogin }) {
-  const [email, setEmail]       = useState('');
+  const [mode, setMode] = useState('login');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPwd, setShowPwd]   = useState(false);
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resetInfo, setResetInfo] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password) { setError('Please fill in both fields.'); return; }
-    setLoading(true);
     setError('');
-    // Simulate network delay
+    setMessage('');
+
+    if (mode === 'forgot') {
+      if (!email.trim()) {
+        setError('Please enter your email or username.');
+        return;
+      }
+
+      setLoading(true);
+      const result = createDemoResetRequest(email);
+      setLoading(false);
+
+      if (!result.success) {
+        setError(result.error || 'Unable to create a reset code.');
+        return;
+      }
+
+      setResetInfo(result);
+      setResetCode(result.resetCode);
+      setNewPassword('');
+      setConfirmPassword('');
+      setMode('reset');
+      setMessage('Reset code generated below for this demo account.');
+      return;
+    }
+
+    if (mode === 'reset') {
+      if (!email.trim() || !resetCode.trim() || !newPassword || !confirmPassword) {
+        setError('Please fill in all reset fields.');
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError('Password must be at least 8 characters.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError('Passwords do not match.');
+        return;
+      }
+
+      setLoading(true);
+      const result = consumeDemoResetRequest(email, resetCode, newPassword);
+      setLoading(false);
+
+      if (!result.success) {
+        setError(result.error || 'Unable to reset password.');
+        return;
+      }
+
+      setPassword(newPassword);
+      setMode('login');
+      setResetInfo(null);
+      setResetCode('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setShowPwd(false);
+      setMessage('Password reset successful. You can now sign in.');
+      return;
+    }
+
+    if (!email || !password) {
+      setError('Please fill in both fields.');
+      return;
+    }
+
+    setLoading(true);
+
     setTimeout(() => {
       const result = login(email, password);
       setLoading(false);
@@ -31,129 +107,242 @@ export default function LoginPage({ onLogin }) {
     setEmail(user.email);
     setPassword(user.password);
     setError('');
+    setMessage('');
+    setMode('login');
+    setResetInfo(null);
+    setResetCode('');
+    setNewPassword('');
+    setConfirmPassword('');
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--bg-deep)', fontFamily: "'Inter', sans-serif", padding: '24px',
-    }}>
-      {/* Background grid */}
-      <div style={{ position: 'fixed', inset: 0, backgroundImage: 'linear-gradient(rgba(15,23,42,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,0.03) 1px,transparent 1px)', backgroundSize: '60px 60px', pointerEvents: 'none', zIndex: 0 }} />
-      {/* Glow */}
-      <div style={{ position: 'fixed', top: '-100px', right: '-100px', width: 500, height: 500, background: 'rgba(20,201,225,0.06)', borderRadius: '50%', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 0 }} />
-      <div style={{ position: 'fixed', bottom: '-100px', left: '-100px', width: 400, height: 400, background: 'rgba(158,60,236,0.05)', borderRadius: '50%', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 0 }} />
+    <section className="contact section book-call-page dashboard-login-page">
+      <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />
+      <div className="bg-glow bg-glow-2" style={{ bottom: '-180px', left: '-140px' }} />
+      <div className="container">
+        <div className="contact-grid dashboard-login-grid">
+          <div className="book-call-brand dashboard-login-brand">
+            <img src={logoIcon} alt="Seevora" />
+            <h3>Seevora</h3>
+            <p>
+              Sign in to your workspace. We will help you review requests, track audits, and manage implementation updates.
+            </p>
+          </div>
 
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 440 }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40, justifyContent: 'center' }}>
-          <img src={logoIcon} alt="Seevora" style={{ width: 36, height: 36, borderRadius: 10 }} />
-          <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: '1.4rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Seevora</span>
-        </div>
+          <div className="book-call-divider" aria-hidden="true" />
 
-        {/* Card */}
-        <div style={{ background: '#fff', border: '1px solid var(--glass-border)', borderRadius: 24, padding: '40px 36px', boxShadow: '0 8px 40px rgba(15,23,42,0.06)' }}>
-          <h1 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: '1.6rem', color: 'var(--text-primary)', marginBottom: 6, textAlign: 'center' }}>Welcome back</h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 28 }}>Sign in to your Seevora workspace</p>
+          <div className="contact-form dashboard-login-form" data-animate="slide-right">
+            <div className="glass-card contact-form-card dashboard-login-card" data-animate="contact-form-3d">
+              <h1 className="dashboard-login-title">Welcome back</h1>
+              <p className="dashboard-login-subtitle">Sign in to your Seevora workspace</p>
 
-          <form onSubmit={handleSubmit}>
-            {/* Email */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Email or Phone</label>
-              <input
-                type="text"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder="you@seevora.in"
-                style={{ width: '100%', padding: '11px 14px', border: `1px solid ${error ? 'var(--accent-pink)' : 'var(--glass-border)'}`, borderRadius: 10, fontSize: '0.88rem', background: 'var(--bg-space)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
-                onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
-                onBlur={e => e.target.style.borderColor = error ? 'var(--accent-pink)' : 'var(--glass-border)'}
-              />
-            </div>
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <label htmlFor="email">Email or Username</label>
+                  <input
+                    id="email"
+                    type="text"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                    placeholder="you@seevora.in or seevora"
+                    className="form-input dashboard-login-input"
+                    aria-invalid={Boolean(error)}
+                    disabled={loading}
+                  />
+                </div>
 
-            {/* Password */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)' }}>Password</label>
-                <a href="#" style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 600, textDecoration: 'none' }}>Forgot password?</a>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showPwd ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => { setPassword(e.target.value); setError(''); }}
-                  placeholder="••••••••"
-                  style={{ width: '100%', padding: '11px 44px 11px 14px', border: `1px solid ${error ? 'var(--accent-pink)' : 'var(--glass-border)'}`, borderRadius: 10, fontSize: '0.88rem', background: 'var(--bg-space)', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
-                  onFocus={e => e.target.style.borderColor = 'var(--accent-cyan)'}
-                  onBlur={e => e.target.style.borderColor = error ? 'var(--accent-pink)' : 'var(--glass-border)'}
-                />
-                <button type="button" onClick={() => setShowPwd(!showPwd)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-                  {showPwd
-                    ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                    : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                  }
-                </button>
-              </div>
-            </div>
-
-            {/* Remember me */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <input type="checkbox" id="remember" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ width: 16, height: 16, accentColor: 'var(--accent-cyan)', cursor: 'pointer' }} />
-              <label htmlFor="remember" style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>Remember me for 30 days</label>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div style={{ padding: '10px 14px', background: 'rgba(236,72,153,0.08)', border: '1px solid rgba(236,72,153,0.2)', borderRadius: 8, fontSize: '0.82rem', color: 'var(--accent-pink)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                {error}
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ width: '100%', padding: '12px', background: loading ? '#6b7280' : 'var(--text-primary)', color: '#fff', border: 'none', borderRadius: 100, fontWeight: 700, fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            >
-              {loading ? (
-                <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Signing in…</>
-              ) : (
-                <>Sign In <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>
-              )}
-            </button>
-          </form>
-        </div>
-
-        {/* Quick login demo */}
-        <div style={{ marginTop: 28, background: '#fff', border: '1px solid var(--glass-border)', borderRadius: 16, padding: '20px 24px' }}>
-          <p style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14, textAlign: 'center' }}>Quick Demo Login</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {DEMO_USERS.map(u => {
-              const meta = ROLE_META[u.role];
-              return (
-                <button key={u.id} onClick={() => quickLogin(u)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', border: '1px solid var(--glass-border)', borderRadius: 10, cursor: 'pointer', background: 'var(--bg-space)', transition: 'all 0.2s', textAlign: 'left' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-space)'}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: meta.bg, color: meta.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.72rem', flexShrink: 0 }}>{u.avatar}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>{u.name}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{u.email}</div>
+                <div className="form-group">
+                  <div className="dashboard-login-label-row">
+                    <label htmlFor="password">Password</label>
+                    <button
+                      type="button"
+                      className="dashboard-login-link"
+                      onClick={() => {
+                        setError('');
+                        setMessage('');
+                        setShowPwd(false);
+                        setResetInfo(null);
+                        setResetCode('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                        setMode(mode === 'reset' ? 'login' : 'forgot');
+                      }}
+                    >
+                      {mode === 'reset' ? 'Back to login' : 'Forgot password?'}
+                    </button>
                   </div>
-                  <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: '0.65rem', fontWeight: 700, background: meta.bg, color: meta.color }}>{meta.label}</span>
+                  <div className="password-input-wrapper">
+                    <input
+                      id="password"
+                      type={showPwd ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                      placeholder="••••••••"
+                      className="form-input dashboard-login-input"
+                      aria-invalid={Boolean(error)}
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwd(!showPwd)}
+                      className="password-toggle-btn"
+                      aria-label={showPwd ? 'Hide password' : 'Show password'}
+                    >
+                      {showPwd
+                        ? <EyeOffIcon />
+                        : <EyeIcon />}
+                    </button>
+                  </div>
+                </div>
+
+                {mode === 'forgot' && (
+                  <div className="dashboard-reset-note">
+                    Enter your email or username. We will generate a one-time reset code for this demo account.
+                  </div>
+                )}
+
+                {mode === 'reset' && resetInfo && (
+                  <div className="dashboard-reset-panel">
+                    <div className="dashboard-reset-panel__label">Reset code</div>
+                    <div className="dashboard-reset-panel__code">{resetInfo.resetCode}</div>
+                    <p className="dashboard-reset-panel__meta">
+                      Use this code to set a new password. It expires in {resetInfo.expiresInMinutes} minutes.
+                    </p>
+                  </div>
+                )}
+
+                {mode === 'reset' && (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="resetCode">Reset Code</label>
+                      <input
+                        id="resetCode"
+                        type="text"
+                        value={resetCode}
+                        onChange={(e) => { setResetCode(e.target.value); setError(''); }}
+                        placeholder="Enter reset code"
+                        className="form-input dashboard-login-input"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="newPassword">New Password</label>
+                      <input
+                        id="newPassword"
+                        type={showPwd ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
+                        placeholder="Enter new password"
+                        className="form-input dashboard-login-input"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="confirmPassword">Confirm Password</label>
+                      <input
+                        id="confirmPassword"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
+                        placeholder="Re-enter new password"
+                        className="form-input dashboard-login-input"
+                        disabled={loading}
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="dashboard-login-remember">
+                  <input
+                    type="checkbox"
+                    id="remember"
+                    checked={remember}
+                    onChange={(e) => setRemember(e.target.checked)}
+                  />
+                  <label htmlFor="remember">Remember me for 30 days</label>
+                </div>
+
+                {error && (
+                  <div className="dashboard-login-error">
+                    <ErrorIcon />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {message && !error && (
+                  <div className="dashboard-login-message">
+                    {message}
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading} className="btn-primary form-submit dashboard-login-submit">
+                  {loading ? 'Please wait…' : mode === 'reset' ? 'Reset Password' : mode === 'forgot' ? 'Send Reset Code' : 'Sign In'}
+                  {!loading && <ArrowIcon />}
                 </button>
-              );
-            })}
+              </form>
+            </div>
+
+            <div className="dashboard-demo-card">
+              <p className="dashboard-demo-title">Quick Demo Login</p>
+              <div className="dashboard-demo-list">
+                {DEMO_USERS.map((u) => {
+                  const meta = ROLE_META[u.role];
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => quickLogin(u)}
+                      className="dashboard-demo-item"
+                      type="button"
+                    >
+                      <div className="dashboard-demo-avatar" style={{ background: meta.bg, color: meta.color }}>{u.avatar}</div>
+                      <div className="dashboard-demo-copy">
+                        <div className="dashboard-demo-name">{u.name}</div>
+                        <div className="dashboard-demo-email">{u.email}</div>
+                      </div>
+                      <span className="dashboard-demo-role" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p className="dashboard-login-footer">
+              © 2026 Seevora Private Limited · <a href="/" className="dashboard-login-backlink">Back to website</a>
+            </p>
           </div>
         </div>
-
-        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 20 }}>
-          © 2026 Seevora Private Limited · <a href="/" style={{ color: 'var(--accent-cyan)', textDecoration: 'none' }}>Back to website</a>
-        </p>
       </div>
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
-    </div>
+    </section>
   );
 }
+
+const EyeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
+const ErrorIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
+const ArrowIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" aria-hidden="true">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);

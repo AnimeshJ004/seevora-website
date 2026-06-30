@@ -207,6 +207,8 @@ export default function AuthPage() {
 
   return (
     <section className="contact section book-call-page auth-page">
+      <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />
+      <div className="bg-glow bg-glow-2" style={{ bottom: '-180px', left: '-140px' }} />
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
           <h2 className="section-title">

@@ -16,7 +16,6 @@ import LoginPage from './components/dashboard/LoginPage';
 import DashboardShell from './components/dashboard/DashboardShell';
 import { getSession, logout } from './auth/roles';
 
-/* ── Unified dashboard route (login + shell) ── */
 function DashboardRoute() {
   const [session, setSession] = useState(() => getSession());
 
@@ -32,12 +31,17 @@ function DashboardRoute() {
   };
 
   if (session) return <DashboardShell user={session} onLogout={handleLogout} />;
-  return <LoginPage onLogin={handleLogin} />;
+  return (
+    <>
+      <Navbar />
+      <LoginPage onLogin={handleLogin} />
+    </>
+  );
 }
 
-/* ── HR dashboard route (login + shell, HR roles only) ── */
 function HRRoute() {
   const [session, setSession] = useState(() => getSession());
+  const hrRoles = ['hr', 'super_admin'];
 
   const handleLogin = (user) => {
     setSession(user);
@@ -50,113 +54,111 @@ function HRRoute() {
     window.history.pushState({}, '', '/hr');
   };
 
-  const hrRoles = ['hr', 'super_admin'];
   if (session && hrRoles.includes(session.role)) {
     return <DashboardShell user={session} onLogout={handleLogout} />;
   }
 
-  return <LoginPage onLogin={handleLogin} />;
+  return (
+    <>
+      <Navbar />
+      <LoginPage onLogin={handleLogin} />
+    </>
+  );
 }
 
 export default function App() {
-  const [path, setPath] = useState(() => window.location.pathname);
+  const [locationState, setLocationState] = useState(() => ({
+    pathname: window.location.pathname,
+    hash: window.location.hash,
+  }));
+
+  const isAuthenticated = Boolean(localStorage.getItem('seevoraAuthToken'));
+  const path = locationState.pathname;
+  const hash = locationState.hash;
 
   useEffect(() => {
-    const sync = () => setPath(window.location.pathname);
-    window.addEventListener('popstate', sync);
-    return () => window.removeEventListener('popstate', sync);
+    const syncLocation = () => {
+      setLocationState({
+        pathname: window.location.pathname,
+        hash: window.location.hash,
+      });
+    };
+
+    window.addEventListener('popstate', syncLocation);
+    window.addEventListener('hashchange', syncLocation);
+    return () => {
+      window.removeEventListener('popstate', syncLocation);
+      window.removeEventListener('hashchange', syncLocation);
+    };
   }, []);
 
   useEffect(() => {
-    if (window.location.hash === '#faq') {
-      window.history.replaceState(null, '', '/faqs');
-      setPath('/faqs');
+    if (path === '/signup') {
+      window.history.replaceState(null, '', '/login');
+      setLocationState({ pathname: '/login', hash: '' });
     }
   }, [path]);
 
   useEffect(() => {
-    if (window.location.hash && window.location.hash !== '#faq') {
-      const id = window.location.hash.substring(1);
-      setTimeout(() => {
+    if (hash && hash !== '#faq') {
+      const id = hash.substring(1);
+      const timer = window.setTimeout(() => {
         const element = document.getElementById(id);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth' });
         }
       }, 150);
-    } else {
-      window.scrollTo(0, 0);
+
+      return () => window.clearTimeout(timer);
     }
-  }, [locationKey]);
+
+    window.scrollTo(0, 0);
+    return undefined;
+  }, [path, hash]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      (entries) => entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      }),
       { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
     );
+
     document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [path]);
-  }, [locationKey]);
 
-  const isAdminPage = window.location.pathname === '/admin';
-  const isFaqPage = window.location.pathname === '/faqs';
-  const isPrivacyPage = window.location.pathname === '/privacy-policy';
-  const isTermsPage = window.location.pathname === '/terms-and-conditions';
-  const isAboutPage = window.location.pathname === '/about';
-  const isServicesPage = window.location.pathname === '/services';
-  const isModulesPage = window.location.pathname === '/modules';
-  const isImpactPage = window.location.pathname === '/impact';
-  const isBookCallPage = window.location.pathname === '/book-a-call';
-  const isLoginPage = window.location.pathname === '/login';
-  const isAdminPage = window.location.pathname === '/admin';
-  const isAuthenticated = Boolean(localStorage.getItem('seevoraAuthToken'));
-  const isAdminShell = isAdminPage && isAuthenticated;
-
-  useEffect(() => {
-    if (window.location.pathname === '/signup') {
-      window.history.replaceState(null, '', '/login');
-      setLocationKey('/login');
-      return;
-    }
-    if (isAdminPage && !isAuthenticated) {
-      window.history.replaceState(null, '', '/login');
-      setLocationKey('/login');
-    }
-  }, [isAdminPage, isAuthenticated, locationKey]);
-
-  if (path === '/admin')     return <AdminPage />;
-  if (path === '/hr')        return <HRRoute />;
+  if (path === '/admin') return isAuthenticated ? <AdminPage /> : <AuthPage />;
+  if (path === '/hr') return <HRRoute />;
   if (path === '/dashboard' || path === '/login') return <DashboardRoute />;
+
+  const hideSiteChrome = ['/admin', '/dashboard', '/hr', '/login'].includes(path);
 
   return (
     <>
-      <Navbar />
+      {!hideSiteChrome && <Navbar />}
       {path === '/faqs' ? (
-      {!isAdminShell && <Navbar />}
-      {isAdminPage ? (
-        isAuthenticated ? <AdminPage /> : <AuthPage mode="login" />
-      ) : isFaqPage ? (
         <FAQ isPage />
-      ) : isPrivacyPage ? (
+      ) : path === '/privacy-policy' ? (
         <PrivacyPolicy />
-      ) : isTermsPage ? (
+      ) : path === '/terms-and-conditions' ? (
         <TermsConditions />
-      ) : isAboutPage ? (
+      ) : path === '/about' ? (
         <AboutPage />
-      ) : isServicesPage ? (
+      ) : path === '/services' ? (
         <ServicesPage />
-      ) : isModulesPage ? (
+      ) : path === '/modules' ? (
         <ModulesPage />
-      ) : isImpactPage ? (
+      ) : path === '/impact' ? (
         <ImpactPage />
-      ) : isBookCallPage ? (
+      ) : path === '/book-a-call' ? (
         <Contact />
-      ) : isLoginPage ? (
-        <AuthPage mode="login" />
+      ) : path === '/login' ? (
+        <AuthPage />
       ) : (
         <HomePage />
       )}
-      {!isAdminShell && <Footer />}
+      {!hideSiteChrome && <Footer />}
     </>
   );
 }

@@ -60,12 +60,105 @@ export const DEMO_USERS = [
   { id: 3, name: 'Seevora HR',        email: 'hr@seevora.in',       password: 'hr123',      role: 'hr',          avatar: 'HR' },
 ];
 
+const DEMO_PASSWORD_OVERRIDES_KEY = 'seevora_demo_password_overrides';
+const DEMO_RESET_REQUESTS_KEY = 'seevora_demo_reset_requests';
+
+function readStoredJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStoredJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getIdentifierAliases(user) {
+  const emailAlias = user.email.split('@')[0].toLowerCase();
+  const nameAlias = user.name.replace(/\s+/g, '').toLowerCase();
+  return new Set([
+    user.email.toLowerCase(),
+    emailAlias,
+    nameAlias,
+  ]);
+}
+
+export function findDemoUser(identifier) {
+  const normalized = String(identifier || '').trim().toLowerCase();
+  if (!normalized) return null;
+
+  return DEMO_USERS.find((user) => getIdentifierAliases(user).has(normalized)) || null;
+}
+
+export function getDemoPassword(userOrIdentifier) {
+  const user = typeof userOrIdentifier === 'string' ? findDemoUser(userOrIdentifier) : userOrIdentifier;
+  if (!user) return null;
+
+  const overrides = readStoredJson(DEMO_PASSWORD_OVERRIDES_KEY, {});
+  return overrides[user.email.toLowerCase()] || user.password;
+}
+
+export function setDemoPassword(identifier, nextPassword) {
+  const user = findDemoUser(identifier);
+  if (!user) return { success: false, error: 'Account not found.' };
+
+  const overrides = readStoredJson(DEMO_PASSWORD_OVERRIDES_KEY, {});
+  overrides[user.email.toLowerCase()] = nextPassword;
+  writeStoredJson(DEMO_PASSWORD_OVERRIDES_KEY, overrides);
+  return { success: true, user };
+}
+
+export function createDemoResetRequest(identifier) {
+  const user = findDemoUser(identifier);
+  if (!user) return { success: false, error: 'Account not found.' };
+
+  const resetCode = `SV-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  const requests = readStoredJson(DEMO_RESET_REQUESTS_KEY, {});
+  requests[user.email.toLowerCase()] = {
+    code: resetCode,
+    expiresAt: Date.now() + 15 * 60 * 1000,
+  };
+  writeStoredJson(DEMO_RESET_REQUESTS_KEY, requests);
+
+  return {
+    success: true,
+    user,
+    resetCode,
+    expiresInMinutes: 15,
+  };
+}
+
+export function consumeDemoResetRequest(identifier, resetCode, nextPassword) {
+  const user = findDemoUser(identifier);
+  if (!user) return { success: false, error: 'Account not found.' };
+
+  const requests = readStoredJson(DEMO_RESET_REQUESTS_KEY, {});
+  const entry = requests[user.email.toLowerCase()];
+  if (!entry) return { success: false, error: 'No reset code found. Request a new one.' };
+  if (entry.expiresAt < Date.now()) {
+    delete requests[user.email.toLowerCase()];
+    writeStoredJson(DEMO_RESET_REQUESTS_KEY, requests);
+    return { success: false, error: 'The reset code has expired. Request a new one.' };
+  }
+  if (String(entry.code).trim().toUpperCase() !== String(resetCode || '').trim().toUpperCase()) {
+    return { success: false, error: 'The reset code is invalid.' };
+  }
+
+  const result = setDemoPassword(user.email, nextPassword);
+  delete requests[user.email.toLowerCase()];
+  writeStoredJson(DEMO_RESET_REQUESTS_KEY, requests);
+  return result.success ? { success: true, user } : result;
+}
+
 /* ── Auth helpers ── */
 export function login(email, password) {
-  const user = DEMO_USERS.find(
-    u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-  );
-  if (user) {
+  const user = findDemoUser(email);
+  const effectivePassword = user ? getDemoPassword(user) : null;
+  const matches = user && effectivePassword === password;
+  if (matches) {
     const session = { ...user };
     delete session.password;
     sessionStorage.setItem('seevora_session', JSON.stringify(session));
