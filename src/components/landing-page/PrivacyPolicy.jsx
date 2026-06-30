@@ -60,10 +60,6 @@ export default function PrivacyPolicy() {
       <div className="bg-grid" />
       <div className="container">
         <div data-animate style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div className="section-label" style={{ margin: '0 auto 24px' }}>
-            <span className="dot" />
-            Legal Docs
-          </div>
           <h2 className="section-title">
             Privacy <span className="gradient-text">Policy</span>
           </h2>

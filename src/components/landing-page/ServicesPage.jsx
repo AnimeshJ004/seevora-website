@@ -6,15 +6,16 @@ import fitnessImg from '../../assets/fitness_dumbbells_service.jpg';
 import financialImg from '../../assets/financial_advisory_service.jpg';
 import realEstateImg from '../../assets/real_estate_service.jpg';
 import dashboardImg from '../../assets/dashboard_metrics_service.jpg';
+import diagnosticPathologyImg from '../../assets/diagnostic_pathology_service.png';
 
 const sectors = [
   {
     hash: 'healthcare',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M12 5v14" />
-        <path d="M5 12h14" />
-        <path d="M4 4h16v16H4z" />
+        <path d="M12 21s7-3.5 7-10V6l-7-3-7 3v5c0 6.5 7 10 7 10Z" />
+        <path d="M9 12h6" />
+        <path d="M12 9v6" />
       </svg>
     ),
     title: 'Healthcare & Medical',
@@ -33,8 +34,9 @@ const sectors = [
     hash: 'education',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M3 10.5 12 6l9 4.5-9 4.5-9-4.5Z" />
-        <path d="M6 11.8V16c0 1.8 2.7 3.3 6 3.3s6-1.5 6-3.3v-4.2" />
+        <path d="M3 9.5 12 5l9 4.5-9 4.5-9-4.5Z" />
+        <path d="M6 12v4c0 1.8 2.7 3.3 6 3.3s6-1.5 6-3.3v-4" />
+        <path d="M18 10.5V15" />
       </svg>
     ),
     title: 'Education & Academies',
@@ -53,10 +55,8 @@ const sectors = [
     hash: 'wellness',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M7 13a5 5 0 0 1 10 0" />
-        <path d="M6 13h12" />
-        <path d="M4 18h16" />
-        <path d="M8 8a4 4 0 0 1 8 0" />
+        <path d="M12 3c2.2 0 4 1.8 4 4 0 1.2-.5 2.4-1.3 3.2l-6.1 6.1A4 4 0 0 1 5 13c0-1.5.8-2.8 2-3.6C7.8 6.2 9.7 3 12 3Z" />
+        <path d="M8 13c2.2 0 4 .8 5.2 2" />
       </svg>
     ),
     title: 'Personal Care & Wellness',
@@ -75,8 +75,9 @@ const sectors = [
     hash: 'diagnostics',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M10 3v6l-5 7a3 3 0 0 0 2.4 4.8h9.2A3 3 0 0 0 19 16l-5-7V3" />
-        <path d="M8.5 15h7" />
+        <path d="M10 3h4" />
+        <path d="M10 3v5.5L5.5 16A3 3 0 0 0 8 20h8a3 3 0 0 0 2.5-4l-4.5-7.5V3" />
+        <path d="M9 15h6" />
       </svg>
     ),
     title: 'Diagnostic & Pathology',
@@ -84,7 +85,7 @@ const sectors = [
     pain: 'High test-booking drop-offs, manual sample collection scheduling, repetitive "report ready?" calls.',
     solution: 'Fully automated WhatsApp diagnostic booking flows, sample collections booking, auto-update patient records, and send direct WhatsApp notifications when report PDFs are ready for download.',
     color: 'blue',
-    img: dashboardImg,
+    img: diagnosticPathologyImg,
     metric: '65%',
     metricLabel: 'Staff Hours Saved/Mo',
     setupTime: '5 Business Days',
@@ -95,9 +96,11 @@ const sectors = [
     hash: 'fitness',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M6 9v6M18 9v6" />
-        <path d="M4 10v4M20 10v4" />
-        <path d="M8 8h8v8H8z" />
+        <path d="M5 10v4" />
+        <path d="M19 10v4" />
+        <path d="M7 8v8" />
+        <path d="M17 8v8" />
+        <path d="M8 11h8" />
       </svg>
     ),
     title: 'Health & Fitness',
@@ -116,11 +119,10 @@ const sectors = [
     hash: 'legal',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M12 3v18" />
-        <path d="M5 7h14" />
-        <path d="M7 7 4 13h6L7 7Z" />
-        <path d="m17 7-3 6h6l-3-6Z" />
-        <path d="M5 21h14" />
+        <path d="M12 4 20 8l-8 4-8-4 8-4Z" />
+        <path d="M6 9v5c0 1.7 2.7 3.5 6 3.5s6-1.8 6-3.5V9" />
+        <path d="M6 14.5 4 19h4" />
+        <path d="M18 14.5 20 19h-4" />
       </svg>
     ),
     title: 'Legal & Financial Advisory',
@@ -139,9 +141,9 @@ const sectors = [
     hash: 'property',
     icon: (
       <svg viewBox="0 0 24 24">
-        <path d="M3 11.5 12 4l9 7.5" />
-        <path d="M5 10.5V20h14v-9.5" />
-        <path d="M10 20v-6h4v6" />
+        <path d="M3 10.5 12 4l9 6.5" />
+        <path d="M5 9.5V20h14V9.5" />
+        <path d="M10 20v-5h4v5" />
       </svg>
     ),
     title: 'Property & Real Estate',
@@ -189,10 +191,6 @@ export default function ServicesPage() {
         
         {/* Hero Header */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <div className="section-label" style={{ margin: '0 auto 24px' }}>
-            <span className="dot" />
-            Industry Hub
-          </div>
           <h2 className="section-title">
             Our Services & <span className="gradient-text">Industries</span>
           </h2>

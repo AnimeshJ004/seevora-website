@@ -197,6 +197,14 @@ const stats = [
   { value: 99, suffix: '%', label: 'Accuracy Rate', sublabel: 'On structured data tasks' },
 ];
 
+const heroCapabilities = [
+  'AI Receptionist',
+  'WhatsApp Follow-ups',
+  '24/7 AI Response',
+  '40% Fewer No-Shows',
+  '5 Days Launch Ready',
+];
+
 function Hero() {
   return (
     <section className="centered-hero" id="hero">
@@ -211,37 +219,16 @@ function Hero() {
       <div className="hero-reference-scene" aria-hidden="true">
         <div className="hero-orbit hero-orbit-one" />
         <div className="hero-orbit hero-orbit-two" />
-        <div className="hero-float-card hero-float-card-left">
-          <span>24/7</span>
-          <strong>AI RESPONSE</strong>
-        </div>
-        <div className="hero-float-card hero-float-card-right">
-          <span>40%</span>
-          <strong>FEWER NO-SHOWS</strong>
-        </div>
-        <div className="hero-float-card hero-float-card-bottom">
-          <span>5 Days</span>
-          <strong>LAUNCH READY</strong>
-        </div>
       </div>
 
       <div className="container">
         <div className="hero-content centered" data-animate>
-          <div className="hero-eyebrow">
-            <span className="dot" />
-            AI Growth Platform
-          </div>
-
           <h1 className="hero-title centered">
             <span style={{ whiteSpace: 'nowrap' }}>Turn Your Business</span><br />
             <span style={{ whiteSpace: 'nowrap' }}>Processes into</span><br />
             <span style={{ whiteSpace: 'nowrap' }}><span className="gradient-text">Profit Centers</span></span><br />
             <span style={{ whiteSpace: 'nowrap' }}> With AI.</span>
           </h1>
-
-          <p className="hero-description centered">
-            Seevora builds custom AI SaaS solutions designed to solve real business problems, not generic chatbot tools or overpriced consulting decks. We focus on one process at a time, automate it intelligently, and make sure it pays for itself.
-          </p>
 
           <div className="hero-buttons centered">
             <button
@@ -261,6 +248,20 @@ function Hero() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="hero-capability-strip" aria-label="Seevora automation capabilities">
+        {heroCapabilities.map((item, index) => (
+          <div className="hero-capability-item" key={item}>
+            <span className={`hero-capability-mark hero-capability-mark-${index + 1}`} aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z" />
+                <path d="M8.5 12h7" />
+              </svg>
+            </span>
+            <span>{item}</span>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -315,9 +316,6 @@ function Problems() {
       <div className="bg-grid" />
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}>
-            <span className="dot" />Problems We Solve
-          </div>
           <h2 className="section-title">
             Why Indian Businesses <span className="gradient-text">Lose Growth</span>
           </h2>
@@ -361,9 +359,6 @@ function WhySeevora() {
     <section className="why-seevora section" id="why-seevora">
       <div className="container">
         <div data-animate style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}>
-            <span className="dot" />Why Seevora
-          </div>
           <h2 className="section-title">
             The Seevora <span className="gradient-text">Difference</span>
           </h2>
@@ -380,7 +375,7 @@ function WhySeevora() {
               data-animate="tilt-in"
               style={{ transitionDelay: `${i * 0.06}s` }}
             >
-              <div className="why-card-icon">{b.icon}</div>
+              <span className="why-card-index">{String(i + 1).padStart(2, '0')}</span>
               <div>
                 <h3>{b.title}</h3>
                 <p>{b.desc}</p>
@@ -398,7 +393,6 @@ function Workflow() {
     <section className="workflow section" id="workflow">
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}><span className="dot" />Our Process</div>
           <h2 className="section-title">How It <span className="gradient-text">Works</span></h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             A structured, transparent approach from discovery to deployment.
@@ -464,7 +458,6 @@ function Stats() {
       <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}><span className="dot" />Proven Impact</div>
           <h2 className="section-title">Results You Can <span className="gradient-text">Expect</span></h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             Our AI solutions deliver measurable business outcomes from day one.
@@ -495,12 +488,12 @@ function Stats() {
 
 export default function HomePage() {
   return (
-    <>
+    <main className="home-landing">
       <Hero />
       <Problems />
       <WhySeevora />
       <Workflow />
       <Stats />
-    </>
+    </main>
   );
 }

@@ -60,10 +60,6 @@ export default function TermsConditions() {
       <div className="bg-grid" />
       <div className="container">
         <div data-animate style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div className="section-label" style={{ margin: '0 auto 24px' }}>
-            <span className="dot" />
-            Legal Docs
-          </div>
           <h2 className="section-title">
             Terms & <span className="gradient-text">Conditions</span>
           </h2>

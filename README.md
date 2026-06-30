@@ -36,8 +36,9 @@ Vite proxies `/api/*` requests to the Express backend.
 
 ## Auth API
 
-- `POST /api/auth/signup` creates a user with a bcrypt-encrypted password.
 - `POST /api/auth/login` validates credentials and returns a JWT.
+- `POST /api/auth/forgot-password` creates a one-time reset code for a username/email and returns it for the in-app reset flow.
+- `POST /api/auth/reset-password` accepts the reset code and updates the password.
 - `GET /api/auth/me` returns the current user when called with `Authorization: Bearer <token>`.
 
 ## Scripts

@@ -1,11 +1,9 @@
+import 'dotenv/config';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
 import pool from './config/db.js';
 import { initDb } from './db/init.js';
 import authRoutes from './routes/auth.js';
-
-dotenv.config();
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');

@@ -1,90 +1,90 @@
 import React, { useState } from 'react';
 import logoIcon from '../../assets/logo-icon-clean.png';
 
-export default function AuthPage({ mode = 'login' }) {
-  const isSignup = mode === 'signup';
+const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
+
+async function postAuth(endpoint, payload) {
+  const requestOptions = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  };
+
+  const response = await fetch(endpoint, requestOptions);
+  if (response.status !== 502) return response;
+
+  return fetch(`${API_FALLBACK_ORIGIN}${endpoint}`, requestOptions);
+}
+
+const EMPTY_VALUES = {
+  identifier: '',
+  password: '',
+  resetCode: '',
+  newPassword: '',
+  confirmPassword: '',
+};
+
+export default function AuthPage() {
+  const [mode, setMode] = useState('login');
   const [message, setMessage] = useState(null);
-  const [values, setValues] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: ''
-  });
+  const [resetInfo, setResetInfo] = useState(null);
+  const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleChange = (e) => {
-    setValues({ ...values, [e.target.name]: e.target.value });
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: '' });
+  const updateValue = (name, nextValue) => {
+    setValues((current) => ({ ...current, [name]: nextValue }));
+    if (errors[name]) {
+      setErrors((current) => ({ ...current, [name]: '' }));
     }
     if (message) setMessage(null);
   };
 
-  const validate = () => {
+  const handleChange = (e) => updateValue(e.target.name, e.target.value);
+
+  const validateLoginForm = () => {
     const nextErrors = {};
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (isSignup && !values.username.trim()) nextErrors.username = 'Username is required.';
-    if (!values.email.trim()) nextErrors.email = 'Email is required.';
-    else if (!emailPattern.test(values.email.trim())) nextErrors.email = 'Enter a valid email address.';
-    
-    if (!values.password) {
-      nextErrors.password = 'Password is required.';
-    } else if (isSignup) {
-      const hasCapital = /[A-Z]/.test(values.password);
-      const hasNumber = /[0-9]/.test(values.password);
-      const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(values.password);
-      const hasMinLength = values.password.length >= 8;
-
-      if (!hasMinLength || !hasCapital || !hasNumber || !hasSpecial) {
-        nextErrors.password = 'Password must meet all security requirements.';
-      }
-    } else if (values.password.length < 8) {
-      nextErrors.password = 'Password must be at least 8 characters.';
-    }
-
-    if (isSignup && !values.confirmPassword) nextErrors.confirmPassword = 'Confirm password is required.';
-    else if (isSignup && values.password !== values.confirmPassword) nextErrors.confirmPassword = 'Passwords do not match.';
-
-    if (isSignup && values.phone.trim()) {
-      const phonePattern = /^[0-9+\-\s()]{7,20}$/;
-      if (!phonePattern.test(values.phone.trim())) nextErrors.phone = 'Enter a valid phone number.';
-    }
+    if (!values.identifier.trim()) nextErrors.identifier = 'Username or email is required.';
+    if (!values.password) nextErrors.password = 'Password is required.';
+    else if (values.password.length < 8) nextErrors.password = 'Password must be at least 8 characters.';
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
+  const validateForgotForm = () => {
+    const nextErrors = {};
+
+    if (!values.identifier.trim()) nextErrors.identifier = 'Username or email is required.';
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validateResetForm = () => {
+    const nextErrors = {};
+
+    if (!values.resetCode.trim()) nextErrors.resetCode = 'Reset code is required.';
+    if (!values.newPassword) nextErrors.newPassword = 'New password is required.';
+    else if (values.newPassword.length < 8) nextErrors.newPassword = 'Password must be at least 8 characters.';
+    if (!values.confirmPassword) nextErrors.confirmPassword = 'Please confirm your password.';
+    else if (values.confirmPassword !== values.newPassword) nextErrors.confirmPassword = 'Passwords do not match.';
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleLogin = async () => {
+    if (!validateLoginForm()) return;
 
     setIsSubmitting(true);
-    setMessage(null);
-    setErrors({});
 
     try {
-      const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
-      const payload = isSignup
-        ? {
-            username: values.username.trim(),
-            email: values.email.trim(),
-            password: values.password,
-            phone: values.phone.trim(),
-          }
-        : {
-            email: values.email.trim(),
-            password: values.password,
-          };
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const response = await postAuth('/api/auth/login', {
+        identifier: values.identifier.trim(),
+        password: values.password,
       });
       const data = await response.json().catch(() => ({}));
 
@@ -96,17 +96,8 @@ export default function AuthPage({ mode = 'login' }) {
 
       localStorage.setItem('seevoraAuthToken', data.token);
       localStorage.setItem('seevoraUser', JSON.stringify(data.user));
-      setMessage({ type: 'success', text: data.message || (isSignup ? 'Account created successfully.' : 'Login successful.') });
-
-      if (isSignup) {
-        setValues({
-          username: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
-          phone: ''
-        });
-      }
+      setMessage({ type: 'success', text: data.message || 'Login successful.' });
+      window.location.assign('/admin');
     } catch {
       setMessage({ type: 'error', text: 'Unable to reach the authentication server. Please try again.' });
     } finally {
@@ -114,21 +105,115 @@ export default function AuthPage({ mode = 'login' }) {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!validateForgotForm()) return;
+
+    setIsSubmitting(true);
+    setMessage(null);
+    setErrors({});
+
+    try {
+      const response = await postAuth('/api/auth/forgot-password', {
+        identifier: values.identifier.trim(),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (data.errors) setErrors(data.errors);
+        setMessage({ type: 'error', text: data.message || 'Unable to create a reset code.' });
+        return;
+      }
+
+      setResetInfo({
+        code: data.resetCode,
+        expiresInMinutes: data.expiresInMinutes,
+      });
+      setValues((current) => ({
+        ...current,
+        resetCode: data.resetCode || current.resetCode,
+        newPassword: '',
+        confirmPassword: '',
+      }));
+      setShowPassword(false);
+      setMode('reset');
+      setMessage({
+        type: 'success',
+        text: data.message || 'Reset code generated.',
+      });
+    } catch {
+      setMessage({ type: 'error', text: 'Unable to reach the authentication server. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!validateResetForm()) return;
+
+    setIsSubmitting(true);
+    setMessage(null);
+    setErrors({});
+
+    try {
+      const response = await postAuth('/api/auth/reset-password', {
+        resetCode: values.resetCode.trim(),
+        newPassword: values.newPassword,
+        confirmPassword: values.confirmPassword,
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (data.errors) setErrors(data.errors);
+        setMessage({ type: 'error', text: data.message || 'Unable to reset password.' });
+        return;
+      }
+
+      setMode('login');
+      setResetInfo(null);
+      setValues(EMPTY_VALUES);
+      setShowPassword(false);
+      setMessage({ type: 'success', text: data.message || 'Password reset successful.' });
+    } catch {
+      setMessage({ type: 'error', text: 'Unable to reach the authentication server. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrors({});
+    setMessage(null);
+
+    if (mode === 'login') return handleLogin();
+    if (mode === 'forgot') return handleForgotPassword();
+    return handleResetPassword();
+  };
+
+  const resetToLogin = () => {
+    setMode('login');
+    setErrors({});
+    setMessage(null);
+    setShowPassword(false);
+    setResetInfo(null);
+    setValues((current) => ({
+      ...current,
+      password: '',
+      resetCode: '',
+      newPassword: '',
+      confirmPassword: '',
+    }));
+  };
+
   return (
     <section className="contact section book-call-page auth-page">
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}>
-            <span className="dot" />{isSignup ? 'Register' : 'Login'}
-          </div>
           <h2 className="section-title">
-            {isSignup ? 'Create Your ' : 'Access Your '}
-            <span className="gradient-text">Seevora Account</span>
+            Access Your <span className="gradient-text">Seevora Account</span>
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
-            {isSignup
-              ? 'Register to start your AI workflow audit and manage your automation journey.'
-              : 'Login to manage your AI workflow requests, audits, and implementation updates.'}
+            Login to manage your AI workflow requests, audits, and implementation updates.
           </p>
         </div>
 
@@ -137,94 +222,190 @@ export default function AuthPage({ mode = 'login' }) {
             <img src={logoIcon} alt="Seevora" />
             <h3>Seevora</h3>
             <p>
-              {isSignup
-                ? 'Create your Seevora account to request audits, track conversations, and move faster from process review to automation launch.'
-                : 'Access your Seevora workspace to review audit details, track progress, and stay connected with your AI implementation team.'}
+              Access your Seevora workspace to review audit details, track progress, and stay connected with your AI implementation team.
             </p>
           </div>
 
           <div className="book-call-divider" aria-hidden="true" />
 
           <div className="contact-form" data-animate="slide-right">
-            <div className="glass-card contact-form-card" data-animate="contact-form-3d">
+            <div className="glass-card contact-form-card auth-card" data-animate="contact-form-3d">
               {message && (
                 <div className={`auth-message auth-message--${message.type}`}>
                   {message.text}
                 </div>
               )}
+
+              {mode === 'reset' && resetInfo && (
+                <div className="auth-reset-panel">
+                  <div className="auth-reset-panel__label">Reset code</div>
+                  <div className="auth-reset-panel__code">{resetInfo.code}</div>
+                  <p className="auth-reset-panel__meta">
+                    One-time code. Expires in {resetInfo.expiresInMinutes} minutes.
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit}>
-                {isSignup ? (
+                <div className="form-group">
+                  <label htmlFor="identifier">Username or Email</label>
+                  <input
+                    id="identifier"
+                    name="identifier"
+                    type="text"
+                    className="form-input"
+                    placeholder="Enter username or email"
+                    value={values.identifier}
+                    onChange={handleChange}
+                    aria-invalid={Boolean(errors.identifier)}
+                    disabled={isSubmitting}
+                  />
+                  {errors.identifier && <span className="form-error">{errors.identifier}</span>}
+                </div>
+
+                {mode === 'login' && (
                   <>
-                    <div className="form-group">
-                      <label htmlFor="username">Username</label>
-                      <input id="username" name="username" type="text" className="form-input" placeholder="Your username" value={values.username} onChange={handleChange} aria-invalid={Boolean(errors.username)} />
-                      {errors.username && <span className="form-error">{errors.username}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="email">Email</label>
-                      <input id="email" name="email" type="email" className="form-input" placeholder="name@gmail.com" value={values.email} onChange={handleChange} aria-invalid={Boolean(errors.email)} />
-                      {errors.email && <span className="form-error">{errors.email}</span>}
-                    </div>
-
                     <div className="form-group">
                       <label htmlFor="password">Password</label>
                       <div className="password-input-wrapper">
-                        <input id="password" name="password" type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Enter password" value={values.password} onChange={handleChange} aria-invalid={Boolean(errors.password)} />
-                        <button type="button" className="password-toggle-btn" onClick={() => setShowPassword(!showPassword)}>
-                          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                        </button>
-                      </div>
-                      <div className="password-note">
-                        Note: Must contain at least 8 characters, 1 uppercase letter, 1 number, and 1 special character.
-                      </div>
-                      {errors.password && <span className="form-error">{errors.password}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="confirmPassword">Confirm Password</label>
-                      <div className="password-input-wrapper">
-                        <input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} className="form-input" placeholder="Confirm password" value={values.confirmPassword} onChange={handleChange} aria-invalid={Boolean(errors.confirmPassword)} />
-                        <button type="button" className="password-toggle-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-                          {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
-                        </button>
-                      </div>
-                      {errors.confirmPassword && <span className="form-error">{errors.confirmPassword}</span>}
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="phone">Phone (Optional)</label>
-                      <input id="phone" name="phone" type="tel" className="form-input" placeholder="Your phone number" value={values.phone} onChange={handleChange} aria-invalid={Boolean(errors.phone)} />
-                      {errors.phone && <span className="form-error">{errors.phone}</span>}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="form-group">
-                      <label htmlFor="email">Email</label>
-                      <input id="email" name="email" type="email" className="form-input" placeholder="name@gmail.com" value={values.email} onChange={handleChange} aria-invalid={Boolean(errors.email)} />
-                      {errors.email && <span className="form-error">{errors.email}</span>}
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="password">Password</label>
-                      <div className="password-input-wrapper">
-                        <input id="password" name="password" type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Enter password" value={values.password} onChange={handleChange} aria-invalid={Boolean(errors.password)} />
-                        <button type="button" className="password-toggle-btn" onClick={() => setShowPassword(!showPassword)}>
+                        <input
+                          id="password"
+                          name="password"
+                          type={showPassword ? 'text' : 'password'}
+                          className="form-input"
+                          placeholder="Enter password"
+                          value={values.password}
+                          onChange={handleChange}
+                          aria-invalid={Boolean(errors.password)}
+                          disabled={isSubmitting}
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle-btn"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
                           {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                         </button>
                       </div>
                       {errors.password && <span className="form-error">{errors.password}</span>}
+                    </div>
+
+                    <div className="auth-inline-actions">
+                      <button
+                        type="button"
+                        className="auth-link-button"
+                        onClick={() => {
+                          setShowPassword(false);
+                          setValues((current) => ({
+                            ...current,
+                            password: '',
+                            resetCode: '',
+                            newPassword: '',
+                            confirmPassword: '',
+                          }));
+                          setMode('forgot');
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        Forgot password?
+                      </button>
                     </div>
                   </>
                 )}
+
+                {mode === 'forgot' && (
+                  <>
+                    <div className="auth-reset-note">
+                      Enter the username or email for the account. The server will generate a one-time reset code for you.
+                    </div>
+
+                    <div className="auth-inline-actions">
+                      <button type="button" className="auth-link-button" onClick={resetToLogin} disabled={isSubmitting}>
+                        Back to login
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {mode === 'reset' && (
+                  <>
+                    <div className="form-group">
+                      <label htmlFor="resetCode">Reset Code</label>
+                      <input
+                        id="resetCode"
+                        name="resetCode"
+                        type="text"
+                        className="form-input auth-code-input"
+                        placeholder="Paste the reset code"
+                        value={values.resetCode}
+                        onChange={handleChange}
+                        aria-invalid={Boolean(errors.resetCode)}
+                        disabled={isSubmitting}
+                      />
+                      {errors.resetCode && <span className="form-error">{errors.resetCode}</span>}
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="newPassword">New Password</label>
+                      <div className="password-input-wrapper">
+                        <input
+                          id="newPassword"
+                          name="newPassword"
+                          type={showPassword ? 'text' : 'password'}
+                          className="form-input"
+                          placeholder="Enter new password"
+                          value={values.newPassword}
+                          onChange={handleChange}
+                          aria-invalid={Boolean(errors.newPassword)}
+                          disabled={isSubmitting}
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle-btn"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                      </div>
+                      {errors.newPassword && <span className="form-error">{errors.newPassword}</span>}
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="confirmPassword">Confirm New Password</label>
+                      <input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        className="form-input"
+                        placeholder="Re-enter new password"
+                        value={values.confirmPassword}
+                        onChange={handleChange}
+                        aria-invalid={Boolean(errors.confirmPassword)}
+                        disabled={isSubmitting}
+                      />
+                      {errors.confirmPassword && <span className="form-error">{errors.confirmPassword}</span>}
+                    </div>
+
+                    <div className="auth-inline-actions">
+                      <button type="button" className="auth-link-button" onClick={resetToLogin} disabled={isSubmitting}>
+                        Back to login
+                      </button>
+                    </div>
+                  </>
+                )}
+
                 <button type="submit" className="btn-primary form-submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Please wait...' : isSignup ? 'Register' : 'Login'}
+                  {isSubmitting
+                    ? 'Please wait...'
+                    : mode === 'login'
+                      ? 'Login'
+                      : mode === 'forgot'
+                        ? 'Send Reset Code'
+                        : 'Reset Password'}
                 </button>
               </form>
-              <p className="auth-switch">
-                {isSignup ? 'Already have an account?' : 'New to Seevora?'}{' '}
-                <a href={isSignup ? '/login' : '/signup'}>{isSignup ? 'Login' : 'Register'}</a>
-              </p>
             </div>
           </div>
         </div>

@@ -59,9 +59,6 @@ export default function ImpactPage() {
         
         {/* Page Banner Header */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '64px' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}>
-            <span className="dot" />Our Impact
-          </div>
           <h1 className="section-title">
             Measurable Value. <span className="gradient-text">Delivered.</span>
           </h1>

@@ -28,44 +28,28 @@ export default function AboutPage() {
       desc: 'Practical AI systems for measurable business growth.',
       text: 'Seevora builds custom AI SaaS and automation systems that turn everyday operations into faster, smarter, trackable growth engines. Every solution is designed around real workflows, not generic templates.',
       stroke: 'var(--accent-cyan)',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      )
+      icon: <span className="pillar-dot" />
     },
     {
       title: 'How We Work',
       desc: 'We start with one process and make it perform.',
       text: 'Our team identifies a high-impact workflow, audits the friction, builds a tailored AI system, and keeps improving it until the results are visible in speed, cost, accuracy, and ROI.',
       stroke: '#a78bfa',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
-      )
+      icon: <span className="pillar-dot" />
     },
     {
       title: 'Our Mission',
       desc: 'Make AI useful for the work businesses repeat every day.',
       text: 'Our mission is to help teams reduce manual effort, remove operational bottlenecks, and scale confidently with AI solutions that are clear, practical, and built to deliver value within months.',
       stroke: 'var(--accent-green)',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-      )
+      icon: <span className="pillar-dot" />
     },
     {
       title: 'Our Vision',
       desc: 'A future where every business runs on smarter systems.',
       text: 'We envision companies across manufacturing, BFSI, logistics, healthcare, retail, and beyond using AI as a dependable operating layer for faster decisions and better outcomes.',
       stroke: 'var(--accent-orange)',
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" /><line x1="7" y1="2" x2="7" y2="22" /><line x1="17" y1="2" x2="17" y2="22" /><line x1="2" y1="12" x2="22" y2="12" />
-        </svg>
-      )
+      icon: <span className="pillar-dot" />
     }
   ];
 
@@ -104,10 +88,6 @@ export default function AboutPage() {
         
         {/* Hero Section */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '50px' }}>
-          <div className="section-label" style={{ margin: '0 auto 24px' }}>
-            <span className="dot" />
-            Who We Are
-          </div>
           <h2 className="section-title">
             About <span className="gradient-text">Seevora</span>
           </h2>
@@ -131,7 +111,12 @@ export default function AboutPage() {
             <h4>Seevora at a Glance</h4>
             <div className="about-page-badges-grid">
               {badges.map((b, idx) => (
-                <div key={idx} className="about-page-badge-item">
+                <div
+                  key={idx}
+                  className="about-page-badge-item"
+                  data-animate="about-badge"
+                  style={{ transitionDelay: `${idx * 0.045}s` }}
+                >
                   <span className="badge-bullet" />
                   <span>{b}</span>
                 </div>
@@ -166,7 +151,12 @@ export default function AboutPage() {
           </h3>
           <div className="about-details-list">
             {details.map((d, idx) => (
-              <div key={idx} className="about-detail-card">
+              <div
+                key={idx}
+                className="about-detail-card"
+                data-animate="about-detail-card"
+                style={{ transitionDelay: `${idx * 0.08}s` }}
+              >
                 <div className="about-detail-num">0{idx + 1}</div>
                 <div className="about-detail-content">
                   <h4>{d.title}</h4>

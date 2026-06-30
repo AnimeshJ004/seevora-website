@@ -19,7 +19,6 @@ export default function Contact() {
       <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}><span className="dot" />Book a Call</div>
           <h2 className="section-title">Schedule Your <span className="gradient-text">AI Growth Call</span></h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             Book a free discovery call. We'll map your process, identify the opportunity, and show you what's possible — no strings attached.
@@ -66,7 +65,7 @@ export default function Contact() {
                   </div>
                   <div className="form-group">
                     <label htmlFor="phone">Phone Number</label>
-                    <input id="phone" name="phone" type="tel" className="form-input" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} />
+                    <input id="phone" name="phone" type="tel" className="form-input" placeholder="Enter your phone number" value={formData.phone} onChange={handleChange} />
                   </div>
                 </div>
                 <div className="form-group">

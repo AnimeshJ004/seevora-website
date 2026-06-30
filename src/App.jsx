@@ -11,6 +11,7 @@ import Footer from './components/landing-page/Footer';
 import FAQ from './components/landing-page/FAQ';
 import PrivacyPolicy from './components/landing-page/PrivacyPolicy';
 import TermsConditions from './components/landing-page/TermsConditions';
+import AdminPage from './components/admin/AdminPage';
 
 export default function App() {
   const [locationKey, setLocationKey] = useState(() => `${window.location.pathname}${window.location.hash}`);
@@ -68,12 +69,28 @@ export default function App() {
   const isImpactPage = window.location.pathname === '/impact';
   const isBookCallPage = window.location.pathname === '/book-a-call';
   const isLoginPage = window.location.pathname === '/login';
-  const isSignupPage = window.location.pathname === '/signup';
+  const isAdminPage = window.location.pathname === '/admin';
+  const isAuthenticated = Boolean(localStorage.getItem('seevoraAuthToken'));
+  const isAdminShell = isAdminPage && isAuthenticated;
+
+  useEffect(() => {
+    if (window.location.pathname === '/signup') {
+      window.history.replaceState(null, '', '/login');
+      setLocationKey('/login');
+      return;
+    }
+    if (isAdminPage && !isAuthenticated) {
+      window.history.replaceState(null, '', '/login');
+      setLocationKey('/login');
+    }
+  }, [isAdminPage, isAuthenticated, locationKey]);
 
   return (
     <>
-      <Navbar />
-      {isFaqPage ? (
+      {!isAdminShell && <Navbar />}
+      {isAdminPage ? (
+        isAuthenticated ? <AdminPage /> : <AuthPage mode="login" />
+      ) : isFaqPage ? (
         <FAQ isPage />
       ) : isPrivacyPage ? (
         <PrivacyPolicy />
@@ -91,12 +108,10 @@ export default function App() {
         <Contact />
       ) : isLoginPage ? (
         <AuthPage mode="login" />
-      ) : isSignupPage ? (
-        <AuthPage mode="signup" />
       ) : (
         <HomePage />
       )}
-      <Footer />
+      {!isAdminShell && <Footer />}
     </>
   );
 }

@@ -58,10 +58,6 @@ export default function FAQ({ isPage = false }) {
     <section className={`faq section${isPage ? ' faq-page' : ''}`} id="faqs">
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <div className="section-label" style={{ margin: '0 auto 24px' }}>
-            <span className="dot" />
-            FAQ
-          </div>
           <h2 className="section-title">
             Frequently Asked <span className="gradient-text">Questions</span>
           </h2>

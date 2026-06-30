@@ -83,9 +83,6 @@ export default function ModulesPage() {
         
         {/* Banner Header */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '64px' }}>
-          <div className="section-label" style={{ margin: '0 auto 20px' }}>
-            <span className="dot" />Six Core Modules
-          </div>
           <h1 className="section-title">
             Six AI Modules. <span className="gradient-text">One Connected Platform.</span>
           </h1>
