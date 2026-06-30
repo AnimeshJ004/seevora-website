@@ -60,6 +60,7 @@ export default function App() {
     return () => observer.disconnect();
   }, [locationKey]);
 
+  const isAdminPage = window.location.pathname === '/admin';
   const isFaqPage = window.location.pathname === '/faqs';
   const isPrivacyPage = window.location.pathname === '/privacy-policy';
   const isTermsPage = window.location.pathname === '/terms-and-conditions';
@@ -84,6 +85,8 @@ export default function App() {
       setLocationKey('/login');
     }
   }, [isAdminPage, isAuthenticated, locationKey]);
+
+  if (isAdminPage) return <AdminPage />;
 
   return (
     <>
