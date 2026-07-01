@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { hrApiFetch } from './hrApi';
 
 const C = {
   bg:     "#f1f5f9",
@@ -17,15 +18,6 @@ const C = {
   red:    "#ef4444",
   cyan:   "#0ea5e9",
 };
-
-const kpis = [
-  { icon: "\uD83D\uDC65", label: "Total Employees",    value: "0",    delta: "",  color: C.blue },
-  { icon: "\u2705",       label: "Present Today",      value: "0",    delta: "", color: C.green },
-  { icon: "\uD83C\uDF34", label: "On Leave Today",     value: "0",     delta: "",      color: C.orange },
-  { icon: "\uD83D\uDD0D", label: "Open Positions",     value: "0",     delta: "",  color: C.purple },
-  { icon: "\uD83D\uDCB0", label: "Payroll This Month", value: "\u20B90", delta: "",color: C.green },
-  { icon: "\u23F0",       label: "Late Today",         value: "0",     delta: "",          color: C.red },
-];
 
 const attendance = [];
 const leaves = [];
@@ -56,8 +48,71 @@ function card(s = {}) {
 export default function HRDashboard({ user }) {
   const name = user?.name?.split(" ")[0] || "HR";
   const [toast, setToast] = useState(null);
+  const [summary, setSummary] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    probation: 0,
+    byDepartment: [],
+  });
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+
+  const loadSummary = useCallback(async ({ showErrors = true } = {}) => {
+    try {
+      const response = await hrApiFetch('/api/hr/employees/summary');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (showErrors) showToast(data.message || 'Unable to load HR summary.');
+        return;
+      }
+      setSummary({
+        total: Number(data.total || 0),
+        active: Number(data.active || 0),
+        inactive: Number(data.inactive || 0),
+        probation: Number(data.probation || 0),
+        byDepartment: data.byDepartment || [],
+      });
+    } catch {
+      if (showErrors) showToast('Unable to reach the HR server.');
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+
+    const refreshSummary = () => loadSummary({ showErrors: false });
+    window.addEventListener('seevora:hr-employees-changed', refreshSummary);
+    window.addEventListener('focus', refreshSummary);
+
+    return () => {
+      window.removeEventListener('seevora:hr-employees-changed', refreshSummary);
+      window.removeEventListener('focus', refreshSummary);
+    };
+  }, [loadSummary]);
+
+  const kpis = [
+    { label: "Total Employees",    value: String(summary.total), delta: "", color: C.blue },
+    { label: "Present Today",      value: "0",                   delta: "", color: C.green },
+    { label: "On Leave Today",     value: "0",                   delta: "", color: C.orange },
+    { label: "Open Positions",     value: "0",                   delta: "", color: C.purple },
+    { label: "Payroll This Month", value: "\u20B90",             delta: "", color: C.green },
+    { label: "Late Today",         value: "0",                   delta: "", color: C.red },
+  ];
+
+  const departmentColors = [C.blue, C.green, C.purple, C.orange, C.red, C.cyan];
+  const departments = summary.byDepartment.length > 0
+    ? summary.byDepartment.map((department, index) => ({
+        ...department,
+        color: departmentColors[index % departmentColors.length],
+      }))
+    : [
+        { dept: "Engineering", count: 0, pct: 0, color: C.blue },
+        { dept: "Sales",       count: 0, pct: 0, color: C.green },
+        { dept: "Operations",  count: 0, pct: 0, color: C.purple },
+        { dept: "Finance",     count: 0, pct: 0, color: C.orange },
+        { dept: "HR",          count: 0, pct: 0, color: C.red },
+      ];
 
   return (
     <div style={{ color: C.muted, fontFamily: "'Inter',sans-serif", position: "relative" }}>
@@ -71,7 +126,7 @@ export default function HRDashboard({ user }) {
       {/* Greeting */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: "1.5rem", color: C.text, marginBottom: 4 }}>
-          Good Morning, {name}! 👋
+          Good Morning, {name}!
         </h2>
         <p style={{ fontSize: "0.82rem", color: C.muted }}>Here's your HR overview for today.</p>
       </div>
@@ -79,10 +134,9 @@ export default function HRDashboard({ user }) {
       {/* KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map((k, i) => (
-          <div key={i} style={card()}>
-            <div style={{ fontSize: "1.4rem", marginBottom: 8 }}>{k.icon}</div>
-            <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: "1.5rem", color: k.color, lineHeight: 1 }}>{k.value}</div>
-            <div style={{ fontSize: "0.72rem", color: C.dim, marginTop: 4, marginBottom: 8 }}>{k.label}</div>
+          <div key={i} style={card({ padding: "20px 20px 18px", textAlign: "left" })}>
+            <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: "2.35rem", color: C.text, lineHeight: 0.95, letterSpacing: 0 }}>{k.value}</div>
+            <div style={{ fontSize: "0.72rem", color: C.dim, marginTop: 10, marginBottom: 8 }}>{k.label}</div>
             <div style={{ fontSize: "0.72rem", fontWeight: 600, color: k.color }}>{k.delta}</div>
           </div>
         ))}
@@ -148,13 +202,7 @@ export default function HRDashboard({ user }) {
         {/* Headcount by dept */}
         <div style={card()}>
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Headcount by Department</div>
-          {[
-            { dept: "Engineering", count: 0, pct: 0, color: C.blue },
-            { dept: "Sales",       count: 0, pct: 0, color: C.green },
-            { dept: "Operations",  count: 0, pct: 0, color: C.purple },
-            { dept: "Finance",     count: 0, pct: 0, color: C.orange },
-            { dept: "HR",          count: 0, pct: 0, color: C.red },
-          ].map(d => (
+          {departments.map(d => (
             <div key={d.dept} style={{ marginBottom: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: C.muted, marginBottom: 4 }}>
                 <span>{d.dept}</span><span style={{ fontWeight: 700 }}>{d.count}</span>
@@ -186,12 +234,12 @@ export default function HRDashboard({ user }) {
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Quick Actions</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {[
-              { icon: "\uD83D\uDC64", label: "Add Employee" },
-              { icon: "\uD83D\uDCCB", label: "Mark Attendance" },
-              { icon: "\uD83C\uDF34", label: "Approve Leave" },
-              { icon: "\uD83D\uDCB5", label: "Run Payroll" },
-              { icon: "\uD83D\uDCC1", label: "Upload Doc" },
-              { icon: "\uD83D\uDCCA", label: "HR Report" },
+              { icon: "ADD", label: "Add Employee" },
+              { icon: "ATT", label: "Mark Attendance" },
+              { icon: "LV", label: "Approve Leave" },
+              { icon: "PAY", label: "Run Payroll" },
+              { icon: "DOC", label: "Upload Doc" },
+              { icon: "RPT", label: "HR Report" },
             ].map((a, i) => (
               <button key={i}
                 onClick={() => showToast(a.label + " — coming soon!")}

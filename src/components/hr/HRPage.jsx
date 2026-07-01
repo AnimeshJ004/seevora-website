@@ -250,7 +250,7 @@ function ViewEmployees() {
 
   const makeAccount = (emp) => {
     setAccounts(prev => ({ ...prev, [emp.id]: true }));
-    showToast('\u2713 Account created for ' + emp.name + ' — credentials sent to ' + emp.email);
+    showToast('Account created for ' + emp.name + ' — credentials sent to ' + emp.email);
   };
 
   const filtered = employees.filter(e =>
@@ -269,7 +269,7 @@ function ViewEmployees() {
           maxWidth: 380,
         }}>{toast}</div>
       )}
-      <PageHeader title="Employees" sub={`${employees.length} total employees`} action="+ Add Employee" onAction={() => showToast('Add Employee — coming soon!')} />
+      <PageHeader title="Employees" sub={`${employees.length} total employees`} action="+ Add Account" onAction={() => showToast('Add Account — coming soon!')} />
       <div className="hr-stats-grid" style={{ marginBottom: 24 }}>
         {[{ label: 'Total', value: 47, color: 'green' }, { label: 'Active', value: 44, color: 'cyan' }, { label: 'Inactive', value: 3, color: 'orange' }, { label: 'On Probation', value: 5, color: 'purple' }].map(s => (
           <div key={s.label} className={`hr-stat-card ${s.color}`} style={{ padding: '18px 20px' }}>
@@ -294,7 +294,7 @@ function ViewEmployees() {
                 <td><span className={`hr-badge ${e.status}`}>{e.status}</span></td>
                 <td>
                   {accounts[e.id]
-                    ? <span className="hr-badge active">✓ Active</span>
+                    ? <span className="hr-badge active">Active</span>
                     : <span className="hr-badge" style={{ background: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)' }}>No Account</span>}
                 </td>
                 <td>
@@ -453,7 +453,7 @@ function ViewLeave() {
 
         {tab === 'calendar' && (
           <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            📅 Leave calendar view — integrate with Google Calendar API or a date-picker library for full implementation.
+            Leave calendar view — integrate with Google Calendar API or a date-picker library for full implementation.
             <div style={{ marginTop: 16, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               {leaveRequests.filter(l => l.status === 'approved').map((l, i) => (
                 <div key={i} style={{ padding: '10px 16px', border: '1px solid var(--border-color)', borderRadius: 10, background: 'var(--panel-bg)', textAlign: 'left', minWidth: 200 }}>
@@ -658,7 +658,7 @@ function ViewDocuments() {
                 <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{d.size}</td>
                 <td>
                   {d.verified
-                    ? <span className="hr-badge active">✓ Verified</span>
+                    ? <span className="hr-badge active">Verified</span>
                     : <span className="hr-badge pending">Pending</span>}
                 </td>
                 <td>

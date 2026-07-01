@@ -1,17 +1,53 @@
 import React, { useState } from 'react';
 import logoIcon from '../../assets/logo-icon-clean.png';
 
+const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
+
+async function postAuditRequest(payload) {
+  const requestOptions = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  };
+
+  const response = await fetch('/api/audit-requests', requestOptions);
+  if (response.status !== 502) return response;
+
+  return fetch(`${API_FALLBACK_ORIGIN}/api/audit-requests`, requestOptions);
+}
+
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', company: '', phone: '', message: '' });
-  const [submitted, setSubmitted] = useState(false);
+  const [status, setStatus] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (status) setStatus(null);
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
-    setFormData({ name: '', email: '', company: '', phone: '', message: '' });
+    setIsSubmitting(true);
+    setStatus(null);
+
+    try {
+      const response = await postAuditRequest(formData);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatus({ type: 'error', text: data.message || 'Unable to submit your audit request. Please try again.' });
+        return;
+      }
+
+      setStatus({ type: 'success', text: data.message || "Message sent. We'll get back to you within 24 hours." });
+      setTimeout(() => setStatus(null), 4000);
+      setFormData({ name: '', email: '', company: '', phone: '', message: '' });
+    } catch {
+      setStatus({ type: 'error', text: 'Unable to reach the server. Please try again.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -38,15 +74,15 @@ export default function Contact() {
 
           <div className="contact-form" data-animate="slide-right">
             <div className="glass-card contact-form-card" data-animate="contact-form-3d">
-              {submitted && (
+              {status && (
                 <div style={{
                   padding: '14px 18px', marginBottom: 18,
                   borderRadius: 'var(--border-radius-sm)',
-                  background: 'rgba(0,229,160,0.08)',
-                  border: '1px solid rgba(0,229,160,0.2)',
-                  color: 'var(--accent-green)', fontSize: '0.88rem', fontWeight: 600,
+                  background: status.type === 'error' ? 'rgba(239,68,68,0.08)' : 'rgba(0,229,160,0.08)',
+                  border: status.type === 'error' ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(0,229,160,0.2)',
+                  color: status.type === 'error' ? '#dc2626' : 'var(--accent-green)', fontSize: '0.88rem', fontWeight: 600,
                 }}>
-                  Message sent. We'll get back to you within 24 hours.
+                  {status.text}
                 </div>
               )}
               <form onSubmit={handleSubmit}>
@@ -72,8 +108,8 @@ export default function Contact() {
                   <label htmlFor="message">Message</label>
                   <textarea id="message" name="message" className="form-input" placeholder="Tell us about the process you want to automate..." value={formData.message} onChange={handleChange} required />
                 </div>
-                <button type="submit" className="btn-primary form-submit">
-                  Request a Audit
+                <button type="submit" className="btn-primary form-submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Please wait...' : 'Request a Audit'}
                 </button>
               </form>
             </div>

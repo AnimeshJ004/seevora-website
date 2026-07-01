@@ -1,0 +1,414 @@
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import express from 'express';
+import pool from '../config/db.js';
+
+const router = express.Router();
+
+const DEFAULT_PASSWORD = 'Seevora@123';
+
+function cleanText(value) {
+  return String(value || '').trim();
+}
+
+function toEmployee(row) {
+  return {
+    id: row.employee_code,
+    databaseId: row.id,
+    userId: row.user_id,
+    username: row.username || '',
+    accountRole: row.account_role || 'employee',
+    name: row.name,
+    email: row.email,
+    phone: row.phone || '',
+    dept: row.department,
+    role: row.job_title,
+    salary: `Rs ${Number(row.salary || 0).toLocaleString('en-IN')}`,
+    salaryAmount: Number(row.salary || 0),
+    joined: row.joined_on ? String(row.joined_on).slice(0, 10) : '',
+    status: row.status,
+    hasAccount: Boolean(row.account_active && row.user_id),
+    createdAt: row.created_at,
+  };
+}
+
+function validateEmployee(body) {
+  const errors = {};
+  const data = {
+    name: cleanText(body.name),
+    email: cleanText(body.email).toLowerCase(),
+    phone: cleanText(body.phone),
+    department: cleanText(body.department || body.dept),
+    jobTitle: cleanText(body.jobTitle || body.role),
+    salary: Number(body.salary || body.salaryAmount || 0),
+    joinedOn: cleanText(body.joinedOn || body.joined),
+    status: cleanText(body.status || 'active').toLowerCase(),
+    accountRole: cleanText(body.accountRole || 'employee').toLowerCase(),
+    username: cleanText(body.username).toLowerCase(),
+    password: String(body.password || DEFAULT_PASSWORD),
+  };
+
+  if (!data.name) errors.name = 'Employee name is required.';
+  if (!data.email) errors.email = 'Employee email is required.';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.email = 'Enter a valid email address.';
+  if (!data.department) errors.department = 'Department is required.';
+  if (!data.jobTitle) errors.jobTitle = 'Role is required.';
+  if (!Number.isFinite(data.salary) || data.salary < 0) errors.salary = 'Enter a valid salary.';
+  if (data.password.length < 8) errors.password = 'Password must be at least 8 characters.';
+  if (!['active', 'inactive', 'probation'].includes(data.status)) data.status = 'active';
+  if (!['employee', 'manager', 'hr'].includes(data.accountRole)) data.accountRole = 'employee';
+  if (!data.joinedOn) data.joinedOn = new Date().toISOString().slice(0, 10);
+
+  return { isValid: Object.keys(errors).length === 0, errors, data };
+}
+
+function validateEmployeeUpdate(body) {
+  const result = validateEmployee({ ...body, password: body.password || DEFAULT_PASSWORD });
+  if (!body.password) {
+    delete result.errors.password;
+    result.isValid = Object.keys(result.errors).length === 0;
+    result.data.password = '';
+  }
+  return result;
+}
+
+function usernameFromEmail(email) {
+  return email
+    .split('@')[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '')
+    .slice(0, 40) || `employee${crypto.randomInt(1000, 9999)}`;
+}
+
+async function createUniqueUsername(client, preferred, email) {
+  const base = (preferred || usernameFromEmail(email)).slice(0, 48);
+  let username = base;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const result = await client.query(
+      'SELECT id FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1',
+      [username]
+    );
+    if (result.rowCount === 0) return username;
+    username = `${base}${crypto.randomInt(100, 999)}`;
+  }
+
+  return `${base}${crypto.randomUUID().slice(0, 6)}`;
+}
+
+async function createEmployeeCode(client) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const code = `EMP-${crypto.randomInt(1000, 9999)}`;
+    const result = await client.query(
+      'SELECT id FROM hr_employees WHERE employee_code = $1 LIMIT 1',
+      [code]
+    );
+    if (result.rowCount === 0) return code;
+  }
+
+  return `EMP-${Date.now().toString().slice(-6)}`;
+}
+
+router.get('/', async (_req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
+             e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
+             u.username, u.role AS account_role
+      FROM hr_employees e
+      LEFT JOIN users u ON u.id = e.user_id
+      ORDER BY e.created_at DESC
+    `);
+
+    return res.json({ employees: result.rows.map(toEmployee) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/summary', async (_req, res, next) => {
+  try {
+    const [countsResult, departmentResult] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+          COUNT(*) FILTER (WHERE status = 'inactive')::int AS inactive,
+          COUNT(*) FILTER (WHERE status = 'probation')::int AS probation
+        FROM hr_employees
+      `),
+      pool.query(`
+        SELECT department, COUNT(*)::int AS count
+        FROM hr_employees
+        GROUP BY department
+        ORDER BY count DESC, department ASC
+      `),
+    ]);
+
+    const counts = countsResult.rows[0] || { total: 0, active: 0, inactive: 0, probation: 0 };
+    const total = Number(counts.total || 0);
+
+    return res.json({
+      total,
+      active: Number(counts.active || 0),
+      inactive: Number(counts.inactive || 0),
+      probation: Number(counts.probation || 0),
+      byDepartment: departmentResult.rows.map((row) => ({
+        dept: row.department,
+        count: Number(row.count || 0),
+        pct: total ? Math.round((Number(row.count || 0) / total) * 100) : 0,
+      })),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/', async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const { isValid, errors, data } = validateEmployee(req.body);
+    if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
+
+    await client.query('BEGIN');
+
+    const existingEmployee = await client.query(
+      'SELECT id FROM hr_employees WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [data.email]
+    );
+    if (existingEmployee.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: 'An employee with this email already exists.', errors: { email: 'Email already exists.' } });
+    }
+
+    const existingUser = await client.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [data.email]
+    );
+    if (existingUser.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: 'A user account with this email already exists.', errors: { email: 'Email already exists.' } });
+    }
+
+    const userId = crypto.randomUUID();
+    const employeeId = crypto.randomUUID();
+    const employeeCode = await createEmployeeCode(client);
+    const username = await createUniqueUsername(client, data.username, data.email);
+    const passwordHash = await bcrypt.hash(data.password, 12);
+
+    await client.query(
+      `INSERT INTO users (id, username, email, phone, password_hash, role)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [userId, username, data.email, data.phone || null, passwordHash, data.accountRole]
+    );
+
+    const employeeResult = await client.query(
+      `INSERT INTO hr_employees (
+        id, user_id, employee_code, name, email, phone, department, job_title,
+        salary, joined_on, status, account_active
+      )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+       RETURNING id, user_id, employee_code, name, email, phone, department, job_title,
+                 salary, joined_on::text AS joined_on, status, account_active, created_at`,
+      [
+        employeeId,
+        userId,
+        employeeCode,
+        data.name,
+        data.email,
+        data.phone || null,
+        data.department,
+        data.jobTitle,
+        data.salary,
+        data.joinedOn,
+        data.status,
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    return res.status(201).json({
+      message: 'Employee account created successfully.',
+      employee: toEmployee({ ...employeeResult.rows[0], username, account_role: data.accountRole }),
+      account: {
+        username,
+        email: data.email,
+        temporaryPassword: data.password,
+      },
+    });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
+    return next(error);
+  } finally {
+    client.release();
+  }
+});
+
+router.put('/:employeeCode', async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    const { isValid, errors, data } = validateEmployeeUpdate(req.body);
+    if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
+
+    await client.query('BEGIN');
+
+    const currentResult = await client.query(
+      `SELECT id, user_id, employee_code
+       FROM hr_employees
+       WHERE employee_code = $1 OR id::text = $1
+       LIMIT 1`,
+      [req.params.employeeCode]
+    );
+    const current = currentResult.rows[0];
+
+    if (!current) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    const existingEmployee = await client.query(
+      `SELECT id FROM hr_employees
+       WHERE LOWER(email) = LOWER($1) AND id <> $2
+       LIMIT 1`,
+      [data.email, current.id]
+    );
+    if (existingEmployee.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: 'An employee with this email already exists.', errors: { email: 'Email already exists.' } });
+    }
+
+    const existingUser = await client.query(
+      `SELECT id FROM users
+       WHERE LOWER(email) = LOWER($1) AND id <> $2
+       LIMIT 1`,
+      [data.email, current.user_id]
+    );
+    if (existingUser.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: 'A user account with this email already exists.', errors: { email: 'Email already exists.' } });
+    }
+
+    let username = data.username;
+    if (username) {
+      const existingUsername = await client.query(
+        `SELECT id FROM users
+         WHERE LOWER(username) = LOWER($1) AND id <> $2
+         LIMIT 1`,
+        [username, current.user_id]
+      );
+      if (existingUsername.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ message: 'That username is already in use.', errors: { username: 'Username already exists.' } });
+      }
+    } else {
+      const usernameResult = await client.query('SELECT username FROM users WHERE id = $1', [current.user_id]);
+      username = usernameResult.rows[0]?.username || usernameFromEmail(data.email);
+    }
+
+    if (current.user_id) {
+      const userValues = [username, data.email, data.phone || null, data.accountRole, current.user_id];
+      let userSql = `
+        UPDATE users
+        SET username = $1, email = $2, phone = $3, role = $4, updated_at = NOW()
+        WHERE id = $5
+      `;
+
+      if (data.password) {
+        const passwordHash = await bcrypt.hash(data.password, 12);
+        userSql = `
+          UPDATE users
+          SET username = $1, email = $2, phone = $3, role = $4, updated_at = NOW(), password_hash = $6
+          WHERE id = $5
+        `;
+        userValues.push(passwordHash);
+      }
+
+      await client.query(userSql, userValues);
+    }
+
+    const employeeResult = await client.query(
+      `UPDATE hr_employees
+       SET name = $1,
+           email = $2,
+           phone = $3,
+           department = $4,
+           job_title = $5,
+           salary = $6,
+           joined_on = $7,
+           status = $8,
+           updated_at = NOW()
+       WHERE id = $9
+       RETURNING id, user_id, employee_code, name, email, phone, department, job_title,
+                 salary, joined_on::text AS joined_on, status, account_active, created_at`,
+      [
+        data.name,
+        data.email,
+        data.phone || null,
+        data.department,
+        data.jobTitle,
+        data.salary,
+        data.joinedOn,
+        data.status,
+        current.id,
+      ]
+    );
+
+    await client.query('COMMIT');
+
+    return res.json({
+      message: 'Employee updated successfully.',
+      employee: toEmployee({ ...employeeResult.rows[0], username, account_role: data.accountRole }),
+    });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
+    return next(error);
+  } finally {
+    client.release();
+  }
+});
+
+router.delete('/:employeeCode', async (req, res, next) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const currentResult = await client.query(
+      `SELECT id, user_id, name
+       FROM hr_employees
+       WHERE employee_code = $1 OR id::text = $1
+       LIMIT 1`,
+      [req.params.employeeCode]
+    );
+    const current = currentResult.rows[0];
+
+    if (!current) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    await client.query('DELETE FROM hr_employees WHERE id = $1', [current.id]);
+    if (current.user_id) {
+      await client.query("DELETE FROM users WHERE id = $1 AND role IN ('employee', 'manager', 'hr')", [current.user_id]);
+    }
+
+    await client.query('COMMIT');
+
+    return res.json({ message: 'Employee removed successfully.', removedId: req.params.employeeCode });
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
+    return next(error);
+  } finally {
+    client.release();
+  }
+});
+
+export default router;

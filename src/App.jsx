@@ -16,15 +16,43 @@ import LoginPage from './components/dashboard/LoginPage';
 import DashboardShell from './components/dashboard/DashboardShell';
 import { getSession, logout } from './auth/roles';
 
+function getRolePath(role) {
+  if (role === 'super_admin' || role === 'admin') return '/admin';
+  if (role === 'hr') return '/hr';
+  if (role === 'manager' || role === 'employee') return '/dashboard';
+  return '/dashboard';
+}
+
+async function finalizeAttendanceSession() {
+  const token = localStorage.getItem('seevoraAuthToken');
+  if (!token) return;
+
+  try {
+    const options = {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+    const response = await fetch('/api/attendance/clock-out', options);
+    if (response.status === 502) {
+      await fetch('http://127.0.0.1:4000/api/attendance/clock-out', options);
+    }
+  } catch {
+    // Ignore logout telemetry failures.
+  }
+}
+
 function DashboardRoute() {
   const [session, setSession] = useState(() => getSession());
 
   const handleLogin = (user) => {
     setSession(user);
-    window.history.pushState({}, '', '/dashboard');
+    window.history.pushState({}, '', getRolePath(user?.role));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await finalizeAttendanceSession();
     logout();
     setSession(null);
     window.history.pushState({}, '', '/login');
@@ -45,10 +73,11 @@ function HRRoute() {
 
   const handleLogin = (user) => {
     setSession(user);
-    window.history.pushState({}, '', '/hr');
+    window.history.pushState({}, '', getRolePath(user?.role));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await finalizeAttendanceSession();
     logout();
     setSession(null);
     window.history.pushState({}, '', '/hr');
@@ -84,11 +113,30 @@ export default function App() {
       });
     };
 
+    const originalPushState = window.history.pushState;
+    const originalReplaceState = window.history.replaceState;
+
+    window.history.pushState = function pushState(...args) {
+      const result = originalPushState.apply(this, args);
+      window.dispatchEvent(new Event('locationchange'));
+      return result;
+    };
+
+    window.history.replaceState = function replaceState(...args) {
+      const result = originalReplaceState.apply(this, args);
+      window.dispatchEvent(new Event('locationchange'));
+      return result;
+    };
+
     window.addEventListener('popstate', syncLocation);
     window.addEventListener('hashchange', syncLocation);
+    window.addEventListener('locationchange', syncLocation);
     return () => {
+      window.history.pushState = originalPushState;
+      window.history.replaceState = originalReplaceState;
       window.removeEventListener('popstate', syncLocation);
       window.removeEventListener('hashchange', syncLocation);
+      window.removeEventListener('locationchange', syncLocation);
     };
   }, []);
 

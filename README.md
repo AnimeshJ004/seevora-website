@@ -25,6 +25,10 @@ npm run dev:server
 ```
 
 The API runs on `http://localhost:4000` and creates the `users` table automatically.
+On first start it also seeds demo auth accounts for the PostgreSQL login flow:
+
+- `admin@seevora.in` / `admin123`
+- `hr@seevora.in` / `hr123`
 
 4. Start the frontend in another terminal:
 
@@ -40,6 +44,23 @@ Vite proxies `/api/*` requests to the Express backend.
 - `POST /api/auth/forgot-password` creates a one-time reset code for a username/email and returns it for the in-app reset flow.
 - `POST /api/auth/reset-password` accepts the reset code and updates the password.
 - `GET /api/auth/me` returns the current user when called with `Authorization: Bearer <token>`.
+
+## Audit Requests
+
+- `POST /api/audit-requests` stores Book a Call audit requests.
+- `GET /api/audit-requests` returns audit requests for the admin dashboard.
+- `POST /api/audit-requests/:id/respond` saves an admin response and sends it by email when SMTP is configured.
+
+Set these optional environment variables to enable email sending:
+
+```bash
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-password
+SMTP_FROM=hello@seevora.in
+SMTP_SECURE=false
+```
 
 ## Scripts
 

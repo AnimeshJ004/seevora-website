@@ -2,11 +2,17 @@ import React, { useState } from 'react';
 import logoIcon from '../../assets/logo-icon-clean.png';
 import {
   login,
-  DEMO_USERS,
-  ROLE_META,
   createDemoResetRequest,
   consumeDemoResetRequest,
 } from '../../auth/roles';
+
+const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
+
+async function authFetch(endpoint, options = {}) {
+  const response = await fetch(endpoint, options);
+  if (response.status !== 502) return response;
+  return fetch(`${API_FALLBACK_ORIGIN}${endpoint}`, options);
+}
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login');
@@ -22,7 +28,7 @@ export default function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [resetInfo, setResetInfo] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
@@ -34,20 +40,47 @@ export default function LoginPage({ onLogin }) {
       }
 
       setLoading(true);
-      const result = createDemoResetRequest(email);
-      setLoading(false);
+      try {
+        const response = await authFetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email.trim() }),
+        });
+        const data = await response.json().catch(() => ({}));
 
-      if (!result.success) {
-        setError(result.error || 'Unable to create a reset code.');
-        return;
+        if (!response.ok) {
+          const result = createDemoResetRequest(email);
+          if (!result.success) {
+            setError(data.message || result.error || 'Unable to create a reset code.');
+            return;
+          }
+          setResetInfo(result);
+          setResetCode(result.resetCode);
+          setMessage('Reset code generated below for this demo account.');
+        } else {
+          setResetInfo({ resetCode: data.resetCode, expiresInMinutes: data.expiresInMinutes });
+          setResetCode(data.resetCode || '');
+          setMessage(data.message || 'Reset code generated below.');
+        }
+
+        setNewPassword('');
+        setConfirmPassword('');
+        setMode('reset');
+      } catch {
+        const result = createDemoResetRequest(email);
+        if (!result.success) {
+          setError(result.error || 'Unable to create a reset code.');
+          return;
+        }
+        setResetInfo(result);
+        setResetCode(result.resetCode);
+        setNewPassword('');
+        setConfirmPassword('');
+        setMode('reset');
+        setMessage('Reset code generated below for this demo account.');
+      } finally {
+        setLoading(false);
       }
-
-      setResetInfo(result);
-      setResetCode(result.resetCode);
-      setNewPassword('');
-      setConfirmPassword('');
-      setMode('reset');
-      setMessage('Reset code generated below for this demo account.');
       return;
     }
 
@@ -66,22 +99,47 @@ export default function LoginPage({ onLogin }) {
       }
 
       setLoading(true);
-      const result = consumeDemoResetRequest(email, resetCode, newPassword);
-      setLoading(false);
+      try {
+        const response = await authFetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resetCode: resetCode.trim(), newPassword, confirmPassword }),
+        });
+        const data = await response.json().catch(() => ({}));
 
-      if (!result.success) {
-        setError(result.error || 'Unable to reset password.');
-        return;
+        if (!response.ok) {
+          const result = consumeDemoResetRequest(email, resetCode, newPassword);
+          if (!result.success) {
+            setError(data.message || result.error || 'Unable to reset password.');
+            return;
+          }
+        }
+
+        setPassword(newPassword);
+        setMode('login');
+        setResetInfo(null);
+        setResetCode('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPwd(false);
+        setMessage(data.message || 'Password reset successful. You can now sign in.');
+      } catch {
+        const result = consumeDemoResetRequest(email, resetCode, newPassword);
+        if (!result.success) {
+          setError(result.error || 'Unable to reset password.');
+          return;
+        }
+        setPassword(newPassword);
+        setMode('login');
+        setResetInfo(null);
+        setResetCode('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPwd(false);
+        setMessage('Password reset successful. You can now sign in.');
+      } finally {
+        setLoading(false);
       }
-
-      setPassword(newPassword);
-      setMode('login');
-      setResetInfo(null);
-      setResetCode('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setShowPwd(false);
-      setMessage('Password reset successful. You can now sign in.');
       return;
     }
 
@@ -92,27 +150,41 @@ export default function LoginPage({ onLogin }) {
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const response = await authFetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: email.trim(),
+          password,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.ok) {
+        sessionStorage.setItem('seevora_session', JSON.stringify(data.user));
+        localStorage.setItem('seevoraAuthToken', data.token);
+        localStorage.setItem('seevoraUser', JSON.stringify(data.user));
+        onLogin(data.user);
+        return;
+      }
+
       const result = login(email, password);
-      setLoading(false);
       if (result.success) {
         onLogin(result.user);
       } else {
-        setError('Invalid credentials. Please try again.');
+        setError(data.message || 'Invalid credentials. Please try again.');
       }
-    }, 600);
-  };
-
-  const quickLogin = (user) => {
-    setEmail(user.email);
-    setPassword(user.password);
-    setError('');
-    setMessage('');
-    setMode('login');
-    setResetInfo(null);
-    setResetCode('');
-    setNewPassword('');
-    setConfirmPassword('');
+    } catch {
+      const result = login(email, password);
+      if (result.success) {
+        onLogin(result.user);
+      } else {
+        setError('Unable to reach the authentication server.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -282,30 +354,6 @@ export default function LoginPage({ onLogin }) {
                   {!loading && <ArrowIcon />}
                 </button>
               </form>
-            </div>
-
-            <div className="dashboard-demo-card">
-              <p className="dashboard-demo-title">Quick Demo Login</p>
-              <div className="dashboard-demo-list">
-                {DEMO_USERS.map((u) => {
-                  const meta = ROLE_META[u.role];
-                  return (
-                    <button
-                      key={u.id}
-                      onClick={() => quickLogin(u)}
-                      className="dashboard-demo-item"
-                      type="button"
-                    >
-                      <div className="dashboard-demo-avatar" style={{ background: meta.bg, color: meta.color }}>{u.avatar}</div>
-                      <div className="dashboard-demo-copy">
-                        <div className="dashboard-demo-name">{u.name}</div>
-                        <div className="dashboard-demo-email">{u.email}</div>
-                      </div>
-                      <span className="dashboard-demo-role" style={{ background: meta.bg, color: meta.color }}>{meta.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             <p className="dashboard-login-footer">

@@ -3,7 +3,10 @@ import cors from 'cors';
 import express from 'express';
 import pool from './config/db.js';
 import { initDb } from './db/init.js';
+import auditRequestRoutes from './routes/auditRequests.js';
+import attendanceRoutes from './routes/attendance.js';
 import authRoutes from './routes/auth.js';
+import hrEmployeeRoutes from './routes/hrEmployees.js';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');
@@ -23,6 +26,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/audit-requests', auditRequestRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/hr/attendance', attendanceRoutes);
+app.use('/api/hr/employees', hrEmployeeRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

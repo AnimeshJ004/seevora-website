@@ -60,6 +60,9 @@ const NAVICONS = {
   recruitment:       <Ic d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0" />,
   payroll:           <Ic d="M12 2v20 M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" />,
   documents:         <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8" />,
+  'my-attendance':   <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18 M8 14h.01 M12 14h.01 M16 14h.01" />,
+  'my-leave':        <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
+  'my-documents':    <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8" />,
 };
 
 /* ── Nav structure ── */
@@ -79,6 +82,10 @@ const NAV = {
     { label: 'People',           items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'leave',label:'Leave Management'}] },
     { label: 'Talent & Finance', items: [{id:'recruitment',label:'Recruitment'},{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'}] },
   ],
+  employee: [
+    { label: 'Workspace', items: [{id:'dashboard',label:'Dashboard'}] },
+    { label: 'Self Service', items: [{id:'my-attendance',label:'My Attendance'},{id:'my-leave',label:'My Leave'},{id:'my-documents',label:'My Documents'}] },
+  ],
   manager: [
     { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'leads',label:'Leads'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
   ],
@@ -94,17 +101,24 @@ const TITLES = {
   'audit-logs':'Audit Logs', 'security-center':'Security Center', analytics:'Analytics', settings:'Settings',
   employees:'Employees', attendance:'Attendance', leave:'Leave Management',
   recruitment:'Recruitment', payroll:'Payroll', documents:'Employee Documents',
+  'my-attendance':'My Attendance', 'my-leave':'My Leave', 'my-documents':'My Documents',
 };
 
 const ACCENT = {
   super_admin: { c:'#9e3cec', bg:'rgba(158,60,236,0.15)' },
   admin:       { c:'#4f8ef7', bg:'rgba(79,142,247,0.15)' },
   hr:          { c:'#10b981', bg:'rgba(16,185,129,0.15)' },
+  employee:    { c:'#10b981', bg:'rgba(16,185,129,0.15)' },
   manager:     { c:'#f97316', bg:'rgba(249,115,21,0.15)' },
   support:     { c:'#3b82f6', bg:'rgba(59,130,246,0.15)' },
 };
 
 function getView(id, role, user) {
+  if (id === 'dashboard' && role === 'employee') return <EmployeeDashboard user={user} />;
+  if (id === 'dashboard' && role === 'manager') return <ManagerDashboard user={user} />;
+  if (role === 'employee' && id === 'my-attendance') return <EmployeeSelfService user={user} type="attendance" />;
+  if (role === 'employee' && id === 'my-leave') return <EmployeeSelfService user={user} type="leave" />;
+  if (role === 'employee' && id === 'my-documents') return <EmployeeSelfService user={user} type="documents" />;
   if (id === 'dashboard') return role === 'hr' ? <HRDashboard user={user} /> : <AdminDashboard user={user} />;
   const map = {
     businesses: <Businesses />, users: <Users />, 'support-tickets': <SupportTickets />,
@@ -115,6 +129,123 @@ function getView(id, role, user) {
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
   };
   return map[id] || <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>View coming soon.</div>;
+}
+
+function ManagerDashboard({ user }) {
+  const name = user?.name || user?.username || 'Manager';
+  const metrics = [
+    { label: 'Assigned Leads', value: '0', note: 'Pipeline owned by your team' },
+    { label: 'Appointments', value: '0', note: 'Upcoming client meetings' },
+    { label: 'Team Tasks', value: '0', note: 'Open operational follow-ups' },
+    { label: 'Conversion', value: '0%', note: 'Current reporting period' },
+  ];
+
+  return (
+    <div style={{ color: '#475569', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: '1.7rem', color: '#0f172a', marginBottom: 4 }}>
+          Manager Workspace
+        </h2>
+        <p style={{ fontSize: '0.9rem' }}>Welcome, {name}. Review team activity, leads, appointments, and performance from one place.</p>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
+        {metrics.map((metric) => (
+          <RoleMetricCard key={metric.label} {...metric} color="#f97316" />
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 16 }}>
+        <RolePanel title="Operational Focus" items={['Lead follow-ups pending manager review', 'Appointments needing confirmation', 'Team performance report ready for weekly review']} />
+        <RolePanel title="Manager Access" items={['CRM / Leads', 'Appointments', 'Analytics']} />
+      </div>
+    </div>
+  );
+}
+
+function EmployeeDashboard({ user }) {
+  const name = user?.name || user?.username || 'Employee';
+  return (
+    <div style={{ color: '#475569', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 18 }}>
+        <RoleMetricCard label="Attendance" value="0" note="Records available after HR sync" color="#10b981" />
+        <RoleMetricCard label="Leave Balance" value="0" note="Balances managed by HR" color="#10b981" />
+        <RoleMetricCard label="Documents" value="0" note="Uploaded documents" color="#10b981" />
+      </div>
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: 16,
+        padding: 28,
+        boxShadow: '0 1px 3px rgba(15,23,42,0.06)',
+      }}>
+        <div style={{ fontSize: '0.76rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#10b981', marginBottom: 10 }}>
+          Employee Workspace
+        </div>
+        <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: '2rem', color: '#0f172a', marginBottom: 8 }}>
+          Welcome, {name}
+        </h2>
+        <p style={{ maxWidth: 620, fontSize: '0.95rem', lineHeight: 1.7 }}>
+          Your employee account is active. HR can manage your profile, attendance, leave, payroll, and documents from the HR panel.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeSelfService({ type, user }) {
+  const config = {
+    attendance: {
+      title: 'My Attendance',
+      subtitle: 'Your attendance records will appear here after HR starts syncing attendance data.',
+      rows: ['Today: Not marked yet', 'This week: 0 recorded days', 'Late marks: 0'],
+    },
+    leave: {
+      title: 'My Leave',
+      subtitle: 'Track leave balance and requests from your employee workspace.',
+      rows: ['Casual leave: 0 available', 'Sick leave: 0 available', 'Pending requests: 0'],
+    },
+    documents: {
+      title: 'My Documents',
+      subtitle: 'Employee documents assigned or uploaded by HR will be listed here.',
+      rows: ['Offer letter: Not uploaded', 'ID proof: Not uploaded', 'Payroll documents: Not uploaded'],
+    },
+  }[type];
+
+  return (
+    <div style={{ color: '#475569', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ marginBottom: 18 }}>
+        <h2 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: '1.6rem', color: '#0f172a', marginBottom: 4 }}>
+          {config.title}
+        </h2>
+        <p style={{ fontSize: '0.9rem' }}>{user?.name || user?.username || 'Employee'} · {config.subtitle}</p>
+      </div>
+      <RolePanel title={config.title} items={config.rows} />
+    </div>
+  );
+}
+
+function RoleMetricCard({ label, value, note, color }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 18, boxShadow: '0 1px 3px rgba(15,23,42,0.06)' }}>
+      <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: '2rem', color: '#0f172a', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.82rem', marginTop: 8 }}>{label}</div>
+      <div style={{ color, fontSize: '0.74rem', fontWeight: 700, marginTop: 8 }}>{note}</div>
+    </div>
+  );
+}
+
+function RolePanel({ title, items }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: 22, boxShadow: '0 1px 3px rgba(15,23,42,0.06)' }}>
+      <h3 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, color: '#0f172a', fontSize: '1rem', marginBottom: 14 }}>{title}</h3>
+      <div style={{ display: 'grid', gap: 10 }}>
+        {items.map((item) => (
+          <div key={item} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '11px 12px', color: '#475569', fontSize: '0.84rem', background: '#f8fafc' }}>
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function AccessDenied({ id }) {

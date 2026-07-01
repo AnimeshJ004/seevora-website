@@ -8,6 +8,7 @@ export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   ADMIN:       'admin',
   HR:          'hr',
+  EMPLOYEE:    'employee',
   MANAGER:     'manager',   // future
   SUPPORT:     'support',   // future
 };
@@ -35,6 +36,10 @@ export const PERMISSIONS = {
     'dashboard',
     'employees', 'attendance', 'leave', 'recruitment', 'payroll', 'documents',
   ],
+  employee: [
+    'dashboard',
+    'my-attendance', 'my-leave', 'my-documents',
+  ],
   manager: [
     'dashboard',
     'leads', 'appointments', 'analytics',
@@ -50,6 +55,7 @@ export const ROLE_META = {
   super_admin: { label: 'Super Admin', color: '#9e3cec', bg: 'rgba(158,60,236,0.1)' },
   admin:       { label: 'Admin',       color: '#14c9e1', bg: 'rgba(20,201,225,0.1)' },
   hr:          { label: 'HR',          color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  employee:    { label: 'Employee',    color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
   manager:     { label: 'Manager',     color: '#f97315', bg: 'rgba(249,115,21,0.1)' },
   support:     { label: 'Support',     color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
 };
@@ -169,6 +175,8 @@ export function login(email, password) {
 
 export function logout() {
   sessionStorage.removeItem('seevora_session');
+  localStorage.removeItem('seevoraAuthToken');
+  localStorage.removeItem('seevoraUser');
 }
 
 export function getSession() {

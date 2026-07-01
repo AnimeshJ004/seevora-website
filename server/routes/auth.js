@@ -4,6 +4,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { recordLoginAttendance } from './attendance.js';
 import { validateForgotPassword, validateLogin, validateResetPassword } from '../utils/validation.js';
 
 const router = express.Router();
@@ -25,11 +26,20 @@ function hashResetCode(code) {
 }
 
 function toSafeUser(user) {
+  const name = user.name || user.username;
   return {
     id: user.id,
     username: user.username,
+    name,
     email: user.email,
     phone: user.phone,
+    role: user.role,
+    avatar: String(name || user.email || 'U')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'U',
     createdAt: user.created_at,
   };
 }
@@ -40,7 +50,12 @@ router.post('/login', async (req, res, next) => {
     if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
 
     const result = await pool.query(
-      'SELECT id, username, email, phone, password_hash, created_at FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1) LIMIT 1',
+      `SELECT u.id, u.username, u.email, u.phone, u.role, u.password_hash, u.created_at,
+              COALESCE(e.name, u.username) AS name
+       FROM users u
+       LEFT JOIN hr_employees e ON e.user_id = u.id
+       WHERE LOWER(u.email) = LOWER($1) OR LOWER(u.username) = LOWER($1)
+       LIMIT 1`,
       [data.identifier.toLowerCase()]
     );
 
@@ -49,6 +64,12 @@ router.post('/login', async (req, res, next) => {
     if (!user || !passwordMatches) {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
+
+    queueMicrotask(() => {
+      recordLoginAttendance(pool, user).catch((attendanceError) => {
+        console.error('Failed to record attendance login:', attendanceError);
+      });
+    });
 
     return res.json({
       message: 'Login successful.',
@@ -179,7 +200,11 @@ router.post('/reset-password', async (req, res, next) => {
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, email, phone, created_at FROM users WHERE id = $1',
+      `SELECT u.id, u.username, u.email, u.phone, u.role, u.created_at,
+              COALESCE(e.name, u.username) AS name
+       FROM users u
+       LEFT JOIN hr_employees e ON e.user_id = u.id
+       WHERE u.id = $1`,
       [req.user.id]
     );
 

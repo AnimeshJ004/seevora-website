@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 
-import educationImg from '../../assets/education_classroom_service.jpg';
-import wellnessImg from '../../assets/wellness_yoga_service.jpg';
-import fitnessImg from '../../assets/fitness_dumbbells_service.jpg';
-import financialImg from '../../assets/financial_advisory_service.jpg';
-import realEstateImg from '../../assets/real_estate_service.jpg';
-import dashboardImg from '../../assets/dashboard_metrics_service.jpg';
-import diagnosticPathologyImg from '../../assets/diagnostic_pathology_service.png';
+import educationAcademyImg from '../../assets/education_academy_classroom_service.png';
+import personalCareWellnessImg from '../../assets/personal_care_reputation_service.png';
+import healthFitnessToolsImg from '../../assets/health_fitness_tools_service.png';
+import legalFinancialDocumentsImg from '../../assets/legal_financial_documents_service.png';
+import realEstateNoDevicesImg from '../../assets/real_estate_no_devices_service.png';
+import healthcareDocivoImg from '../../assets/healthcare_docivo_analytics_service.png';
+import diagnosticMicroscopeImg from '../../assets/diagnostic_microscope_service.png';
 
 const sectors = [
   {
@@ -23,7 +23,7 @@ const sectors = [
     pain: 'Missed patient calls, booking friction, multilingual patient routing, appointment no-shows.',
     solution: '24/7 AI Receptionist answers phone calls and texts in English & Hindi, schedules appointments directly into your calendar, handles patient query intake, and sends automated reminder alerts.',
     color: 'cyan',
-    img: dashboardImg,
+    img: healthcareDocivoImg,
     metric: '92%',
     metricLabel: 'Missed Calls Saved',
     setupTime: '5 Business Days',
@@ -40,16 +40,16 @@ const sectors = [
       </svg>
     ),
     title: 'Education & Academies',
-    sub: 'Coaching institutes, tuition centres, exam prep academies, skill development providers',
-    pain: 'Admission season inquiry overload, manual demo session follow-up, fee reminders, student intake friction.',
-    solution: 'Automated WhatsApp chatbots answer enrollment FAQs, schedule students into demo classes, trigger automated UPI payment reminder links, and sync user intake sheets to the CRM database.',
+    sub: 'Admission enquiry automation, demo class bookings, fee reminders, and credibility growth for institutes',
+    pain: 'Admission seasons, batch announcements, and exam cycles create enquiry spikes that manual call handling cannot manage reliably.',
+    solution: 'Seevora answers admission enquiries 24/7, books demo classes automatically, sends UPI fee payment reminders, and supports social content that builds trust with students and parents.',
     color: 'purple',
-    img: educationImg,
+    img: educationAcademyImg,
     metric: '4.2x',
     metricLabel: 'Demo Show-Up Rate',
     setupTime: '5 Business Days',
     languages: 'English, Hindi, Hinglish',
-    integrations: 'WhatsApp Business APIs, Razorpay/UPI Reminders, Google Sheets/CRM'
+    integrations: 'WhatsApp Business APIs, UPI Payment Links, Demo Class Calendars, Social Content Workflows'
   },
   {
     hash: 'wellness',
@@ -60,16 +60,16 @@ const sectors = [
       </svg>
     ),
     title: 'Personal Care & Wellness',
-    sub: 'Beauty parlours, salon studios, spas, skin clinics, grooming services',
-    pain: 'Double-bookings, manual calendar slots, lost recurring bookings, low review rates.',
-    solution: 'Intelligent scheduler bots lock in time slots via WhatsApp, follow up with automated rebooking campaigns, request Google reviews post-session, and handle slot modifications instantly.',
+    sub: 'Slot booking, no-show reminders, repeat visit follow-ups, Google reviews, and social presence',
+    pain: 'Personal care businesses rely on repeat appointments and word-of-mouth, but missed reminders, weak follow-ups, and low review activity make clients easy to lose.',
+    solution: 'Seevora automates slot booking, sends appointment reminders, follows up after visits to encourage repeat bookings, manages Google reviews, and keeps social content active.',
     color: 'pink',
-    img: wellnessImg,
+    img: personalCareWellnessImg,
     metric: '85%',
     metricLabel: 'Rebooking Automation',
     setupTime: '5 Business Days',
     languages: 'English, Hinglish',
-    integrations: 'WhatsApp API, Slot Matrices, Google Reviews API'
+    integrations: 'Booking Calendars, WhatsApp Reminders, Google Reviews, Social Content Workflows'
   },
   {
     hash: 'diagnostics',
@@ -85,7 +85,7 @@ const sectors = [
     pain: 'High test-booking drop-offs, manual sample collection scheduling, repetitive "report ready?" calls.',
     solution: 'Fully automated WhatsApp diagnostic booking flows, sample collections booking, auto-update patient records, and send direct WhatsApp notifications when report PDFs are ready for download.',
     color: 'blue',
-    img: diagnosticPathologyImg,
+    img: diagnosticMicroscopeImg,
     metric: '65%',
     metricLabel: 'Staff Hours Saved/Mo',
     setupTime: '5 Business Days',
@@ -108,7 +108,7 @@ const sectors = [
     pain: 'Free trial class drop-offs, renewal deadline misses, manual member follow-up, inactive user churn.',
     solution: 'AI follow-up sequences convert trial bookings, schedule sessions, send automated membership renewal reminders, trigger workout tips, and collect feedback for active engagement.',
     color: 'green',
-    img: fitnessImg,
+    img: healthFitnessToolsImg,
     metric: '38%',
     metricLabel: 'Renewal Uplift Rate',
     setupTime: '5 Business Days',
@@ -130,7 +130,7 @@ const sectors = [
     pain: 'Missed initial client intake calls, consultation booking delays, manual document request follow-ups.',
     solution: 'Structured client intake systems route inquiries, schedule consultations based on advisor calendar availability, and follow up with automated lists for document uploads.',
     color: 'orange',
-    img: financialImg,
+    img: legalFinancialDocumentsImg,
     metric: '100%',
     metricLabel: 'Secure Document Intake',
     setupTime: '5 Business Days',
@@ -151,7 +151,7 @@ const sectors = [
     pain: 'Unqualified lead calling, delayed reply times, broker schedule clashes, missing off-market listings.',
     solution: 'Instant AI chatbot qualification by budget, location, and timeline; sends automated listing catalogs; schedules property visits; and triggers hot-lead daily sheets directly to brokers.',
     color: 'cyan',
-    img: realEstateImg,
+    img: realEstateNoDevicesImg,
     metric: '5.8x',
     metricLabel: 'Qualified Lead Filtering',
     setupTime: '5 Business Days',

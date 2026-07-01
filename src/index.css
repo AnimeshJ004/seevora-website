@@ -7818,7 +7818,7 @@ textarea.form-input {
 .home-landing .hero-capability-strip {
   position: absolute;
   left: 50%;
-  bottom: 228px;
+  bottom: clamp(68px, 18vw, 214px);
   z-index: 5;
   display: flex;
   flex-wrap: wrap;
@@ -8332,7 +8332,6 @@ textarea.form-input {
   }
 
   .home-landing .hero-capability-strip {
-    bottom: 196px;
     width: min(920px, calc(100vw - 32px));
     min-height: 64px;
     padding: 10px 12px;
@@ -8421,7 +8420,6 @@ textarea.form-input {
   }
 
   .home-landing .hero-capability-strip {
-    bottom: 142px;
     flex-wrap: wrap;
     width: min(390px, calc(100vw - 28px));
     min-height: auto;
@@ -8506,11 +8504,6 @@ textarea.form-input {
 
   .home-landing .centered-hero {
     padding-bottom: 270px;
-  }
-
-  .home-landing .centered-hero::before {
-    top: 244px;
-    width: 570px;
   }
 }
 
