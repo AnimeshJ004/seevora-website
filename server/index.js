@@ -7,6 +7,10 @@ import auditRequestRoutes from './routes/auditRequests.js';
 import attendanceRoutes from './routes/attendance.js';
 import authRoutes from './routes/auth.js';
 import hrEmployeeRoutes from './routes/hrEmployees.js';
+import leaveRoutes from './routes/leaveRequests.js';
+import recruitmentRoutes from './routes/recruitment.js';
+import payrollRoutes from './routes/payroll.js';
+import documentRoutes from './routes/documents.js';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');
@@ -30,6 +34,10 @@ app.use('/api/audit-requests', auditRequestRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/hr/attendance', attendanceRoutes);
 app.use('/api/hr/employees', hrEmployeeRoutes);
+app.use('/api/hr/leaves', leaveRoutes);
+app.use('/api/hr/recruitment', recruitmentRoutes);
+app.use('/api/hr/payroll', payrollRoutes);
+app.use('/api/hr/documents', documentRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

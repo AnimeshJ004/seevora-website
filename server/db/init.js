@@ -121,6 +121,146 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS attendance_records_user_idx ON attendance_records (user_id, work_date DESC);
   `);
 
+  /* ── Leave Management ─────────────────────────────────────────────── */
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id UUID PRIMARY KEY,
+      employee_id UUID NOT NULL REFERENCES hr_employees(id) ON DELETE CASCADE,
+      leave_type VARCHAR(40) NOT NULL DEFAULT 'casual',
+      from_date DATE NOT NULL,
+      to_date DATE NOT NULL,
+      days INTEGER NOT NULL DEFAULT 1,
+      reason TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      reviewed_at TIMESTAMPTZ,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leave_requests_employee_idx ON leave_requests (employee_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leave_requests_status_idx ON leave_requests (status);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leave_balances (
+      id UUID PRIMARY KEY,
+      employee_id UUID NOT NULL REFERENCES hr_employees(id) ON DELETE CASCADE,
+      year INTEGER NOT NULL,
+      casual_total INTEGER NOT NULL DEFAULT 12,
+      casual_used INTEGER NOT NULL DEFAULT 0,
+      sick_total INTEGER NOT NULL DEFAULT 8,
+      sick_used INTEGER NOT NULL DEFAULT 0,
+      annual_total INTEGER NOT NULL DEFAULT 24,
+      annual_used INTEGER NOT NULL DEFAULT 0,
+      comp_off_total INTEGER NOT NULL DEFAULT 4,
+      comp_off_used INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (employee_id, year)
+    );
+  `);
+
+  /* ── Recruitment ───────────────────────────────────────────────────── */
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS job_openings (
+      id UUID PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      department VARCHAR(120) NOT NULL,
+      type VARCHAR(60) NOT NULL DEFAULT 'full-time',
+      experience VARCHAR(80),
+      description TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'open',
+      posted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      closed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS job_openings_status_idx ON job_openings (status);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS candidates (
+      id UUID PRIMARY KEY,
+      job_id UUID NOT NULL REFERENCES job_openings(id) ON DELETE CASCADE,
+      name VARCHAR(160) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      phone VARCHAR(40),
+      experience VARCHAR(80),
+      source VARCHAR(80) DEFAULT 'direct',
+      current_stage VARCHAR(60) NOT NULL DEFAULT 'applied',
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS candidates_job_idx ON candidates (job_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS candidates_stage_idx ON candidates (current_stage);
+  `);
+
+  /* ── Payroll ───────────────────────────────────────────────────────── */
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payroll_records (
+      id UUID PRIMARY KEY,
+      employee_id UUID NOT NULL REFERENCES hr_employees(id) ON DELETE CASCADE,
+      month VARCHAR(10) NOT NULL,
+      basic NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      hra NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      allowance NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      deductions NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      net_pay NUMERIC(12, 2) NOT NULL DEFAULT 0,
+      status VARCHAR(40) NOT NULL DEFAULT 'draft',
+      processed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (employee_id, month)
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS payroll_records_month_idx ON payroll_records (month DESC);
+  `);
+
+  /* ── Employee Documents ────────────────────────────────────────────── */
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS employee_documents (
+      id UUID PRIMARY KEY,
+      employee_id UUID NOT NULL REFERENCES hr_employees(id) ON DELETE CASCADE,
+      doc_type VARCHAR(80) NOT NULL DEFAULT 'other',
+      file_name VARCHAR(255) NOT NULL,
+      file_path TEXT,
+      file_size VARCHAR(40),
+      verified BOOLEAN NOT NULL DEFAULT false,
+      verified_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      verified_at TIMESTAMPTZ,
+      uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS employee_documents_employee_idx ON employee_documents (employee_id);
+  `);
+
   const adminHash = await bcrypt.hash('admin123', 12);
   const hrHash = await bcrypt.hash('hr123', 12);
 
