@@ -134,14 +134,12 @@ export default function Documents() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No documents found. Click "+ Upload Document" to add one.</p>
         ) : (
           <Table
-            cols={['Employee', 'Document Type', 'File Name', 'File Size', 'Uploaded On', 'Verified', 'Actions']}
-            rows={filtered.map(d => [
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Avatar name={d.emp} />
-                <div>
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{d.emp}</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: 'var(--accent-teal)', marginLeft: 6 }}>{d.employeeCode}</span>
-                </div>
+            cols={['#', 'Employee', 'Document Type', 'File Name', 'File Size', 'Uploaded On', 'Verified', 'Actions']}
+            rows={filtered.map((d, idx) => [
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{idx + 1}</span>,
+              <div>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{d.emp}</span>
+                <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: 'var(--accent-teal)', marginLeft: 6 }}>{d.employeeCode}</span>
               </div>,
               <span style={{ fontWeight: 500, textTransform: 'capitalize' }}>{d.type}</span>,
               <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{d.fileName}</span>,

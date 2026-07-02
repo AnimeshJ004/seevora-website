@@ -70,6 +70,18 @@ export async function initDb() {
   `);
 
   await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS verification_status VARCHAR(40) NOT NULL DEFAULT 'PENDING_VERIFICATION';
+  `);
+
+  /* HR and super_admin users are always considered verified */
+  await pool.query(`
+    UPDATE users SET verification_status = 'VERIFIED'
+    WHERE role IN ('hr', 'super_admin', 'admin', 'manager', 'support')
+      AND verification_status = 'PENDING_VERIFICATION';
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS hr_employees (
       id UUID PRIMARY KEY,
       user_id UUID UNIQUE REFERENCES users(id) ON DELETE SET NULL,
@@ -247,8 +259,11 @@ export async function initDb() {
       doc_type VARCHAR(80) NOT NULL DEFAULT 'other',
       file_name VARCHAR(255) NOT NULL,
       file_path TEXT,
+      file_url TEXT,
       file_size VARCHAR(40),
       verified BOOLEAN NOT NULL DEFAULT false,
+      doc_status VARCHAR(40) NOT NULL DEFAULT 'PENDING',
+      rejection_reason TEXT,
       verified_by UUID REFERENCES users(id) ON DELETE SET NULL,
       verified_at TIMESTAMPTZ,
       uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -256,6 +271,11 @@ export async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  /* Add new columns to existing installs */
+  await pool.query(`ALTER TABLE employee_documents ADD COLUMN IF NOT EXISTS doc_status VARCHAR(40) NOT NULL DEFAULT 'PENDING';`);
+  await pool.query(`ALTER TABLE employee_documents ADD COLUMN IF NOT EXISTS rejection_reason TEXT;`);
+  await pool.query(`ALTER TABLE employee_documents ADD COLUMN IF NOT EXISTS file_url TEXT;`);
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS employee_documents_employee_idx ON employee_documents (employee_id);

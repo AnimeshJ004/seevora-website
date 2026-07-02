@@ -1,16 +1,22 @@
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import pool from './config/db.js';
 import { initDb } from './db/init.js';
 import auditRequestRoutes from './routes/auditRequests.js';
 import attendanceRoutes from './routes/attendance.js';
 import authRoutes from './routes/auth.js';
+import chatbotRoutes from './routes/chatbot.js';
 import hrEmployeeRoutes from './routes/hrEmployees.js';
 import leaveRoutes from './routes/leaveRequests.js';
 import recruitmentRoutes from './routes/recruitment.js';
 import payrollRoutes from './routes/payroll.js';
 import documentRoutes from './routes/documents.js';
+import employeeDocumentRoutes from './routes/employeeDocuments.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');
@@ -25,12 +31,16 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '1mb' }));
 
+/* Serve uploaded files */
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
 app.use('/api/auth', authRoutes);
 app.use('/api/audit-requests', auditRequestRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/hr/attendance', attendanceRoutes);
 app.use('/api/hr/employees', hrEmployeeRoutes);
@@ -38,6 +48,7 @@ app.use('/api/hr/leaves', leaveRoutes);
 app.use('/api/hr/recruitment', recruitmentRoutes);
 app.use('/api/hr/payroll', payrollRoutes);
 app.use('/api/hr/documents', documentRoutes);
+app.use('/api/employee', employeeDocumentRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

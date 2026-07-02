@@ -20,7 +20,6 @@ const C = {
 };
 
 const statusColor = { present: C.green, full_day: C.green, half_day: C.orange, absent: C.red, wfh: C.blue, late: C.orange };
-const candColor   = { shortlisted: C.purple, hired: C.green, open: C.blue, applied: C.cyan, screening: C.blue, technical: C.purple, hr_round: C.orange, offer: C.green };
 
 function card(s = {}) {
   return { background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", ...s };
@@ -41,9 +40,6 @@ export default function HRDashboard({ user }) {
   const [leaveSummary, setLeaveSummary] = useState({ pending: 0, approved: 0, rejected: 0, onLeaveToday: 0 });
   const [pendingLeaves, setPendingLeaves] = useState([]);
 
-  // Recruitment data
-  const [recruitSummary, setRecruitSummary] = useState({ openPositions: 0, totalApplicants: 0, shortlisted: 0, hired: 0, pipeline: [] });
-
   // Payroll data
   const [payrollSummary, setPayrollSummary] = useState({ totalPayroll: '₹0', totalRecords: 0 });
 
@@ -59,7 +55,6 @@ export default function HRDashboard({ user }) {
         hrApiFetch('/api/hr/attendance/today'),
         hrApiFetch('/api/hr/leaves/summary'),
         hrApiFetch('/api/hr/leaves?status=pending'),
-        hrApiFetch('/api/hr/recruitment/summary'),
         hrApiFetch('/api/hr/payroll/summary'),
         hrApiFetch('/api/hr/documents/summary'),
       ]);
@@ -95,21 +90,15 @@ export default function HRDashboard({ user }) {
         setPendingLeaves((data.leaves || []).slice(0, 3));
       }
 
-      // Recruitment summary
+      // Payroll summary
       if (results[4].status === 'fulfilled' && results[4].value.ok) {
         const data = await results[4].value.json().catch(() => ({}));
-        setRecruitSummary(data);
-      }
-
-      // Payroll summary
-      if (results[5].status === 'fulfilled' && results[5].value.ok) {
-        const data = await results[5].value.json().catch(() => ({}));
         setPayrollSummary(data);
       }
 
       // Documents summary
-      if (results[6].status === 'fulfilled' && results[6].value.ok) {
-        const data = await results[6].value.json().catch(() => ({}));
+      if (results[5].status === 'fulfilled' && results[5].value.ok) {
+        const data = await results[5].value.json().catch(() => ({}));
         setDocSummary(data);
       }
     } catch {
@@ -152,7 +141,6 @@ export default function HRDashboard({ user }) {
     { label: "Total Employees",    value: String(empSummary.total),         delta: empSummary.active > 0 ? `${empSummary.active} active` : "", color: C.blue },
     { label: "Present Today",      value: String(presentCount),             delta: attendanceSummary.total > 0 ? `of ${attendanceSummary.total}` : "", color: C.green },
     { label: "On Leave Today",     value: String(leaveSummary.onLeaveToday || 0), delta: leaveSummary.pending > 0 ? `${leaveSummary.pending} pending` : "", color: C.orange },
-    { label: "Open Positions",     value: String(recruitSummary.openPositions),    delta: recruitSummary.totalApplicants > 0 ? `${recruitSummary.totalApplicants} applicants` : "", color: C.purple },
     { label: "Payroll This Month", value: payrollSummary.totalPayroll || "₹0",     delta: payrollSummary.totalRecords > 0 ? `${payrollSummary.paid || 0} paid` : "", color: C.green },
     { label: "Docs Unverified",    value: String(docSummary.pending || 0),         delta: docSummary.total > 0 ? `of ${docSummary.total}` : "", color: C.red },
   ];
@@ -170,8 +158,6 @@ export default function HRDashboard({ user }) {
         { dept: "Finance",     count: 0, pct: 0, color: C.orange },
         { dept: "HR",          count: 0, pct: 0, color: C.red },
       ];
-
-  const topCandidates = (recruitSummary.pipeline || []).slice(0, 5);
 
   return (
     <div style={{ color: C.muted, fontFamily: "'Inter',sans-serif", position: "relative" }}>
@@ -191,7 +177,7 @@ export default function HRDashboard({ user }) {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 12, marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
         {kpis.map((k, i) => (
           <div key={i} style={card({ padding: "20px 20px 18px", textAlign: "left" })}>
             <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: "2.35rem", color: C.text, lineHeight: 0.95 }}>{k.value}</div>
@@ -258,58 +244,20 @@ export default function HRDashboard({ user }) {
       </div>
 
       {/* Bottom row */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-
+      <div>
         {/* Headcount by dept */}
         <div style={card()}>
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Headcount by Department</div>
-          {departments.map(d => (
-            <div key={d.dept} style={{ marginBottom: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: C.muted, marginBottom: 4 }}>
-                <span>{d.dept}</span><span style={{ fontWeight: 700 }}>{d.count}</span>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+            {departments.map(d => (
+              <div key={d.dept} style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: C.muted, marginBottom: 4 }}>
+                  <span>{d.dept}</span><span style={{ fontWeight: 700 }}>{d.count}</span>
+                </div>
+                <div style={{ height: 6, background: C.border, borderRadius: 100, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: d.pct + "%", background: d.color, borderRadius: 100 }} />
+                </div>
               </div>
-              <div style={{ height: 6, background: C.border, borderRadius: 100, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: d.pct + "%", background: d.color, borderRadius: 100 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Recruitment pipeline */}
-        <div style={card()}>
-          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Recruitment Pipeline</div>
-          {topCandidates.length === 0 ? (
-            <p style={{ fontSize: "0.82rem", color: C.dim, textAlign: "center", padding: "20px 0" }}>No candidates in pipeline.</p>
-          ) : topCandidates.map((c, i) => (
-            <div key={i} style={{ padding: "10px 0", borderBottom: i < topCandidates.length - 1 ? "1px solid " + C.border : "none" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: C.text, textTransform: "capitalize" }}>{c.stage}</span>
-                <span style={{ padding: "2px 8px", borderRadius: 100, fontSize: "0.65rem", fontWeight: 600, background: (candColor[c.stageKey] || C.dim) + "22", color: candColor[c.stageKey] || C.dim }}>{c.count} candidates</span>
-              </div>
-            </div>
-          ))}
-          <button style={{ width: "100%", marginTop: 14, padding: "9px", background: "transparent", border: "1px dashed " + C.border, borderRadius: 8, color: C.blue, fontSize: "0.78rem", fontWeight: 600, cursor: "pointer" }}>+ Post New Job</button>
-        </div>
-
-        {/* Quick actions */}
-        <div style={card()}>
-          <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Quick Actions</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {[
-              { icon: "👤", label: "Add Employee" },
-              { icon: "📋", label: "Mark Attendance" },
-              { icon: "✅", label: "Approve Leave" },
-              { icon: "💰", label: "Run Payroll" },
-              { icon: "📄", label: "Upload Doc" },
-              { icon: "📊", label: "HR Report" },
-            ].map((a, i) => (
-              <button key={i}
-                onClick={() => showToast(a.label + " — navigate to the relevant section!")}
-                style={{ padding: "12px 8px", background: C.card2, border: "1px solid " + C.border, borderRadius: 10, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, color: C.muted, fontSize: "0.72rem", fontWeight: 600, transition: "all 0.2s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.blue + "11"; e.currentTarget.style.color = C.blue; e.currentTarget.style.borderColor = C.blue + "44"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.card2; e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border; }}>
-                <span style={{ fontSize: "1.2rem" }}>{a.icon}</span>{a.label}
-              </button>
             ))}
           </div>
         </div>

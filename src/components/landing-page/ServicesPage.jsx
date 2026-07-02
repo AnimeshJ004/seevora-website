@@ -199,7 +199,6 @@ export default function ServicesPage() {
           </p>
         </div>
 
-        {/* Vertical Stack of Service Cards */}
         <div className="services-scroll-list">
           {sectors.map((s, idx) => {
             const isFlipped = idx % 2 !== 0;
@@ -209,17 +208,17 @@ export default function ServicesPage() {
                 key={idx}
                 id={s.hash}
                 className={`services-scroll-card border-${s.color} ${isFlipped ? 'flipped' : ''}`}
-                data-animate
+                data-animate={isFlipped ? 'service-card-3d-right' : 'service-card-3d-left'}
               >
                 <div className={`carousel-grid ${isFlipped ? 'flipped' : ''}`}>
                   
-                  {/* Visual Image with Stats Overlay */}
+                  {/* Image with 3D zoom-in reveal */}
                   <div className="carousel-visual">
                     <div className="carousel-image-frame">
                       <img
                         src={s.img}
                         alt={s.title}
-                        className="carousel-image"
+                        className="carousel-image svc-img-zoom"
                       />
                       <div className="carousel-image-tint" />
                       
@@ -231,8 +230,10 @@ export default function ServicesPage() {
                     </div>
                   </div>
 
-                  {/* Details Curved Panel */}
-                  <div className="carousel-text-panel">
+                  {/* Text Panel — staggered fade-up */}
+                  <div
+                    className="carousel-text-panel"
+                  >
                     <div className="card-number">{cardNum}</div>
                     <div className="carousel-header">
                       <span className="carousel-icon">{s.icon}</span>

@@ -111,12 +111,10 @@ export default function Payroll() {
           </div>
         ) : (
           <Table
-            cols={['Employee', 'ID', 'Basic', 'HRA', 'Allowance', 'Deductions', 'Net Pay', 'Month', 'Status', 'Actions']}
-            rows={filtered.map(p => [
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Avatar name={p.emp} />
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.emp}</span>
-              </div>,
+            cols={['#', 'Employee', 'ID', 'Basic', 'HRA', 'Allowance', 'Deductions', 'Net Pay', 'Month', 'Status', 'Actions']}
+            rows={filtered.map((p, idx) => [
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{idx + 1}</span>,
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.emp}</span>,
               <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'var(--accent-teal)' }}>{p.employeeCode}</span>,
               p.basic,
               p.hra,

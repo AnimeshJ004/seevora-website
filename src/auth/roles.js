@@ -25,6 +25,7 @@ export const PERMISSIONS = {
     'audit-logs', 'security-center', 'analytics', 'settings',
     // HR (super admin sees everything)
     'employees', 'attendance', 'leave', 'recruitment', 'payroll', 'documents',
+    'document-verifications',
   ],
   admin: [
     'dashboard',
@@ -34,11 +35,13 @@ export const PERMISSIONS = {
   ],
   hr: [
     'dashboard',
-    'employees', 'attendance', 'leave', 'recruitment', 'payroll', 'documents',
+    'employees', 'attendance', 'leave', 'payroll', 'documents',
+    'document-verifications',
   ],
   employee: [
     'dashboard',
     'my-attendance', 'my-leave', 'my-documents',
+    'document-upload', 'verification-status',
   ],
   manager: [
     'dashboard',
@@ -181,6 +184,12 @@ export function logout() {
 
 export function getSession() {
   try {
+    /* Prefer the stored user object from real API login */
+    const userRaw = localStorage.getItem('seevoraUser');
+    if (userRaw) {
+      const u = JSON.parse(userRaw);
+      if (u && u.role) return u;
+    }
     const raw = sessionStorage.getItem('seevora_session');
     return raw ? JSON.parse(raw) : null;
   } catch {

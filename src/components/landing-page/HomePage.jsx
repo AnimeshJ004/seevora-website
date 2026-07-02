@@ -1,176 +1,87 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Chatbot from './Chatbot';
 
-const problemTabs = [
+const whyReasons = [
   {
-    key: 'clinics',
-    label: 'Clinic Missed Calls',
-    color: 'cyan',
-    title: 'Clinics Losing Patients to Missed Calls',
-    desc: 'Every unanswered call at a clinic or practice is a patient lost to a competitor. Seevora answers 24/7, books appointments, and captures every patient enquiry.',
-    checklist: [
-      'Instantly answers patient enquiries after hours',
-      'Books appointments directly into the calendar',
-      'Captures missed-call leads before competitors do'
-    ],
-    statusLabel: 'Seevora AI Status: Covering Calls',
-    metricVal: '24/7',
-    metricLbl: 'CARE COVERAGE',
-    bars: [
-      { name: 'Call Capture', val: '96%' },
-      { name: 'Booking Flow', val: '88%' }
-    ],
-    icon: <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.78 19.78 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.77.63 2.61a2 2 0 0 1-.45 2.11L8.09 9.64a16 16 0 0 0 6.27 6.27l1.2-1.2a2 2 0 0 1 2.11-.45c.84.3 1.71.51 2.61.63A2 2 0 0 1 22 16.92z" /></svg>
-  },
-  {
-    key: 'salons',
-    label: 'Studio No-Shows',
-    color: 'purple',
-    title: 'Salons & Studios Damaged by No-Shows',
-    desc: 'Low-commitment online bookings lead to empty chairs and lost staff time. Our automated WhatsApp confirmations and smart waitlists reduce no-shows by 30-40%.',
-    checklist: [
-      'Confirms bookings automatically on WhatsApp',
-      'Fills cancellation slots from smart waitlists',
-      'Reminds clients before staff time is wasted'
-    ],
-    statusLabel: 'Seevora AI Status: Protecting Slots',
-    metricVal: '40%',
-    metricLbl: 'NO-SHOW REDUCTION',
-    bars: [
-      { name: 'Reminder Reach', val: '92%' },
-      { name: 'Slot Recovery', val: '78%' }
-    ],
-    icon: <svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" /></svg>
-  },
-  {
-    key: 'consultants',
-    label: 'Consultant Follow-ups',
-    color: 'green',
-    title: 'CAs & Consultants Buried in Follow-ups',
-    desc: 'Chasing clients for documents, tax receipts, and signatures wastes hours daily. Seevora automates file collection, reminders, and payment links.',
-    checklist: [
-      'Collects files and receipts through guided reminders',
-      'Sends payment links without manual chasing',
-      'Flags pending signatures before deadlines'
-    ],
-    statusLabel: 'Seevora AI Status: Chasing Tasks',
-    metricVal: '8h',
-    metricLbl: 'WEEKLY TIME SAVED',
-    bars: [
-      { name: 'Document Collection', val: '84%' },
-      { name: 'Payment Follow-up', val: '80%' }
-    ],
-    icon: <svg viewBox="0 0 24 24"><path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1M3 8h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8zM3 8l2-3h14l2 3M9 13h6" /></svg>
-  },
-  {
-    key: 'coaches',
-    label: 'Lead Overload',
-    color: 'blue',
-    title: 'Coaches & Institutes Overloaded with Leads',
-    desc: 'Admissions and inquiries bring chaotic WhatsApp chats, phone calls, and forms. Seevora parses them into a single CRM pipeline with hot priority alerts.',
-    checklist: [
-      'Turns WhatsApp, calls, and forms into CRM records',
-      'Prioritizes hot admission enquiries instantly',
-      'Keeps counsellors focused on qualified leads'
-    ],
-    statusLabel: 'Seevora AI Status: Sorting Leads',
-    metricVal: '2x',
-    metricLbl: 'FASTER RESPONSE',
-    bars: [
-      { name: 'Lead Routing', val: '90%' },
-      { name: 'Priority Alerts', val: '86%' }
-    ],
-    icon: <svg viewBox="0 0 24 24"><path d="M3 7h7l2 3h9v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM3 7V5a2 2 0 0 1 2-2h5l2 4" /></svg>
-  },
-  {
-    key: 'seo',
-    label: 'Local SEO Failure',
-    color: 'orange',
-    title: 'Gyms & Local Services Failing Local SEO',
-    desc: 'Without active Google reviews and quick replies, local service businesses rank low. Automated review prompts and local SEO boost Google visibility by 2x.',
-    checklist: [
-      'Requests reviews from satisfied customers automatically',
-      'Improves reply speed on local discovery channels',
-      'Builds a stronger Google visibility loop'
-    ],
-    statusLabel: 'Seevora AI Status: Growing Visibility',
-    metricVal: '2x',
-    metricLbl: 'LOCAL VISIBILITY',
-    bars: [
-      { name: 'Review Requests', val: '82%' },
-      { name: 'Local Discovery', val: '74%' }
-    ],
-    icon: <svg viewBox="0 0 24 24"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-  },
-];
-
-const benefits = [
-  {
+    stat: '24/7',
+    statLabel: 'Always On',
+    title: 'Never Miss a Customer Again',
+    desc: 'Seevora\'s AI Voice Receptionist answers every call around the clock — even at 2 AM. No leads lost to voicemail, no patients going to competitors.',
+    highlight: 'Zero missed calls, guaranteed.',
     icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2.06 2.06 0 0 1-2.91 2.91l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2.06 2.06 0 0 1-4.12 0v-.09a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2.06 2.06 0 0 1-2.91-2.91l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2.06 2.06 0 0 1 0-4.12h.09A1.7 1.7 0 0 0 4.6 8.82a1.7 1.7 0 0 0-.34-1.88L4.2 6.88a2.06 2.06 0 0 1 2.91-2.91l.06.06a1.7 1.7 0 0 0 1.88.34h.01A1.7 1.7 0 0 0 10.08 2.8V2.7a2.06 2.06 0 0 1 4.12 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2.06 2.06 0 0 1 2.91 2.91l-.06.06a1.7 1.7 0 0 0-.34 1.88v.01a1.7 1.7 0 0 0 1.56 1.03h.09a2.06 2.06 0 0 1 0 4.12h-.09A1.7 1.7 0 0 0 19.4 15Z" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.13 12 19.78 19.78 0 0 1 1.08 3.18 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.84a16 16 0 0 0 6.07 6.07l1.21-1.21a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
       </svg>
-    ),
-    title: 'Fully Customised',
-    desc: 'No generic templates. Every voice receptionist and automated pipeline is custom-trained on your specific business rules.'
+    )
   },
   {
+    stat: '5',
+    statLabel: 'Days to Live',
+    title: 'Deployed in 5 Business Days',
+    desc: 'No months-long setup, no generic SaaS templates. Our engineers map your exact salon, clinic, or CA workflow and launch a fully customised AI system — live in just 5 days.',
+    highlight: 'Fastest go-live in the industry.',
     icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="M4 4h16v16H4z" />
-        <path d="M4 8h16" />
-        <path d="M4 16h16" />
-        <path d="M12 4v16" />
-        <path d="M12 10.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6Z" />
-      </svg>
-    ),
-    title: 'Hindi-First AI',
-    desc: 'Voice agents and automated chat reply fluently in Hindi, English, and regional mixes, matching the local tongue.'
-  },
-  {
-    icon: (
-      <svg viewBox="0 0 24 24">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m13 2-8 10h6l-1 10 8-10h-6l1-10Z" />
       </svg>
-    ),
-    title: 'Ready in 5 Days',
-    desc: 'We map your specific salon, clinic, or coaching workflow and launch your custom AI live in just 5 business days.'
+    )
   },
   {
+    stat: '40%',
+    statLabel: 'No-Show Reduction',
+    title: 'WhatsApp-First Automation',
+    desc: 'Your customers live on WhatsApp — so does Seevora. Automated confirmations, smart waitlists, and follow-up reminders reduce no-shows by 30–40% without lifting a finger.',
+    highlight: 'Built for India\'s WhatsApp culture.',
     icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="m3 7 9-4 9 4-9 4-9-4Z" />
-        <path d="M3 7v10l9 4 9-4V7" />
-        <path d="M12 11v10" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
-    ),
-    title: 'One Platform',
-    desc: 'Consolidates voice receptionist, WhatsApp queries, client reservations, follow-ups, and reviews in one screen.'
+    )
   },
   {
+    stat: '8h',
+    statLabel: 'Saved per Week',
+    title: 'Hindi-First, Truly Local',
+    desc: 'Our AI speaks your customers\' language — Hindi, English, or Hinglish. No awkward chatbots that sound foreign. Seevora feels natural to every caller and chat user.',
+    highlight: 'Fluent in India\'s real language.',
     icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="M4 12a8 8 0 0 1 16 0" />
-        <path d="M4 12v3a2 2 0 0 0 2 2h1v-7H6a2 2 0 0 0-2 2Z" />
-        <path d="M20 12v3a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2Z" />
-        <path d="M14 19h2a4 4 0 0 0 4-4" />
-        <path d="M10 19h4" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <path d="M8 10h8M8 14h5" />
       </svg>
-    ),
-    title: 'Dedicated Support',
-    desc: 'Skip generic tickets. Direct WhatsApp access to your custom engineering support team for real-time updates.'
+    )
   },
   {
+    stat: '1',
+    statLabel: 'Platform, All Ops',
+    title: 'One Dashboard for Everything',
+    desc: 'Voice calls, WhatsApp, appointment bookings, document collection, UPI reminders, Google reviews — all visible and manageable from a single clean dashboard.',
+    highlight: 'No juggling 10 tools anymore.',
     icon: (
-      <svg viewBox="0 0 24 24">
-        <path d="M12 3 8.5 6.2 4 7l1.6 4.2L4 15l4.4.8L12 21l3.6-5.2L20 15l-1.6-3.8L20 7l-4.5-.8L12 3Z" />
-        <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z" />
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
       </svg>
-    ),
-    title: 'Built for Indian SMBs',
-    desc: 'Integrated with Indian business requirements — WhatsApp-first workflows, dial-in calls, and UPI billing reminders.'
+    )
+  },
+  {
+    stat: '90',
+    statLabel: 'Days ROI',
+    title: 'Measurable ROI in 90 Days',
+    desc: 'Seevora clients consistently report 40% cost reduction and 2× faster lead response within 90 days. We track every metric so you know exactly what you\'re getting.',
+    highlight: 'ROI-backed, not just promised.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+        <polyline points="16 7 22 7 22 13" />
+      </svg>
+    )
   }
 ];
+
+
 
 const steps = [
   {
@@ -205,7 +116,86 @@ const heroCapabilities = [
   '5 Days Launch Ready',
 ];
 
+// ── Hero Typing Lines ──────────────────────────────────────────
+const HERO_LINES = [
+  { text: 'Turn Your Business', isGradient: false },
+  { text: 'Processes into',     isGradient: false },
+  { text: 'Profit Centers',     isGradient: true  },
+  { text: 'With AI.',           isGradient: false },
+];
+
+const HERO_ROTATING_PHRASES = [
+  'Profit Centers',
+  'Revenue Engines',
+  'Growth Systems',
+  'Smart Workflows',
+  'Automation Hubs',
+  'Sales Machines',
+];
+
 function Hero() {
+  const [linesDone,   setLinesDone]   = useState([]);
+  const [currentLine, setCurrentLine] = useState(0);
+  const [currentText, setCurrentText] = useState('');
+  const [showCursor,  setShowCursor]  = useState(true);
+  const [allDone,     setAllDone]     = useState(false);
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const charRef  = useRef(0);
+  const timerRef = useRef(null);
+  const rotatingReady = currentLine > 2;
+
+  useEffect(() => {
+    if (currentLine >= HERO_LINES.length) {
+      setTimeout(() => setShowCursor(false), 1200);
+      setAllDone(true);
+      return;
+    }
+
+    const fullText = HERO_LINES[currentLine].text;
+    charRef.current = 0;
+    setCurrentText('');
+
+    const typeNext = () => {
+      charRef.current += 1;
+      setCurrentText(fullText.slice(0, charRef.current));
+      if (charRef.current < fullText.length) {
+        timerRef.current = setTimeout(typeNext, 40);
+      } else {
+        timerRef.current = setTimeout(() => {
+          setLinesDone(prev => [...prev, { text: fullText, isGradient: HERO_LINES[currentLine].isGradient }]);
+          setCurrentText('');
+          setCurrentLine(prev => prev + 1);
+        }, 200);
+      }
+    };
+
+    timerRef.current = setTimeout(typeNext, 500);
+    return () => clearTimeout(timerRef.current);
+  }, [currentLine]);
+
+  useEffect(() => {
+    if (!rotatingReady) return undefined;
+
+    const interval = setInterval(() => {
+      setPhraseIndex(prev => (prev + 1) % HERO_ROTATING_PHRASES.length);
+    }, 2600);
+
+    return () => clearInterval(interval);
+  }, [rotatingReady]);
+
+  const renderSpan = (text, isGradient, key, withCursor = false) => (
+    <span
+      key={key}
+      className={`hero-typed-line ${isGradient ? 'hero-typed-gradient' : 'hero-typed-3d'}`}
+      style={{ display: 'block', whiteSpace: 'nowrap' }}
+    >
+      {isGradient ? <span className="hero-rotating-phrase-text">{text}</span> : text}
+      {withCursor && showCursor && (
+        <span className="hero-typed-cursor" aria-hidden="true" />
+      )}
+    </span>
+  );
+
   return (
     <section className="centered-hero" id="hero">
       <div className="hero-curves-bg" aria-hidden="true">
@@ -223,14 +213,42 @@ function Hero() {
 
       <div className="container">
         <div className="hero-content centered" data-animate>
-          <h1 className="hero-title centered">
-            <span style={{ whiteSpace: 'nowrap' }}>Turn Your Business</span><br />
-            <span style={{ whiteSpace: 'nowrap' }}>Processes into</span><br />
-            <span style={{ whiteSpace: 'nowrap' }}><span className="gradient-text">Profit Centers</span></span><br />
-            <span style={{ whiteSpace: 'nowrap' }}> With AI.</span>
+          <h1 className="hero-title centered hero-title-typing">
+            {linesDone.map((line, i) => {
+              if (line.isGradient && rotatingReady) {
+                return (
+                  <span
+                    key="rotating-phrase-line"
+                    className="hero-typed-line hero-typed-gradient hero-rotating-phrase"
+                    style={{ display: 'block', whiteSpace: 'nowrap' }}
+                  >
+                    <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
+                      {HERO_ROTATING_PHRASES[phraseIndex]}
+                    </span>
+                  </span>
+                );
+              }
+
+              return renderSpan(line.text, line.isGradient, `done-${i}`);
+            })}
+            {currentLine < HERO_LINES.length &&
+              renderSpan(
+                currentText,
+                HERO_LINES[currentLine].isGradient,
+                `typing-${currentLine}`,
+                true
+              )
+            }
           </h1>
 
-          <div className="hero-buttons centered">
+          <div
+            className="hero-buttons centered"
+            style={{
+              opacity: allDone ? 1 : 0,
+              transform: allDone ? 'translateY(0)' : 'translateY(14px)',
+              transition: 'opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s'
+            }}
+          >
             <button
               className="btn-pill btn-pill-primary"
               onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
@@ -242,7 +260,7 @@ function Hero() {
             </button>
             <button
               className="btn-pill btn-pill-secondary"
-              onClick={() => document.getElementById('problems')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('why-seevora')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Explore Solutions
             </button>
@@ -267,118 +285,52 @@ function Hero() {
   );
 }
 
-function CheckIcon() {
+
+
+function WhyChooseSeevora() {
   return (
-    <svg className="check-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function Problems() {
-  const [activeKey, setActiveKey] = useState(problemTabs[0].key);
-  const active = problemTabs.find((problem) => problem.key === activeKey) || problemTabs[0];
-  const renderDetail = (problem) => (
-    <div className={`problem-detail-card border-${problem.color}`}>
-      <div>
-        <div className="problem-detail-header">
-          <div className={`problem-detail-icon-wrapper icon-${problem.color}`}>{problem.icon}</div>
-          <h3>{problem.title}</h3>
-        </div>
-        <p className="problem-detail-desc">{problem.desc}</p>
-        <ul className="problem-checklist">
-          {problem.checklist.map((item) => (
-            <li key={item}><CheckIcon />{item}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="problem-status-widget">
-        <div className="widget-status-header"><span className="pulse-dot" />{problem.statusLabel}</div>
-        <div className="widget-metric-block">
-          <div className="widget-metric-val">{problem.metricVal}</div>
-          <div className="widget-metric-lbl">{problem.metricLbl}</div>
-        </div>
-        <div className="widget-progress-bars">
-          {problem.bars.map((bar) => (
-            <div className="widget-progress-bar" key={bar.name}>
-              <div className="progress-bar-labels"><span>{bar.name}</span><span>{bar.val}</span></div>
-              <div className="progress-bar-track"><div className="progress-bar-fill" style={{ width: bar.val }} /></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <section className="problems section" id="problems">
-      <div className="bg-grid" />
+    <section className="why-choose-seevora section" id="why-seevora">
       <div className="container">
-        <div data-animate style={{ textAlign: 'center' }}>
+        {/* Section Header */}
+        <div className="why-motion-header" data-animate="motion-header">
           <h2 className="section-title">
-            Why Indian Businesses <span className="gradient-text">Lose Growth</span>
+            Why <span className="gradient-text">Seevora</span> Is the Right Choice
           </h2>
-          <p className="section-subtitle" style={{ margin: '0 auto' }}>
-            These are the critical operational failures costing Indian SMBs lakhs every month.
+          <p className="section-subtitle why-motion-subtitle">
+            We're not a generic SaaS tool. Seevora is a custom-built AI automation partner for Indian SMBs — built for your workflow, your language, and your growth.
           </p>
         </div>
 
-        <div className="problems-showcase" data-animate>
-          <div className="problems-tab-rail">
-            {problemTabs.map((problem) => (
-              <div className="problem-tab-wrapper" key={problem.key}>
-                <button
-                  className={`problem-tab-btn problem-tab-btn--${problem.color} ${activeKey === problem.key ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveKey(problem.key)}
-                  onMouseEnter={() => setActiveKey(problem.key)}
-                  onFocus={() => setActiveKey(problem.key)}
-                >
-                  <span className={`problem-btn-icon-wrapper icon-${problem.color}`}>{problem.icon}</span>
-                  <span className="problem-btn-label">{problem.label}</span>
-                </button>
-                <div className={`problem-accordion-card-container ${activeKey === problem.key ? 'expanded' : ''}`}>
-                  {renderDetail(problem)}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="problem-desktop-card-container">
-            {renderDetail(active)}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function WhySeevora() {
-  return (
-    <section className="why-seevora section" id="why-seevora">
-      <div className="container">
-        <div data-animate style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <h2 className="section-title">
-            The Seevora <span className="gradient-text">Difference</span>
-          </h2>
-          <p className="section-subtitle" style={{ margin: '0 auto' }}>
-            Built specifically to solve the operational bottlenecks of Indian local businesses.
-          </p>
-        </div>
-
-        <div className="why-seevora-grid why-seevora-grid--cards">
-          {benefits.map((b, i) => (
+        {/* 3-column reasons grid */}
+        <div className="why-motion-grid">
+          {whyReasons.map((reason, i) => (
             <div
               key={i}
-              className={`why-card ${i < 2 ? 'why-card--featured' : ''}`}
-              data-animate="tilt-in"
-              style={{ transitionDelay: `${i * 0.06}s` }}
+              data-animate="motion-card"
+              style={{ '--motion-delay': `${i * 0.09}s`, '--float-delay': `${i * 0.35}s` }}
+              className="why-reason-card"
             >
-              <span className="why-card-index">{String(i + 1).padStart(2, '0')}</span>
-              <div>
-                <h3>{b.title}</h3>
-                <p>{b.desc}</p>
+              {/* Top row: number + stat */}
+              <div className="why-card-top">
+                <div className="why-card-number">
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+                <div className="why-card-stat">
+                  <div className="why-card-stat-value">{reason.stat}</div>
+                  <div className="why-card-stat-label">{reason.statLabel}</div>
+                </div>
+              </div>
+
+              <h3 className="why-card-title">{reason.title}</h3>
+
+              <p className="why-card-desc">{reason.desc}</p>
+
+              {/* Highlight tag */}
+              <div className="why-card-highlight">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7F33" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                <span>{reason.highlight}</span>
               </div>
             </div>
           ))}
@@ -387,6 +339,8 @@ function WhySeevora() {
     </section>
   );
 }
+
+// WhySeevora replaced by WhyChooseSeevora above
 
 function Workflow() {
   return (
@@ -490,10 +444,10 @@ export default function HomePage() {
   return (
     <main className="home-landing">
       <Hero />
-      <Problems />
-      <WhySeevora />
+      <WhyChooseSeevora />
       <Workflow />
       <Stats />
+      <Chatbot />
     </main>
   );
 }

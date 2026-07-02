@@ -27,7 +27,7 @@ const termsPoints = [
   },
   {
     q: '7. Subscriptions, Payments & Cancellation Policies',
-    a: 'Setup services are billed according to signed proposals. Monthly recurring AI SaaS subscription bills must be settled within 5 days of invoice generation. Subscriptions can be cancelled at any time by notifying docivoseevora@gmail.com at least 15 days in advance.'
+    a: 'Setup services are billed according to signed proposals. Monthly recurring AI SaaS subscription bills must be settled within 5 days of invoice generation. Subscriptions can be cancelled at any time by notifying info@seevora.in at least 15 days in advance.'
   },
   {
     q: '8. Meta & Third-Party APIs Liability Disclaimer',

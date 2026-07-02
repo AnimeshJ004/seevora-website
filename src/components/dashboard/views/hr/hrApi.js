@@ -11,6 +11,19 @@ export async function hrApiFetch(endpoint, options = {}) {
   }
 
   const response = await fetch(endpoint, { ...options, headers });
+  if (response.status === 401) {
+    localStorage.removeItem('seevoraAuthToken');
+    localStorage.removeItem('seevoraUser');
+    sessionStorage.removeItem('seevora_session');
+  }
   if (response.status !== 502) return response;
-  return fetch(`${API_FALLBACK_ORIGIN}${endpoint}`, { ...options, headers });
+
+  const fallbackRes = await fetch(`${API_FALLBACK_ORIGIN}${endpoint}`, { ...options, headers });
+  if (fallbackRes.status === 401) {
+    localStorage.removeItem('seevoraAuthToken');
+    localStorage.removeItem('seevoraUser');
+    sessionStorage.removeItem('seevora_session');
+  }
+  return fallbackRes;
 }
+

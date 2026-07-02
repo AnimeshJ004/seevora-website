@@ -34,6 +34,7 @@ function toSafeUser(user) {
     email: user.email,
     phone: user.phone,
     role: user.role,
+    verificationStatus: user.verification_status || 'PENDING_VERIFICATION',
     avatar: String(name || user.email || 'U')
       .split(/\s+/)
       .filter(Boolean)
@@ -50,7 +51,7 @@ router.post('/login', async (req, res, next) => {
     if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
 
     const result = await pool.query(
-      `SELECT u.id, u.username, u.email, u.phone, u.role, u.password_hash, u.created_at,
+      `SELECT u.id, u.username, u.email, u.phone, u.role, u.verification_status, u.password_hash, u.created_at,
               COALESCE(e.name, u.username) AS name
        FROM users u
        LEFT JOIN hr_employees e ON e.user_id = u.id
@@ -200,7 +201,7 @@ router.post('/reset-password', async (req, res, next) => {
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT u.id, u.username, u.email, u.phone, u.role, u.created_at,
+      `SELECT u.id, u.username, u.email, u.phone, u.role, u.verification_status, u.created_at,
               COALESCE(e.name, u.username) AS name
        FROM users u
        LEFT JOIN hr_employees e ON e.user_id = u.id

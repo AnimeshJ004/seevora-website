@@ -1294,9 +1294,9 @@ function ViewSettings() {
             {sectionTitle('Platform Identity')}
             {inp('Platform Name','e.g. Seevora','text','Seevora')}
             {inp('Tagline','Short description','text','AI-Powered Business Automation')}
-            {inp('Super Admin Email','admin@seevora.in','email','animesh@seevora.in')}
-            {inp('Support Email','support@seevora.in','email','support@seevora.in')}
-            {inp('Support WhatsApp','+91 XXXXX XXXXX','tel','+91 82692 97967')}
+            {inp('Super Admin Email','info@seevora.in','email','info@seevora.in')}
+            {inp('Support Email','info@seevora.in','email','info@seevora.in')}
+            {inp('Support WhatsApp','+91 XXXXX XXXXX','tel','+91 89822 00895')}
             {saveBtn()}
           </div>
           <div>
@@ -1407,7 +1407,7 @@ function ViewSettings() {
             {sectionTitle('Email Templates')}
             {inp('Email Header Color','#0a0a0a','text','#0a0a0a')}
             {inp('Email Footer Text','e.g. � 2026 Seevora','text','� 2026 Seevora Private Limited')}
-            {inp('Reply-To Email','noreply@seevora.in','email','noreply@seevora.in')}
+            {inp('Reply-To Email','info@seevora.in','email','info@seevora.in')}
             {sectionTitle('Client Portal URL')}
             {inp('Dashboard Base URL','app.seevora.in','text','app.seevora.in')}
             {inp('Custom Domain (optional)','dashboard.yourbrand.in','')}
@@ -1465,8 +1465,8 @@ function ViewSettings() {
           <ToggleRow label="Auto-delete on Subscription End" desc="Purge tenant data after retention period" defaultOn={false} />
           {sectionTitle('Data Protection Officer')}
           {inp('DPO Name','Full name','text','Animesh Jain')}
-          {inp('DPO Email','dpo@seevora.in','email','dpo@seevora.in')}
-          {inp('DPO Contact','Phone number','tel','+91 82692 97967')}
+          {inp('DPO Email','info@seevora.in','email','info@seevora.in')}
+          {inp('DPO Contact','Phone number','tel','+91 89822 00895')}
           {saveBtn()}
         </div>
       )}

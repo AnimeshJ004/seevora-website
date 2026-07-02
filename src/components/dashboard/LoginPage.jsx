@@ -169,12 +169,7 @@ export default function LoginPage({ onLogin }) {
         return;
       }
 
-      const result = login(email, password);
-      if (result.success) {
-        onLogin(result.user);
-      } else {
-        setError(data.message || 'Invalid credentials. Please try again.');
-      }
+      setError(data.message || 'Invalid credentials. Please try again.');
     } catch {
       const result = login(email, password);
       if (result.success) {

@@ -12,14 +12,14 @@ export default function Users() {
       <Panel>
         <FilterBar filters={["All Roles","All Status"]} onSearch={setSearch} />
         <table style={{width:"100%",borderCollapse:"collapse"}}>
-          <thead><tr>{["User","Role","Business","Status","MFA","Last Login","Actions"].map(h=>(
+          <thead><tr>{["#","User","Role","Business","Status","MFA","Last Login","Actions"].map(h=>(
             <th key={h} style={{textAlign:"left",fontSize:"0.72rem",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",color:"var(--text-muted)",padding:"0 10px 10px 0",borderBottom:"1px solid var(--glass-border)"}}>{h}</th>
           ))}</tr></thead>
           <tbody>{f.map((u,i)=>(
             <tr key={i}>
+              <td style={{padding:"11px 10px 11px 0",fontSize:"0.82rem",color:"var(--text-muted)",borderBottom:"1px solid rgba(0,0,0,0.04)",width:"30px"}}>{i+1}</td>
               <td style={{padding:"11px 10px 11px 0",borderBottom:"1px solid rgba(0,0,0,0.04)"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <Avatar name={u.name} />
                   <div><div style={{fontWeight:600,fontSize:"0.85rem",color:"var(--text-primary)"}}>{u.name}</div><div style={{fontSize:"0.72rem",color:"var(--text-muted)"}}>{u.email}</div></div>
                 </div>
               </td>

@@ -197,10 +197,15 @@ router.post('/', async (req, res, next) => {
     const username = await createUniqueUsername(client, data.username, data.email);
     const passwordHash = await bcrypt.hash(data.password, 12);
 
+    /* Employees start as PENDING_VERIFICATION; HR/admin are pre-verified */
+    const verificationStatus = ['hr', 'super_admin', 'admin', 'manager', 'support'].includes(data.accountRole)
+      ? 'VERIFIED'
+      : 'PENDING_VERIFICATION';
+
     await client.query(
-      `INSERT INTO users (id, username, email, phone, password_hash, role)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, username, data.email, data.phone || null, passwordHash, data.accountRole]
+      `INSERT INTO users (id, username, email, phone, password_hash, role, verification_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, username, data.email, data.phone || null, passwordHash, data.accountRole, verificationStatus]
     );
 
     const employeeResult = await client.query(

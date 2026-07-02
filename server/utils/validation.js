@@ -6,7 +6,6 @@ export function validateLogin(body) {
   if (!identifier) errors.identifier = 'Username or email is required.';
 
   if (!password) errors.password = 'Password is required.';
-  else if (password.length < 8) errors.password = 'Password must be at least 8 characters.';
 
   return {
     isValid: Object.keys(errors).length === 0,

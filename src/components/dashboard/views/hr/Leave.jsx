@@ -148,12 +148,10 @@ export default function Leave() {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No leave requests found. Use "+ Apply Leave" to create one.</p>
             ) : (
               <Table
-                cols={['Employee', 'Leave Type', 'From', 'To', 'Days', 'Reason', 'Applied', 'Status', 'Actions']}
-                rows={filtered.map(l => [
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar name={l.emp} />
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.emp}</span>
-                  </div>,
+                cols={['#', 'Employee', 'Leave Type', 'From', 'To', 'Days', 'Reason', 'Applied', 'Status', 'Actions']}
+                rows={filtered.map((l, idx) => [
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{idx + 1}</span>,
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.emp}</span>,
                   <span style={{ textTransform: 'capitalize' }}>{l.type.replace(/_/g, ' ')}</span>,
                   l.from,
                   l.to,
@@ -180,12 +178,10 @@ export default function Leave() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No employees found. Add employees first.</p>
           ) : (
             <Table
-              cols={['Employee', 'Casual Leave', 'Sick Leave', 'Annual Leave', 'Comp Off', 'Used', 'Remaining']}
-              rows={balances.map(b => [
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Avatar name={b.name} />
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{b.name}</span>
-                </div>,
+              cols={['#', 'Employee', 'Casual Leave', 'Sick Leave', 'Annual Leave', 'Comp Off', 'Used', 'Remaining']}
+              rows={balances.map((b, idx) => [
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{idx + 1}</span>,
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{b.name}</span>,
                 <span style={{ fontWeight: 600 }}>{b.casual.used}/{b.casual.total}</span>,
                 <span style={{ fontWeight: 600 }}>{b.sick.used}/{b.sick.total}</span>,
                 <span style={{ fontWeight: 600 }}>{b.annual.used}/{b.annual.total}</span>,

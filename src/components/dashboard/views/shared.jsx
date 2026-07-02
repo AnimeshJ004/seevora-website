@@ -125,17 +125,30 @@ export function Avatar({ name, gradient='linear-gradient(135deg,#14c9e1,#9e3cec)
 }
 
 /* ── Filter bar ── */
-export function FilterBar({ filters=[], onSearch }) {
+export function FilterBar({ filters=[], onSearch, onExport }) {
   return (
     <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap', alignItems:'center' }}>
       <input type="search" placeholder="Search…" onChange={e=>onSearch?.(e.target.value)}
         style={{ flex:1, minWidth:160, maxWidth:260, padding:'8px 14px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', background:'var(--bg-space)', color:'var(--text-primary)', outline:'none' }} />
-      {filters.map(f => (
-        <select key={f} style={{ padding:'8px 14px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', background:'var(--bg-space)', color:'var(--text-secondary)', outline:'none', cursor:'pointer' }}>
-          <option>{f}</option>
-        </select>
-      ))}
-      <button style={{ padding:'8px 16px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', fontWeight:600, background:'var(--bg-space)', color:'var(--text-secondary)', cursor:'pointer' }}>
+      {filters.map((f, idx) => {
+        if (typeof f === 'string') {
+          return (
+            <select key={idx} style={{ padding:'8px 14px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', background:'var(--bg-space)', color:'var(--text-secondary)', outline:'none', cursor:'pointer' }}>
+              <option>{f}</option>
+            </select>
+          );
+        }
+        return (
+          <select key={idx} value={f.value} onChange={e => f.onChange?.(e.target.value)} style={{ padding:'8px 14px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', background:'var(--bg-space)', color:'var(--text-secondary)', outline:'none', cursor:'pointer' }}>
+            {f.options.map(opt => {
+              const val = typeof opt === 'string' ? opt : opt.value;
+              const lbl = typeof opt === 'string' ? opt : opt.label;
+              return <option key={val} value={val}>{lbl}</option>;
+            })}
+          </select>
+        );
+      })}
+      <button onClick={onExport || (() => alert('Exporting is only supported for Employee records.'))} style={{ padding:'8px 16px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', fontWeight:600, background:'var(--bg-space)', color:'var(--text-secondary)', cursor:'pointer' }}>
         Export CSV
       </button>
     </div>

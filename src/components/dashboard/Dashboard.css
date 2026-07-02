@@ -36,13 +36,13 @@
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-.ds-sidebar-logo img { width: 32px; height: 32px; border-radius: 8px; }
+.ds-sidebar-logo img { width: 32px; height: 32px; border-radius: 8px; filter: brightness(0) invert(1); }
 
 .ds-sidebar-logo-text {
   font-family: 'Outfit', sans-serif;
   font-size: 1rem;
   font-weight: 800;
-  color: #f1f5f9;
+  color: #ffffff;
   display: block;
 }
 

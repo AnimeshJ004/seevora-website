@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 const policyPoints = [
   {
     q: '1. Who is the Data Controller for Seevora?',
-    a: 'Your data controller is Seevora Private Limited (CIN: U62011MP2026PTC082651), incorporated in Indore, Madhya Pradesh, India. If you have questions about how your data is handled or secured, you can contact our privacy officer directly at docivoseevora@gmail.com.'
+    a: 'Your data controller is Seevora Private Limited (CIN: U62011MP2026PTC082651), incorporated in Indore, Madhya Pradesh, India. If you have questions about how your data is handled or secured, you can contact our privacy officer directly at info@seevora.in.'
   },
   {
     q: '2. What personal data do we collect?',
@@ -39,7 +39,7 @@ const policyPoints = [
   },
   {
     q: '10. What are your data rights and how can you exercise them?',
-    a: 'You hold full ownership of your data. You have the right to request a complete export of your interaction logs, update incorrect records, or ask for total data erasure. You can submit these requests to docivoseevora@gmail.com, and we will comply within 7 business days.'
+    a: 'You hold full ownership of your data. You have the right to request a complete export of your interaction logs, update incorrect records, or ask for total data erasure. You can submit these requests to info@seevora.in, and we will comply within 7 business days.'
   }
 ];
 

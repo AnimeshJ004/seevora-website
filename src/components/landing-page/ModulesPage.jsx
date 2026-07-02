@@ -97,7 +97,7 @@ export default function ModulesPage() {
               key={m.hash}
               id={m.hash}
               className={`modules-long-card modules-long-card--${m.color}${idx % 2 ? ' is-reversed' : ''}`}
-              data-animate
+              data-animate="module-card-3d"
             >
               <div className="modules-long-side">
                 <span className="modules-long-number">{String(idx + 1).padStart(2, '0')}</span>

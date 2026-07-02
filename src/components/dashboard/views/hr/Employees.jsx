@@ -28,6 +28,8 @@ export default function Employees() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [toast, setToast] = useState(null);
+  const [selectedDept, setSelectedDept] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const employeesSectionRef = React.useRef(null);
 
   const showToast = (msg) => {
@@ -190,11 +192,58 @@ export default function Employees() {
     }
   };
 
-  const f = employees.filter(u =>
-    u.name.toLowerCase().includes(search.toLowerCase()) ||
-    u.dept.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleExportCSV = () => {
+    if (f.length === 0) {
+      showToast('No employee records to export.');
+      return;
+    }
+    const headers = ['Employee ID', 'Name', 'Email', 'Phone', 'Department', 'Salary', 'Joined Date', 'Status', 'Access Role'];
+    const csvRows = [
+      headers.join(','),
+      ...f.map(u => [
+        u.id || '',
+        u.name || '',
+        u.email || '',
+        u.phone || '',
+        u.dept || '',
+        u.salaryAmount || 0,
+        u.joined || '',
+        u.status || '',
+        u.accountRole || ''
+      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `employees_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const departmentsList = ['all', ...new Set(employees.map(u => u.dept).filter(Boolean))];
+  const deptOptions = departmentsList.map(d => ({
+    value: d,
+    label: d === 'all' ? 'All Departments' : d
+  }));
+
+  const statusOptions = [
+    { value: 'all', label: 'All Status' },
+    { value: 'active', label: 'Active' },
+    { value: 'probation', label: 'Probation' },
+    { value: 'inactive', label: 'Inactive' }
+  ];
+
+  const f = employees.filter(u => {
+    const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.dept.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
+    const matchesDept = selectedDept === 'all' || u.dept.toLowerCase() === selectedDept.toLowerCase();
+    const matchesStatus = selectedStatus === 'all' || u.status.toLowerCase() === selectedStatus.toLowerCase();
+    return matchesSearch && matchesDept && matchesStatus;
+  });
 
   const stats = {
     total: employees.length,
@@ -235,13 +284,22 @@ export default function Employees() {
         ]}
       />
 
+
       <Panel>
-        <FilterBar key={filterKey} filters={['All Departments', 'All Status']} onSearch={setSearch} />
+        <FilterBar
+          key={filterKey}
+          filters={[
+            { value: selectedDept, onChange: setSelectedDept, options: deptOptions },
+            { value: selectedStatus, onChange: setSelectedStatus, options: statusOptions }
+          ]}
+          onSearch={setSearch}
+          onExport={handleExportCSV}
+        />
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Employee', 'ID', 'Department', 'Role', 'Salary', 'Joined', 'Status', 'Login Role', 'Account', 'Actions'].map(h => (
+                {['#', 'Employee', 'ID', 'Department', 'Role', 'Salary', 'Joined', 'Status', 'Login Role', 'Account', 'Actions'].map(h => (
                   <th key={h} style={{
                     textAlign: 'left', fontSize: '0.72rem', fontWeight: 600,
                     textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -254,7 +312,7 @@ export default function Employees() {
             <tbody>
               {!isLoading && f.length === 0 && (
                 <tr>
-                  <td colSpan={10} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  <td colSpan={11} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
                     No employees found.
                   </td>
                 </tr>
@@ -263,9 +321,9 @@ export default function Employees() {
                 <tr key={u.id}
                   onMouseEnter={e => [...e.currentTarget.cells].forEach(c => c.style.background = 'rgba(0,0,0,0.012)')}
                   onMouseLeave={e => [...e.currentTarget.cells].forEach(c => c.style.background = '')}>
+                  <td style={{ padding: '11px 10px 11px 0', fontSize: '0.82rem', color: 'var(--text-muted)', borderBottom: '1px solid rgba(0,0,0,0.04)', width: '30px' }}>{i + 1}</td>
                   <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <Avatar name={u.name} />
                       <div>
                         <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{u.name}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{u.email}</div>

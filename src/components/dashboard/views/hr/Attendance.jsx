@@ -37,6 +37,7 @@ export default function Attendance() {
   const [data, setData] = useState({ attendance: [], summary: null, officeHours: null });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filterStatus, setFilterStatus] = useState('ALL');
 
   const loadAttendance = async () => {
     setIsLoading(true);
@@ -82,6 +83,13 @@ export default function Attendance() {
     { label: 'Half Day / Absent', value: (data.summary?.halfDay || 0) + (data.summary?.absent || 0), color: 'orange' },
   ]), [data.summary]);
 
+  const filteredAttendance = useMemo(() => {
+    return data.attendance.filter((entry) => {
+      if (filterStatus === 'ALL') return true;
+      return entry.status === filterStatus;
+    });
+  }, [data.attendance, filterStatus]);
+
   return (
     <div>
       <Panel
@@ -89,25 +97,47 @@ export default function Attendance() {
         meta={isLoading ? 'Loading today’s logs...' : `${data.attendance.length} employee records`}
         style={{ marginBottom: 18 }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18, alignItems: 'center' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.86rem', lineHeight: 1.6 }}>
             Office hours: <strong style={{ color: 'var(--text-primary)' }}>{OFFICE_START}</strong> to <strong style={{ color: 'var(--text-primary)' }}>{OFFICE_END}</strong>
           </div>
-          <button
-            type="button"
-            onClick={loadAttendance}
-            style={{
-              padding: '8px 14px',
-              borderRadius: 100,
-              border: '1px solid var(--glass-border)',
-              background: 'var(--bg-space)',
-              color: 'var(--text-secondary)',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Refresh
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 100,
+                border: '1px solid var(--glass-border)',
+                background: 'var(--bg-space)',
+                color: 'var(--text-secondary)',
+                fontSize: '0.82rem',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="present">Present (In Progress)</option>
+              <option value="full_day">Full Day</option>
+              <option value="half_day">Half Day</option>
+              <option value="absent">Absent</option>
+            </select>
+            <button
+              type="button"
+              onClick={loadAttendance}
+              style={{
+                padding: '8px 14px',
+                borderRadius: 100,
+                border: '1px solid var(--glass-border)',
+                background: 'var(--bg-space)',
+                color: 'var(--text-secondary)',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         <StatsGrid cols={4} stats={stats} />
@@ -143,14 +173,14 @@ export default function Attendance() {
               </tr>
             </thead>
             <tbody>
-              {!isLoading && data.attendance.length === 0 && (
+              {!isLoading && filteredAttendance.length === 0 && (
                 <tr>
                   <td colSpan={6} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                    No attendance records for today.
+                    No matching attendance records.
                   </td>
                 </tr>
               )}
-              {data.attendance.map((entry) => {
+              {filteredAttendance.map((entry) => {
                 const meta = statusMeta(entry.status);
                 return (
                   <tr key={entry.id}>

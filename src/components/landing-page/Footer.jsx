@@ -66,8 +66,8 @@ export default function Footer() {
             </a>
             <p className="footer-tagline">Custom AI SaaS, intelligent automations, and AI products designed around the way your business actually works.</p>
             <div className="footer-contact-list">
-              <span><PhoneIcon /><a href="tel:+918269297967">+91 82692 97967</a>, <a href="tel:+919827305577">+91 98273 05577</a></span>
-              <a href="mailto:docivoseevora@gmail.com"><MailIcon />docivoseevora@gmail.com</a>
+              <span><PhoneIcon /><a href="tel:+918982200895">+91 89822 00895</a></span>
+              <a href="mailto:info@seevora.in"><MailIcon />info@seevora.in</a>
               <span><LocationIcon />Indore, Madhya Pradesh</span>
             </div>
           </div>

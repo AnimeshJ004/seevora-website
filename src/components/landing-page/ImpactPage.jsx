@@ -73,7 +73,7 @@ export default function ImpactPage() {
             <div
               key={item.num}
               className="impact-item-card"
-              data-animate
+              data-animate="impact-card-3d"
               style={{ transitionDelay: `${i * 0.1}s` }}
             >
               <div className="impact-card-side">
