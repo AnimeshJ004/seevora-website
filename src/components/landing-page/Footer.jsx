@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import logoIcon from '../../assets/logo-icon.png';
 
 const socials = [
@@ -32,6 +32,30 @@ const LocationIcon = () => (
 );
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState('');
+
+  const handleSubscribe = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        setStatus('success');
+        setEmail('');
+      } else {
+        setStatus('error');
+      }
+    } catch (err) {
+      setStatus('error');
+    }
+  };
+
   const handleScrollTo = (e, id) => {
     e.preventDefault();
     if (id.startsWith('services#')) {
@@ -102,6 +126,35 @@ export default function Footer() {
             <a href="#why-seevora" onClick={e => handleScrollTo(e, 'why-seevora')}>Why Seevora</a>
             <a href="/faqs">FAQs</a>
             <a href="/book-a-call">Book a Call</a>
+          </div>
+
+          {/* Newsletter Column */}
+          <div className="footer-col" style={{ flex: '1.5' }}>
+            <h5>Newsletter</h5>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Subscribe to get the latest updates on AI automations and exclusive offers.
+            </p>
+            <form onSubmit={handleSubscribe} style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input 
+                  type="email" 
+                  placeholder="Your email address" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{ flex: 1, padding: '0.5rem 1rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', color: '#fff' }}
+                  required
+                />
+                <button 
+                  type="submit" 
+                  disabled={status === 'loading'}
+                  style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  {status === 'loading' ? '...' : 'Subscribe'}
+                </button>
+              </div>
+              {status === 'success' && <span style={{ color: '#4ade80', fontSize: '0.85rem' }}>Successfully subscribed!</span>}
+              {status === 'error' && <span style={{ color: '#f87171', fontSize: '0.85rem' }}>Failed to subscribe.</span>}
+            </form>
           </div>
         </div>
 

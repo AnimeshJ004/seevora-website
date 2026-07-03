@@ -6,6 +6,7 @@ import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { recordLoginAttendance } from './attendance.js';
 import { validateForgotPassword, validateLogin, validateResetPassword } from '../utils/validation.js';
+import { sendEmail } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -111,9 +112,16 @@ router.post('/forgot-password', async (req, res, next) => {
     );
     await client.query('COMMIT');
 
+    // Send the reset code via email
+    await sendEmail({
+      to: user.email,
+      subject: 'Password Reset Request',
+      text: `Your password reset code is: ${resetCode}\nThis code will expire in 15 minutes.`,
+      html: `<p>Your password reset code is: <strong>${resetCode}</strong></p><p>This code will expire in 15 minutes.</p>`,
+    });
+
     return res.json({
-      message: 'Reset code generated. Use it below to set a new password.',
-      resetCode,
+      message: 'Reset code generated and sent to your email.',
       expiresInMinutes: 15,
       user: {
         id: user.id,

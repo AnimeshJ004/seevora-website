@@ -8,7 +8,8 @@ import AdminDashboard  from './views/admin/AdminDashboard';
 import Businesses      from './views/admin/Businesses';
 import Users           from './views/admin/Users';
 import SupportTickets  from './views/admin/SupportTickets';
-import Leads           from './views/admin/Leads';
+import CRMLeads        from './views/admin/CRMLeads';
+import EmailBot        from './views/admin/EmailBot';
 import Appointments    from './views/admin/Appointments';
 import AIVoiceLogs     from './views/admin/AIVoiceLogs';
 import WhatsAppLogs    from './views/admin/WhatsAppLogs';
@@ -17,6 +18,7 @@ import AuditLogs       from './views/admin/AuditLogs';
 import SecurityCenter  from './views/admin/SecurityCenter';
 import Analytics       from './views/admin/Analytics';
 import Settings        from './views/admin/Settings';
+import Newsletter      from './views/admin/Newsletter';
 
 // HR views
 import HRDashboard           from './views/hr/HRDashboard';
@@ -57,6 +59,8 @@ const NAVICONS = {
   reviews:                  <Ic d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />,
   'audit-logs':             <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15l2 2 4-4" />,
   'security-center':        <Ic d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+  newsletter:               <Ic d="M22 2L11 13 M22 2L15 22l-4-9-9-4z" />,
+  'email-bot':              <Ic d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" />,
   analytics:                <Ic d="M18 20V10 M12 20V4 M6 20v-6 M2 20h20" />,
   settings:                 <Ic d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />,
   employees:                <Ic d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" />,
@@ -77,13 +81,13 @@ const NAVICONS = {
 const NAV = {
   super_admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'},{id:'support-tickets',label:'Support'}] },
-    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'reviews',label:'Reputation'}] },
+    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'newsletter',label:'Newsletter'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'reviews',label:'Reputation'}] },
     { label: 'System',      items: [{id:'audit-logs',label:'Audit Logs'},{id:'security-center',label:'Security Center'},{id:'analytics',label:'Analytics'},{id:'settings',label:'Settings'}] },
     { label: 'HR Module',   items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'leave',label:'Leave'},{id:'recruitment',label:'Recruitment'},{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'},{id:'document-verifications',label:'Verifications'}] },
   ],
   admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'},{id:'support-tickets',label:'Support'}] },
-    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'reviews',label:'Reputation'},{id:'analytics',label:'Analytics'},{id:'settings',label:'Settings'}] },
+    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'newsletter',label:'Newsletter'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'reviews',label:'Reputation'},{id:'analytics',label:'Analytics'},{id:'settings',label:'Settings'}] },
   ],
   hr: [
     { label: 'Overview',         items: [{id:'dashboard',label:'Dashboard'}] },
@@ -97,7 +101,7 @@ const NAV = {
     { label: 'Self Service',    items: [{id:'my-attendance',label:'My Attendance'},{id:'my-leave',label:'My Leave'},{id:'my-documents',label:'My Documents'}] },
   ],
   manager: [
-    { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'leads',label:'Leads'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
+    { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'leads',label:'Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
   ],
   support: [
     { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'support-tickets',label:'Support Tickets'},{id:'audit-logs',label:'Audit Logs'}] },
@@ -107,7 +111,7 @@ const NAV = {
 const TITLES = {
   dashboard:'Dashboard', businesses:'Businesses', users:'Users & Roles',
   'support-tickets':'Support Tickets', leads:'CRM / Leads', appointments:'Appointments',
-  'ai-voice-logs':'AI Voice Agent', 'whatsapp-logs':'WhatsApp Marketing', reviews:'Reputation',
+  'ai-voice-logs':'AI Voice Agent', 'whatsapp-logs':'WhatsApp Marketing', reviews:'Reputation', newsletter:'Newsletter', 'email-bot':'Email Marketing Bot',
   'audit-logs':'Audit Logs', 'security-center':'Security Center', analytics:'Analytics', settings:'Settings',
   employees:'Employees', attendance:'Attendance', leave:'Leave Management',
   recruitment:'Recruitment', payroll:'Payroll', documents:'Employee Documents',
@@ -150,7 +154,7 @@ function getView(id, role, user) {
 
   const map = {
     businesses: <Businesses />, users: <Users />, 'support-tickets': <SupportTickets />,
-    leads: <Leads />, appointments: <Appointments />, 'ai-voice-logs': <AIVoiceLogs />,
+    leads: <CRMLeads user={user} />, 'email-bot': <EmailBot user={user} />, appointments: <Appointments />, newsletter: <Newsletter token={user?.token} />, 'ai-voice-logs': <AIVoiceLogs />,
     'whatsapp-logs': <WhatsAppLogs />, reviews: <Reviews />, 'audit-logs': <AuditLogs />,
     'security-center': <SecurityCenter />, analytics: <Analytics />, settings: <Settings />,
     employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
