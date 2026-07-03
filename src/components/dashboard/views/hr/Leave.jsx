@@ -11,7 +11,7 @@ const LEAVE_TYPES = [
 
 const STATUS_COLORS = { pending: 'orange', approved: 'green', rejected: 'pink' };
 
-export default function Leave() {
+export default function Leave({ user }) {
   const [tab, setTab] = useState('requests');
   const [leaves, setLeaves] = useState([]);
   const [balances, setBalances] = useState([]);
@@ -76,17 +76,23 @@ export default function Leave() {
   };
 
   const handleApply = async () => {
-    if (!form.employeeId || !form.fromDate || !form.toDate) {
+    if (!form.fromDate || !form.toDate) {
       showToast('Please fill all required fields.');
       return;
     }
     setIsSaving(true);
+    const myEmp = employees.find(e => e.email === user?.email);
+    if (!myEmp) {
+      showToast('HR employee record not found.');
+      setIsSaving(false);
+      return;
+    }
     try {
       const days = Math.ceil((new Date(form.toDate) - new Date(form.fromDate)) / 86400000) + 1;
       const res = await hrApiFetch('/api/hr/leaves', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, days }),
+        body: JSON.stringify({ ...form, employeeId: myEmp.databaseId, days }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -160,10 +166,14 @@ export default function Leave() {
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{l.applied ? new Date(l.applied).toLocaleDateString('en-IN') : ''}</span>,
                   <Badge label={l.status.toUpperCase()} color={STATUS_COLORS[l.status] || 'gray'} />,
                   l.status === 'pending' ? (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <Btn label="Approve" size="sm" onClick={() => handleApprove(l.id)} />
-                      <Btn label="Reject" variant="danger" size="sm" onClick={() => handleReject(l.id)} />
-                    </div>
+                    l.role === 'hr' ? (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Awaiting Admin</span>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <Btn label="Approve" size="sm" onClick={() => handleApprove(l.id)} />
+                        <Btn label="Reject" variant="danger" size="sm" onClick={() => handleReject(l.id)} />
+                      </div>
+                    )
                   ) : (
                     <Btn label="View" variant="ghost" size="sm" />
                   ),
@@ -218,14 +228,6 @@ export default function Leave() {
           onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 28, width: 440, maxHeight: '90vh', overflow: 'auto', border: '1px solid var(--glass-border)' }}>
             <h3 style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: 20 }}>Apply Leave</h3>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Employee *</label>
-              <select value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))} style={inputStyle}>
-                <option value="">Select Employee</option>
-                {employees.map(e => <option key={e.databaseId} value={e.databaseId}>{e.name} ({e.id})</option>)}
-              </select>
-            </div>
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>Leave Type *</label>

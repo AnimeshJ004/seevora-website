@@ -104,10 +104,10 @@ export default function Navbar() {
             {l.label}
           </a>
         ))}
-        <button className="btn-primary" style={{ width: '100%' }} onClick={(e) => handleNav(e, { path: '/login' })}>
+        <button className="btn-primary" style={{ width: '100%', marginTop: '16px', marginBottom: '12px' }} onClick={(e) => handleNav(e, { path: '/login' })}>
           Login
         </button>
-        <button className="btn-primary" style={{ width: '100%' }} onClick={(e) => handleNav(e, { path: '/book-a-call' })}>
+        <button className="btn-primary" style={{ width: '100%', marginBottom: '24px' }} onClick={(e) => handleNav(e, { path: '/book-a-call' })}>
           Book a call
         </button>
       </div>

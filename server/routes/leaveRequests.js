@@ -28,6 +28,7 @@ function toLeaveRequest(row) {
     applied: row.applied_at,
     reviewedBy: row.reviewed_by,
     reviewedAt: row.reviewed_at,
+    role: row.role,
   };
 }
 
@@ -53,10 +54,12 @@ router.get('/', async (req, res, next) => {
       SELECT lr.*, e.name AS emp_name, e.email AS emp_email, e.employee_code
       FROM leave_requests lr
       JOIN hr_employees e ON e.id = lr.employee_id
+      JOIN users u ON u.id = e.user_id
+      WHERE u.role NOT IN ('admin', 'super_admin')
     `;
     const params = [];
     if (statusFilter && ['pending', 'approved', 'rejected'].includes(statusFilter)) {
-      sql += ' WHERE lr.status = $1';
+      sql += ' AND lr.status = $1';
       params.push(statusFilter);
     }
     sql += ' ORDER BY lr.applied_at DESC';
@@ -74,18 +77,24 @@ router.get('/summary', async (_req, res, next) => {
     const result = await pool.query(`
       SELECT
         COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
-        COUNT(*) FILTER (WHERE status = 'approved')::int AS approved,
-        COUNT(*) FILTER (WHERE status = 'rejected')::int AS rejected
-      FROM leave_requests
+        COUNT(*) FILTER (WHERE lr.status = 'pending')::int AS pending,
+        COUNT(*) FILTER (WHERE lr.status = 'approved')::int AS approved,
+        COUNT(*) FILTER (WHERE lr.status = 'rejected')::int AS rejected
+      FROM leave_requests lr
+      JOIN hr_employees e ON e.id = lr.employee_id
+      JOIN users u ON u.id = e.user_id
+      WHERE u.role NOT IN ('admin', 'super_admin')
     `);
     const counts = result.rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0 };
 
     const todayResult = await pool.query(`
       SELECT COUNT(*)::int AS on_leave_today
-      FROM leave_requests
-      WHERE status = 'approved'
-        AND CURRENT_DATE BETWEEN from_date AND to_date
+      FROM leave_requests lr
+      JOIN hr_employees e ON e.id = lr.employee_id
+      JOIN users u ON u.id = e.user_id
+      WHERE lr.status = 'approved'
+        AND u.role NOT IN ('admin', 'super_admin')
+        AND CURRENT_DATE BETWEEN lr.from_date AND lr.to_date
     `);
     const onLeaveToday = Number(todayResult.rows[0]?.on_leave_today || 0);
 
@@ -123,7 +132,8 @@ router.get('/balances', async (_req, res, next) => {
       SELECT lb.*, e.name AS emp_name, e.employee_code
       FROM leave_balances lb
       JOIN hr_employees e ON e.id = lb.employee_id
-      WHERE lb.year = $1
+      JOIN users u ON u.id = e.user_id
+      WHERE lb.year = $1 AND u.role NOT IN ('admin', 'super_admin')
       ORDER BY e.name ASC
     `, [year]);
 
@@ -188,6 +198,12 @@ router.post('/', async (req, res, next) => {
       [leaveId, employeeId, leaveType, fromDate, toDate, dayCount, reason || '']
     );
 
+    await client.query(
+      `UPDATE leave_balances SET ${col}_used = ${col}_used + $1, updated_at = NOW()
+       WHERE employee_id = $2 AND year = $3`,
+      [dayCount, employeeId, year]
+    );
+
     await client.query('COMMIT');
     return res.status(201).json({ message: 'Leave request submitted.', id: leaveId });
   } catch (error) {
@@ -212,15 +228,7 @@ router.put('/:id/approve', async (req, res, next) => {
     if (!leave) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Leave request not found.' }); }
     if (leave.status !== 'pending') { await client.query('ROLLBACK'); return res.status(400).json({ message: `Leave already ${leave.status}.` }); }
 
-    // Decrement balance
-    const year = new Date(leave.from_date).getFullYear();
-    const col = LEAVE_TYPE_COLUMN[leave.leave_type];
-    await ensureBalanceRow(client, leave.employee_id, year);
-    await client.query(
-      `UPDATE leave_balances SET ${col}_used = ${col}_used + $1, updated_at = NOW()
-       WHERE employee_id = $2 AND year = $3`,
-      [leave.days, leave.employee_id, year]
-    );
+    // Balance was already decremented upon application, so we do not decrement again.
 
     await client.query(
       `UPDATE leave_requests SET status = 'approved', reviewed_at = NOW(), updated_at = NOW() WHERE id = $1`,
@@ -237,22 +245,38 @@ router.put('/:id/approve', async (req, res, next) => {
   }
 });
 
-/* ── PUT /:id/reject  —  Reject a leave ── */
 router.put('/:id/reject', async (req, res, next) => {
+  const client = await pool.connect();
   try {
-    const leaveResult = await pool.query('SELECT * FROM leave_requests WHERE id = $1 LIMIT 1', [req.params.id]);
-    const leave = leaveResult.rows[0];
-    if (!leave) return res.status(404).json({ message: 'Leave request not found.' });
-    if (leave.status !== 'pending') return res.status(400).json({ message: `Leave already ${leave.status}.` });
+    await client.query('BEGIN');
 
-    await pool.query(
+    const leaveResult = await client.query('SELECT * FROM leave_requests WHERE id = $1 LIMIT 1', [req.params.id]);
+    const leave = leaveResult.rows[0];
+    if (!leave) { await client.query('ROLLBACK'); return res.status(404).json({ message: 'Leave request not found.' }); }
+    if (leave.status !== 'pending') { await client.query('ROLLBACK'); return res.status(400).json({ message: `Leave already ${leave.status}.` }); }
+
+    // Refund balance
+    const year = new Date(leave.from_date).getFullYear();
+    const col = LEAVE_TYPE_COLUMN[leave.leave_type];
+    await ensureBalanceRow(client, leave.employee_id, year);
+    await client.query(
+      `UPDATE leave_balances SET ${col}_used = ${col}_used - $1, updated_at = NOW()
+       WHERE employee_id = $2 AND year = $3`,
+      [leave.days, leave.employee_id, year]
+    );
+
+    await client.query(
       `UPDATE leave_requests SET status = 'rejected', reviewed_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [req.params.id]
     );
 
-    return res.json({ message: 'Leave rejected.' });
+    await client.query('COMMIT');
+    return res.json({ message: 'Leave rejected and balance refunded.' });
   } catch (error) {
+    try { await client.query('ROLLBACK'); } catch {}
     return next(error);
+  } finally {
+    client.release();
   }
 });
 

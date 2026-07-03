@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import logoIcon from '../../assets/logo-icon.png';
 
 const socials = [
@@ -32,6 +32,12 @@ const LocationIcon = () => (
 );
 
 export default function Footer() {
+  const [openSection, setOpenSection] = useState(null);
+
+  const toggleSection = (section) => {
+    setOpenSection(prev => prev === section ? null : section);
+  };
+
   const handleScrollTo = (e, id) => {
     e.preventDefault();
     if (id.startsWith('services#')) {
@@ -73,35 +79,50 @@ export default function Footer() {
           </div>
 
           {/* Services Column */}
-          <div className="footer-col">
-            <h5>Services</h5>
-            <a href="/services#healthcare" onClick={e => handleScrollTo(e, 'services#healthcare')}>Healthcare</a>
-            <a href="/services#education" onClick={e => handleScrollTo(e, 'services#education')}>Education</a>
-            <a href="/services#wellness" onClick={e => handleScrollTo(e, 'services#wellness')}>Personal Care</a>
-            <a href="/services#diagnostics" onClick={e => handleScrollTo(e, 'services#diagnostics')}>Diagnostics</a>
-            <a href="/services#fitness" onClick={e => handleScrollTo(e, 'services#fitness')}>Fitness & Gyms</a>
-            <a href="/services#legal" onClick={e => handleScrollTo(e, 'services#legal')}>Legal & CA</a>
-            <a href="/services#property" onClick={e => handleScrollTo(e, 'services#property')}>Real Estate</a>
+          <div className={`footer-col ${openSection === 'services' ? 'open' : ''}`}>
+            <h5 onClick={() => toggleSection('services')}>
+              Services
+              <span className="footer-toggle-icon" aria-hidden="true">+</span>
+            </h5>
+            <div className="footer-links-wrapper">
+              <a href="/services#healthcare" onClick={e => handleScrollTo(e, 'services#healthcare')}>Healthcare</a>
+              <a href="/services#education" onClick={e => handleScrollTo(e, 'services#education')}>Education</a>
+              <a href="/services#wellness" onClick={e => handleScrollTo(e, 'services#wellness')}>Personal Care</a>
+              <a href="/services#diagnostics" onClick={e => handleScrollTo(e, 'services#diagnostics')}>Diagnostics</a>
+              <a href="/services#fitness" onClick={e => handleScrollTo(e, 'services#fitness')}>Fitness & Gyms</a>
+              <a href="/services#legal" onClick={e => handleScrollTo(e, 'services#legal')}>Legal & CA</a>
+              <a href="/services#property" onClick={e => handleScrollTo(e, 'services#property')}>Real Estate</a>
+            </div>
           </div>
 
           {/* Modules Column */}
-          <div className="footer-col">
-            <h5>Modules</h5>
-            <a href="/modules#ai-receptionist" onClick={e => handleScrollTo(e, 'modules#ai-receptionist')}>AI Receptionist</a>
-            <a href="/modules#lead-intake" onClick={e => handleScrollTo(e, 'modules#lead-intake')}>Lead Intake Bot</a>
-            <a href="/modules#auto-scheduler" onClick={e => handleScrollTo(e, 'modules#auto-scheduler')}>Auto Scheduler</a>
-            <a href="/modules#ai-receptionist" onClick={e => handleScrollTo(e, 'modules#ai-receptionist')}>Voice Assistants</a>
-            <a href="/modules#lead-intake" onClick={e => handleScrollTo(e, 'modules#lead-intake')}>CRM Syncing</a>
-            <a href="/modules#reputation-builder" onClick={e => handleScrollTo(e, 'modules#reputation-builder')}>Reputation Builder</a>
+          <div className={`footer-col ${openSection === 'modules' ? 'open' : ''}`}>
+            <h5 onClick={() => toggleSection('modules')}>
+              Modules
+              <span className="footer-toggle-icon" aria-hidden="true">+</span>
+            </h5>
+            <div className="footer-links-wrapper">
+              <a href="/modules#ai-receptionist" onClick={e => handleScrollTo(e, 'modules#ai-receptionist')}>AI Receptionist</a>
+              <a href="/modules#lead-intake" onClick={e => handleScrollTo(e, 'modules#lead-intake')}>Lead Intake Bot</a>
+              <a href="/modules#auto-scheduler" onClick={e => handleScrollTo(e, 'modules#auto-scheduler')}>Auto Scheduler</a>
+              <a href="/modules#ai-receptionist" onClick={e => handleScrollTo(e, 'modules#ai-receptionist')}>Voice Assistants</a>
+              <a href="/modules#lead-intake" onClick={e => handleScrollTo(e, 'modules#lead-intake')}>CRM Syncing</a>
+              <a href="/modules#reputation-builder" onClick={e => handleScrollTo(e, 'modules#reputation-builder')}>Reputation Builder</a>
+            </div>
           </div>
 
           {/* Company Column */}
-          <div className="footer-col">
-            <h5>Company</h5>
-            <a href="/about">About Us</a>
-            <a href="#why-seevora" onClick={e => handleScrollTo(e, 'why-seevora')}>Why Seevora</a>
-            <a href="/faqs">FAQs</a>
-            <a href="/book-a-call">Book a Call</a>
+          <div className={`footer-col ${openSection === 'company' ? 'open' : ''}`}>
+            <h5 onClick={() => toggleSection('company')}>
+              Company
+              <span className="footer-toggle-icon" aria-hidden="true">+</span>
+            </h5>
+            <div className="footer-links-wrapper">
+              <a href="/about">About Us</a>
+              <a href="#why-seevora" onClick={e => handleScrollTo(e, 'why-seevora')}>Why Seevora</a>
+              <a href="/faqs">FAQs</a>
+              <a href="/book-a-call">Book a Call</a>
+            </div>
           </div>
         </div>
 

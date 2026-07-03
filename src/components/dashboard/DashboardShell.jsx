@@ -17,6 +17,7 @@ import AuditLogs       from './views/admin/AuditLogs';
 import SecurityCenter  from './views/admin/SecurityCenter';
 import Analytics       from './views/admin/Analytics';
 import Settings        from './views/admin/Settings';
+import HRLeaves        from './views/admin/HRLeaves';
 
 // HR views
 import HRDashboard           from './views/hr/HRDashboard';
@@ -31,6 +32,7 @@ import DocumentVerifications from './views/hr/DocumentVerifications';
 // Employee views
 import DocumentUpload    from './views/employee/DocumentUpload';
 import VerificationStatus from './views/employee/VerificationStatus';
+import MyLeave           from './views/employee/MyLeave';
 
 /* ── SVG icon helper ── */
 function Ic({ d, size = 16 }) {
@@ -68,6 +70,7 @@ const NAVICONS = {
   'document-verifications': <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
   'my-attendance':          <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18 M8 14h.01 M12 14h.01 M16 14h.01" />,
   'my-leave':               <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
+  'hr-leave':               <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
   'my-documents':           <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8" />,
   'document-upload':        <Ic d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12" />,
   'verification-status':    <Ic d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />,
@@ -79,17 +82,19 @@ const NAV = {
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'},{id:'support-tickets',label:'Support'}] },
     { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'reviews',label:'Reputation'}] },
     { label: 'System',      items: [{id:'audit-logs',label:'Audit Logs'},{id:'security-center',label:'Security Center'},{id:'analytics',label:'Analytics'},{id:'settings',label:'Settings'}] },
-    { label: 'HR Module',   items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'leave',label:'Leave'},{id:'recruitment',label:'Recruitment'},{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'},{id:'document-verifications',label:'Verifications'}] },
+    { label: 'HR Module',   items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'leave',label:'Leave'},{id:'hr-leave',label:'HR Leaves'},{id:'recruitment',label:'Recruitment'},{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'},{id:'document-verifications',label:'Verifications'}] },
   ],
   admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'},{id:'support-tickets',label:'Support'}] },
     { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'reviews',label:'Reputation'},{id:'analytics',label:'Analytics'},{id:'settings',label:'Settings'}] },
+    { label: 'HR Module',   items: [{id:'hr-leave',label:'HR Leaves'}] },
   ],
   hr: [
     { label: 'Overview',         items: [{id:'dashboard',label:'Dashboard'}] },
     { label: 'People',           items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'leave',label:'Leave Management'}] },
     { label: 'Talent & Finance', items: [{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'}] },
     { label: 'Verification',     items: [{id:'document-verifications',label:'Doc Verifications'}] },
+    { label: 'Self Service',     items: [{id:'my-leave',label:'My Leave'}] },
   ],
   employee: [
     { label: 'Workspace',       items: [{id:'dashboard',label:'Dashboard'}] },
@@ -109,7 +114,7 @@ const TITLES = {
   'support-tickets':'Support Tickets', leads:'CRM / Leads', appointments:'Appointments',
   'ai-voice-logs':'AI Voice Agent', 'whatsapp-logs':'WhatsApp Marketing', reviews:'Reputation',
   'audit-logs':'Audit Logs', 'security-center':'Security Center', analytics:'Analytics', settings:'Settings',
-  employees:'Employees', attendance:'Attendance', leave:'Leave Management',
+  employees:'Employees', attendance:'Attendance', leave:'Leave Management', 'hr-leave':'HR Leave Management',
   recruitment:'Recruitment', payroll:'Payroll', documents:'Employee Documents',
   'document-verifications':'Document Verifications',
   'my-attendance':'My Attendance', 'my-leave':'My Leave', 'my-documents':'My Documents',
@@ -141,7 +146,7 @@ function getView(id, role, user) {
   if (id === 'dashboard' && role === 'employee') return <EmployeeDashboard user={user} />;
   if (id === 'dashboard' && role === 'manager')  return <ManagerDashboard user={user} />;
   if (role === 'employee' && id === 'my-attendance') return <EmployeeSelfService user={user} type="attendance" />;
-  if (role === 'employee' && id === 'my-leave')      return <EmployeeSelfService user={user} type="leave" />;
+  if ((role === 'employee' || role === 'hr') && id === 'my-leave') return <MyLeave user={user} />;
   if (role === 'employee' && id === 'my-documents')  return <EmployeeSelfService user={user} type="documents" />;
   if (id === 'dashboard') return role === 'hr' ? <HRDashboard user={user} /> : <AdminDashboard user={user} />;
 
@@ -153,7 +158,7 @@ function getView(id, role, user) {
     leads: <Leads />, appointments: <Appointments />, 'ai-voice-logs': <AIVoiceLogs />,
     'whatsapp-logs': <WhatsAppLogs />, reviews: <Reviews />, 'audit-logs': <AuditLogs />,
     'security-center': <SecurityCenter />, analytics: <Analytics />, settings: <Settings />,
-    employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
+    employees: <Employees />, attendance: <Attendance />, leave: <Leave user={user} />, 'hr-leave': <HRLeaves />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
   };
   return map[id] || <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>View coming soon.</div>;

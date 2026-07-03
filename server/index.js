@@ -11,10 +11,12 @@ import authRoutes from './routes/auth.js';
 import chatbotRoutes from './routes/chatbot.js';
 import hrEmployeeRoutes from './routes/hrEmployees.js';
 import leaveRoutes from './routes/leaveRequests.js';
+import adminLeavesRoutes from './routes/adminLeaves.js';
 import recruitmentRoutes from './routes/recruitment.js';
 import payrollRoutes from './routes/payroll.js';
 import documentRoutes from './routes/documents.js';
 import employeeDocumentRoutes from './routes/employeeDocuments.js';
+import employeeLeavesRoutes from './routes/employeeLeaves.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -45,9 +47,11 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/hr/attendance', attendanceRoutes);
 app.use('/api/hr/employees', hrEmployeeRoutes);
 app.use('/api/hr/leaves', leaveRoutes);
+app.use('/api/admin/leaves', adminLeavesRoutes);
 app.use('/api/hr/recruitment', recruitmentRoutes);
 app.use('/api/hr/payroll', payrollRoutes);
 app.use('/api/hr/documents', documentRoutes);
+app.use('/api/employee/leaves', employeeLeavesRoutes);
 app.use('/api/employee', employeeDocumentRoutes);
 
 app.use((err, _req, res, _next) => {
