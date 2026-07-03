@@ -18,6 +18,7 @@ function normalizeRequest(row) {
     responseBody: row.response_body,
     emailStatus: row.email_status,
     emailError: row.email_error,
+    thread: row.thread || [],
     createdAt: row.created_at,
     respondedAt: row.responded_at,
   };
@@ -140,11 +141,18 @@ router.post('/', async (req, res, next) => {
     const { isValid, errors, data } = validateAuditRequest(req.body);
     if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
 
+    const initialThread = [{
+      id: crypto.randomUUID(),
+      sender: 'user',
+      text: data.message,
+      timestamp: new Date().toISOString()
+    }];
+
     const result = await pool.query(
-      `INSERT INTO audit_requests (id, name, email, company, phone, message)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO audit_requests (id, name, email, company, phone, message, thread)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [crypto.randomUUID(), data.name, data.email, data.company || null, data.phone || null, data.message]
+      [crypto.randomUUID(), data.name, data.email, data.company || null, data.phone || null, data.message, JSON.stringify(initialThread)]
     );
 
     return res.status(201).json({
@@ -165,6 +173,89 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
+router.post('/:id/convert-to-lead', async (req, res, next) => {
+  try {
+    const requestResult = await pool.query('SELECT * FROM audit_requests WHERE id = $1', [req.params.id]);
+    const auditRequest = requestResult.rows[0];
+    if (!auditRequest) return res.status(404).json({ message: 'Audit request not found.' });
+
+    const existingLead = await pool.query(
+      'SELECT * FROM leads WHERE LOWER(email) = LOWER($1) ORDER BY created_at DESC LIMIT 1',
+      [auditRequest.email]
+    );
+
+    let lead = existingLead.rows[0];
+    if (lead) {
+      const notes = [lead.notes, `Audit request: ${auditRequest.message}`].filter(Boolean).join('\n\n');
+      const updatedLead = await pool.query(
+        `UPDATE leads
+         SET source = 'audit_request',
+             company = COALESCE(company, $2),
+             phone = COALESCE(phone, $3),
+             notes = $4,
+             audit_request_id = $5,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [lead.id, auditRequest.company || null, auditRequest.phone || null, notes, auditRequest.id]
+      );
+      lead = updatedLead.rows[0];
+    } else {
+      const insertedLead = await pool.query(
+        `INSERT INTO leads
+           (id, name, email, phone, company, source, pipeline_stage, score, notes, audit_request_id)
+         VALUES ($1,$2,$3,$4,$5,'audit_request','new',70,$6,$7)
+         RETURNING *`,
+        [
+          crypto.randomUUID(),
+          auditRequest.name,
+          auditRequest.email,
+          auditRequest.phone || null,
+          auditRequest.company || null,
+          auditRequest.message || null,
+          auditRequest.id,
+        ]
+      );
+      lead = insertedLead.rows[0];
+    }
+
+    const updatedRequest = await pool.query(
+      `UPDATE audit_requests
+       SET status = 'converted', updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [auditRequest.id]
+    );
+
+    return res.json({
+      message: 'Audit request converted to lead.',
+      lead: {
+        id: lead.id,
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        company: lead.company,
+        industry: lead.industry,
+        designation: lead.designation,
+        source: lead.source,
+        pipelineStage: lead.pipeline_stage,
+        score: lead.score,
+        notes: lead.notes,
+        nextFollowUpAt: lead.next_follow_up_at,
+        auditRequestId: lead.audit_request_id,
+        lastContactedAt: lead.last_contacted_at,
+        assignedTo: lead.assigned_to,
+        createdBy: lead.created_by,
+        createdAt: lead.created_at,
+        updatedAt: lead.updated_at,
+      },
+      request: normalizeRequest(updatedRequest.rows[0]),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post('/:id/respond', async (req, res, next) => {
   try {
     const { isValid, errors, data } = validateResponse(req.body);
@@ -180,12 +271,22 @@ router.post('/:id/respond', async (req, res, next) => {
       text: `Hi ${request.name},\n\n${data.responseBody}\n\nRegards,\nSeevora Team`,
     });
 
+    const currentThread = request.thread || [];
+    const newReply = {
+      id: crypto.randomUUID(),
+      sender: 'admin',
+      text: data.responseBody,
+      timestamp: new Date().toISOString()
+    };
+    const updatedThread = [...currentThread, newReply];
+
     const updated = await pool.query(
       `UPDATE audit_requests
        SET status = $2,
            response_body = $3,
            email_status = $4,
            email_error = $5,
+           thread = $6,
            responded_at = NOW(),
            updated_at = NOW()
        WHERE id = $1
@@ -196,6 +297,7 @@ router.post('/:id/respond', async (req, res, next) => {
         data.responseBody,
         emailResult.status,
         emailResult.error,
+        JSON.stringify(updatedThread)
       ]
     );
 

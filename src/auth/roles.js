@@ -18,20 +18,24 @@ export const PERMISSIONS = {
   super_admin: [
     'dashboard',
     // Platform
-    'businesses', 'users', 'support-tickets',
+    'businesses', 'users',
     // Operations
     'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    // Productivity
+    'task-management', 'project-management', 'time-tracking',
     // System
-    'audit-logs', 'security-center', 'analytics', 'settings',
+    'audit-logs', 'system-logs', 'security-center', 'settings',
     // HR (super admin sees everything)
-    'employees', 'attendance', 'leave', 'recruitment', 'payroll', 'documents',
+    'employees', 'attendance', 'leave', 'hr-leave', 'payroll', 'documents',
     'document-verifications',
   ],
   admin: [
     'dashboard',
-    'businesses', 'users', 'support-tickets',
+    'businesses', 'users',
     'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
-    'audit-logs', 'security-center', 'analytics', 'settings',
+    'task-management', 'project-management', 'time-tracking',
+    'audit-logs', 'system-logs', 'security-center', 'settings',
+    'hr-leave',
   ],
   hr: [
     'dashboard',
@@ -49,7 +53,7 @@ export const PERMISSIONS = {
   ],
   support: [
     'dashboard',
-    'support-tickets', 'audit-logs',
+    'support-tickets', 'audit-logs', 'system-logs',
   ],
 };
 
@@ -184,14 +188,23 @@ export function logout() {
 
 export function getSession() {
   try {
+    const token = localStorage.getItem('seevoraAuthToken');
     /* Prefer the stored user object from real API login */
     const userRaw = localStorage.getItem('seevoraUser');
     if (userRaw) {
       const u = JSON.parse(userRaw);
-      if (u && u.role) return u;
+      if (u && u.role) {
+        if (token) u.token = token;
+        return u;
+      }
     }
     const raw = sessionStorage.getItem('seevora_session');
-    return raw ? JSON.parse(raw) : null;
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (token) u.token = token;
+      return u;
+    }
+    return null;
   } catch {
     return null;
   }

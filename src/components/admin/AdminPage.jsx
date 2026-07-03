@@ -267,7 +267,7 @@ export default function AdminPage() {
         <div className="admin-sidebar-logo">
           <div className="admin-sidebar-logo-header">
             <img src={logoIcon} alt="Seevora" className="admin-sidebar-logo-img" />
-            <span className="admin-sidebar-logo-text">Seevora AI</span>
+            <span className="admin-sidebar-logo-text">Seevora</span>
           </div>
           <span className="admin-sidebar-logo-subtext">AI-Powered Growth Platform</span>
         </div>

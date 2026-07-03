@@ -34,12 +34,12 @@ export default function AuditLogs() {
   const [editingResponse, setEditingResponse] = useState(false);
 
   const activeRequests = useMemo(
-    () => requests.filter((request) => !request.responseBody),
+    () => requests.filter((request) => request.status === 'new' || request.status === 'user_replied'),
     [requests]
   );
 
   const historyRequests = useMemo(
-    () => requests.filter((request) => request.responseBody),
+    () => requests.filter((request) => request.status !== 'new' && request.status !== 'user_replied'),
     [requests]
   );
 
@@ -222,15 +222,39 @@ export default function AuditLogs() {
                   <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.65, fontSize: '0.9rem' }}>{selected.message}</p>
                 </div>
 
-                {(selectedMode === 'history' || selected.responseBody) && !editingResponse ? (
-                  <ConversationHistory
-                    request={selected}
-                    onEdit={() => {
-                      setResponseBody(selected.responseBody || '');
-                      setEditingResponse(true);
-                      setStatus(null);
-                    }}
-                  />
+                {(selectedMode === 'history' || selected.thread?.length > 1 || selected.responseBody) && !editingResponse ? (
+                  <>
+                    <ConversationHistory
+                      request={selected}
+                      onEdit={() => {
+                        setResponseBody('');
+                        setEditingResponse(true);
+                        setStatus(null);
+                      }}
+                    />
+                    <div style={{ marginTop: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setResponseBody('');
+                          setEditingResponse(true);
+                          setStatus(null);
+                        }}
+                        style={{
+                          background: 'var(--brand-olive)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <form onSubmit={handleRespond}>
                     <label htmlFor="auditResponse" style={{ display: 'block', color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 700, marginBottom: 8 }}>
@@ -375,37 +399,24 @@ function RequestList({ requests, selected, mode, onSelect }) {
 }
 
 function ConversationHistory({ request, onEdit }) {
+  const thread = Array.isArray(request.thread) && request.thread.length > 0 
+    ? request.thread 
+    : [
+        { sender: 'user', text: request.message, timestamp: request.createdAt },
+        ...(request.responseBody ? [{ sender: 'admin', text: request.responseBody, timestamp: request.respondedAt }] : [])
+      ];
+
   return (
     <div>
       <div style={{ display: 'grid', gap: 12 }}>
-        <TranscriptBlock
-          label="User sent"
-          meta={formatDate(request.createdAt)}
-          body={request.message}
-        />
-        <TranscriptBlock
-          label="Admin sent"
-          meta={`${request.emailStatus || 'not sent'} · ${formatDate(request.respondedAt)}`}
-          body={request.responseBody || 'No response body saved.'}
-          action={request.responseBody ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              style={{
-                border: '1px solid rgba(111,127,51,0.32)',
-                borderRadius: 999,
-                background: 'rgba(111,127,51,0.08)',
-                color: 'var(--brand-olive)',
-                cursor: 'pointer',
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                padding: '6px 10px',
-              }}
-            >
-              Edit Response
-            </button>
-          ) : null}
-        />
+        {thread.map((msg, i) => (
+          <TranscriptBlock
+            key={msg.id || i}
+            label={msg.sender === 'user' ? "User sent" : "Admin sent"}
+            meta={formatDate(msg.timestamp)}
+            body={msg.text}
+          />
+        ))}
       </div>
     </div>
   );

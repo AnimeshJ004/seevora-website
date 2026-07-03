@@ -21,6 +21,13 @@ import webhooksRoutes from './routes/webhooks.js';
 import leadsRoutes from './routes/leads.js';
 import emailBotRoutes from './routes/emailBot.js';
 import employeeLeavesRoutes from './routes/employeeLeaves.js';
+import productivityRoutes from './routes/productivity.js';
+import businessesRoutes from './routes/businesses.js';
+import usersRoutes from './routes/users.js';
+import appointmentsRoutes from './routes/appointments.js';
+import reviewsRoutes from './routes/reviews.js';
+import systemRoutes from './routes/system.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -61,6 +68,13 @@ app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/email-bot', emailBotRoutes);
+app.use('/api/productivity', productivityRoutes);
+app.use('/api/businesses', businessesRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/reviews', reviewsRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -82,3 +96,4 @@ function shutdown() {
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+// Trigger restart

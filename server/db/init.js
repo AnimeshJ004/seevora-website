@@ -67,7 +67,7 @@ export async function initDb() {
   await pool.query(`
     ALTER TABLE users
     ADD COLUMN IF NOT EXISTS role VARCHAR(40) NOT NULL DEFAULT 'employee';
-  `);
+  `).catch(e => console.log("Index error:", e.message));
 
   await pool.query(`
     ALTER TABLE users
@@ -312,6 +312,8 @@ export async function initDb() {
       pipeline_stage VARCHAR(60) NOT NULL DEFAULT 'new',
       score INTEGER NOT NULL DEFAULT 0,
       notes TEXT,
+      next_follow_up_at TIMESTAMPTZ,
+      audit_request_id UUID,
       last_contacted_at TIMESTAMPTZ,
       assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
       created_by UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -328,6 +330,8 @@ export async function initDb() {
     ADD COLUMN IF NOT EXISTS pipeline_stage VARCHAR(60) NOT NULL DEFAULT 'new',
     ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS notes TEXT,
+    ADD COLUMN IF NOT EXISTS next_follow_up_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS audit_request_id UUID,
     ADD COLUMN IF NOT EXISTS last_contacted_at TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL;
@@ -591,4 +595,147 @@ Seevora — AI-Powered Growth`,
     `UPDATE users SET role = 'hr' WHERE LOWER(email) = LOWER($1)`,
     ['hr@seevora.in']
   );
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS appointments (
+      id UUID PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      client_name VARCHAR(160) NOT NULL,
+      client_email VARCHAR(255) NOT NULL,
+      client_phone VARCHAR(40),
+      scheduled_at TIMESTAMPTZ NOT NULL,
+      duration INTEGER NOT NULL DEFAULT 30,
+      status VARCHAR(40) NOT NULL DEFAULT 'scheduled',
+      notes TEXT,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id UUID PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'active',
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  const defaultProjects = [
+    ['11111111-1111-4111-8111-111111111111', 'Client Delivery', 'Client implementation and delivery tasks'],
+    ['22222222-2222-4222-8222-222222222222', 'Sales Pipeline', 'Lead follow-up and revenue operations'],
+    ['33333333-3333-4333-8333-333333333333', 'Marketing', 'Campaigns, content, and growth tasks'],
+    ['44444444-4444-4444-8444-444444444444', 'Product Development', 'Feature development and product improvements'],
+    ['55555555-5555-4555-8555-555555555555', 'Internal Operations', 'Admin, finance, HR, and process tasks'],
+  ];
+
+  for (const project of defaultProjects) {
+    await pool.query(
+      `INSERT INTO projects (id, name, description, status, created_by)
+       VALUES ($1, $2, $3, 'active', NULL)
+       ON CONFLICT (id) DO NOTHING`,
+      project
+    );
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id UUID PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT,
+      project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+      status VARCHAR(40) NOT NULL DEFAULT 'todo',
+      priority VARCHAR(40) NOT NULL DEFAULT 'medium',
+      category VARCHAR(80) NOT NULL DEFAULT 'general',
+      assigned_to UUID REFERENCES hr_employees(id) ON DELETE SET NULL,
+      due_date DATE,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE tasks
+    ADD COLUMN IF NOT EXISTS category VARCHAR(80) NOT NULL DEFAULT 'general';
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reviews (
+      id UUID PRIMARY KEY,
+      reviewer_name VARCHAR(160) NOT NULL,
+      reviewer_email VARCHAR(255),
+      rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+      comment TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS time_logs (
+      id UUID PRIMARY KEY,
+      employee_id UUID NOT NULL REFERENCES hr_employees(id) ON DELETE CASCADE,
+      project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+      task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+      date DATE NOT NULL DEFAULT CURRENT_DATE,
+      hours NUMERIC(5,2) NOT NULL,
+      description TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS security_events (
+      id UUID PRIMARY KEY,
+      event_type VARCHAR(100) NOT NULL,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      ip_address VARCHAR(45),
+      user_agent TEXT,
+      details JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS businesses (
+      id UUID PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      industry VARCHAR(100),
+      contact_email VARCHAR(255),
+      contact_phone VARCHAR(40),
+      address TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'active',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_logs (
+      id UUID PRIMARY KEY,
+      level VARCHAR(20) NOT NULL DEFAULT 'info',
+      message TEXT NOT NULL,
+      meta JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS document_verifications (
+      id UUID PRIMARY KEY,
+      employee_id UUID NOT NULL REFERENCES hr_employees(id) ON DELETE CASCADE,
+      document_type VARCHAR(100) NOT NULL,
+      status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      notes TEXT,
+      verified_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      verified_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
 }

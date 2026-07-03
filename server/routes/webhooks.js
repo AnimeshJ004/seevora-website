@@ -48,4 +48,52 @@ Message: ${textBody}
   }
 });
 
+router.post('/audit-reply', async (req, res) => {
+  try {
+    const fromAddress = req.body.from || req.body.sender;
+    const textBody = req.body.text || req.body.text_body;
+
+    if (!fromAddress || !textBody) {
+      return res.status(400).json({ message: 'Missing from or text field' });
+    }
+
+    const { default: pool } = await import('../config/db.js');
+    const { randomUUID } = await import('crypto');
+
+    // Find the latest audit request from this email
+    const requestResult = await pool.query(
+      'SELECT * FROM audit_requests WHERE email = $1 ORDER BY created_at DESC LIMIT 1',
+      [fromAddress]
+    );
+
+    const request = requestResult.rows[0];
+    if (!request) {
+      return res.status(404).json({ message: 'No audit request found for this email' });
+    }
+
+    const currentThread = request.thread || [];
+    const newReply = {
+      id: randomUUID(),
+      sender: 'user',
+      text: textBody,
+      timestamp: new Date().toISOString()
+    };
+    const updatedThread = [...currentThread, newReply];
+
+    await pool.query(
+      `UPDATE audit_requests
+       SET thread = $2,
+           updated_at = NOW(),
+           status = 'user_replied'
+       WHERE id = $1`,
+      [request.id, JSON.stringify(updatedThread)]
+    );
+
+    res.status(200).json({ message: 'Reply added to audit request thread' });
+  } catch (error) {
+    console.error('Audit reply webhook error:', error);
+    res.status(500).json({ message: 'Error processing webhook' });
+  }
+});
+
 export default router;
