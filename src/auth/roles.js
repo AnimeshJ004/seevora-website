@@ -20,7 +20,7 @@ export const PERMISSIONS = {
     // Platform
     'businesses', 'users', 'support-tickets',
     // Operations
-    'leads', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     // System
     'audit-logs', 'security-center', 'analytics', 'settings',
     // HR (super admin sees everything)
@@ -30,7 +30,7 @@ export const PERMISSIONS = {
   admin: [
     'dashboard',
     'businesses', 'users', 'support-tickets',
-    'leads', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     'audit-logs', 'security-center', 'analytics', 'settings',
   ],
   hr: [
@@ -45,7 +45,7 @@ export const PERMISSIONS = {
   ],
   manager: [
     'dashboard',
-    'leads', 'appointments', 'analytics',
+    'leads', 'email-bot', 'appointments', 'analytics',
   ],
   support: [
     'dashboard',

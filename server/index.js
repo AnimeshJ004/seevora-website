@@ -16,6 +16,10 @@ import recruitmentRoutes from './routes/recruitment.js';
 import payrollRoutes from './routes/payroll.js';
 import documentRoutes from './routes/documents.js';
 import employeeDocumentRoutes from './routes/employeeDocuments.js';
+import newsletterRoutes from './routes/newsletter.js';
+import webhooksRoutes from './routes/webhooks.js';
+import leadsRoutes from './routes/leads.js';
+import emailBotRoutes from './routes/emailBot.js';
 import employeeLeavesRoutes from './routes/employeeLeaves.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +57,10 @@ app.use('/api/hr/payroll', payrollRoutes);
 app.use('/api/hr/documents', documentRoutes);
 app.use('/api/employee/leaves', employeeLeavesRoutes);
 app.use('/api/employee', employeeDocumentRoutes);
+app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/webhooks', webhooksRoutes);
+app.use('/api/leads', leadsRoutes);
+app.use('/api/email-bot', emailBotRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

@@ -281,6 +281,290 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS employee_documents_employee_idx ON employee_documents (employee_id);
   `);
 
+  /* ── Newsletter ────────────────────────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS subscribers (
+      id UUID PRIMARY KEY,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      status VARCHAR(40) NOT NULL DEFAULT 'active',
+      subscribed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      unsubscribed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS subscribers_email_idx ON subscribers (LOWER(email));
+  `);
+
+  /* ── CRM Leads ──────────────────────────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leads (
+      id UUID PRIMARY KEY,
+      name VARCHAR(200) NOT NULL,
+      email VARCHAR(255),
+      phone VARCHAR(50),
+      company VARCHAR(200),
+      industry VARCHAR(120),
+      designation VARCHAR(140),
+      source VARCHAR(80) NOT NULL DEFAULT 'manual',
+      pipeline_stage VARCHAR(60) NOT NULL DEFAULT 'new',
+      score INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      last_contacted_at TIMESTAMPTZ,
+      assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE leads 
+    ADD COLUMN IF NOT EXISTS industry VARCHAR(120),
+    ADD COLUMN IF NOT EXISTS designation VARCHAR(140),
+    ADD COLUMN IF NOT EXISTS source VARCHAR(80) NOT NULL DEFAULT 'manual',
+    ADD COLUMN IF NOT EXISTS pipeline_stage VARCHAR(60) NOT NULL DEFAULT 'new',
+    ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS notes TEXT,
+    ADD COLUMN IF NOT EXISTS last_contacted_at TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL;
+  `).catch(err => console.error('leads alter table error:', err));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leads_stage_idx ON leads (pipeline_stage);
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS leads_created_idx ON leads (created_at DESC);
+  `);
+
+  /* ── Email Templates ────────────────────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_templates (
+      id UUID PRIMARY KEY,
+      name VARCHAR(200) NOT NULL,
+      category VARCHAR(80) NOT NULL DEFAULT 'outbound',
+      subject VARCHAR(400) NOT NULL,
+      body TEXT NOT NULL,
+      variables JSONB NOT NULL DEFAULT '[]',
+      tone VARCHAR(60) NOT NULL DEFAULT 'professional',
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  /* ── Email Campaigns ────────────────────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_campaigns (
+      id UUID PRIMARY KEY,
+      name VARCHAR(200) NOT NULL,
+      template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
+      status VARCHAR(40) NOT NULL DEFAULT 'draft',
+      tone VARCHAR(60) NOT NULL DEFAULT 'professional',
+      language VARCHAR(40) NOT NULL DEFAULT 'english',
+      sender_persona VARCHAR(200),
+      scheduled_at TIMESTAMPTZ,
+      launched_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      total_leads INTEGER NOT NULL DEFAULT 0,
+      sent_count INTEGER NOT NULL DEFAULT 0,
+      failed_count INTEGER NOT NULL DEFAULT 0,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS email_campaigns_status_idx ON email_campaigns (status);
+  `);
+
+  /* ── Campaign Leads (many-to-many) ─────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_campaign_leads (
+      id UUID PRIMARY KEY,
+      campaign_id UUID NOT NULL REFERENCES email_campaigns(id) ON DELETE CASCADE,
+      lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      UNIQUE (campaign_id, lead_id)
+    );
+  `);
+
+  /* ── Email Logs ─────────────────────────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_logs (
+      id UUID PRIMARY KEY,
+      campaign_id UUID REFERENCES email_campaigns(id) ON DELETE SET NULL,
+      lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+      template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
+      to_email VARCHAR(255) NOT NULL,
+      to_name VARCHAR(200),
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      ai_prompt TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'sent',
+      error_message TEXT,
+      opened_at TIMESTAMPTZ,
+      replied_at TIMESTAMPTZ,
+      sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS email_logs_campaign_idx ON email_logs (campaign_id);
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS email_logs_lead_idx ON email_logs (lead_id);
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS email_logs_sent_idx ON email_logs (sent_at DESC);
+  `);
+
+  /* ── Seed default email templates ───────────────────────────────────── */
+  const templates = [
+    {
+      name: 'Cold Outreach — Value Proposition',
+      category: 'outbound',
+      subject: 'Transforming {{industry}} businesses with AI automation — {{company}}',
+      body: `Hi {{name}},
+
+I came across {{company}} and was impressed by what you're building in the {{industry}} space.
+
+At Seevora, we help businesses like yours automate the repetitive workflows that slow teams down — from missed call handling and appointment scheduling to WhatsApp follow-ups and CRM syncing — all powered by AI.
+
+Our clients typically see a 40% reduction in manual follow-up time within the first 30 days.
+
+Would it make sense to jump on a 15-minute discovery call this week to see if there's a fit?
+
+Warm regards,
+{{sender_name}}
+Seevora — AI Automation for Growing Businesses`,
+      tone: 'professional',
+    },
+    {
+      name: 'Follow-Up #1 — Gentle Nudge',
+      category: 'follow-up',
+      subject: 'Quick follow-up — Seevora × {{company}}',
+      body: `Hi {{name}},
+
+Just wanted to follow up on my earlier note. I know inboxes get busy!
+
+I genuinely believe the kind of AI automation Seevora offers could make a real difference for {{company}}, especially in {{industry}}.
+
+Happy to share a quick 2-minute case study relevant to your space — no call needed.
+
+Would that be helpful?
+
+Best,
+{{sender_name}}`,
+      tone: 'friendly',
+    },
+    {
+      name: 'Follow-Up #2 — Urgency + Social Proof',
+      category: 'follow-up',
+      subject: 'Last note — how [Client in {{industry}}] saved 20 hrs/week',
+      body: `Hi {{name}},
+
+This will be my last follow-up — I don't want to clutter your inbox.
+
+A quick data point: a {{industry}} business we onboarded last quarter automated their entire inbound call and WhatsApp flow with Seevora. They reclaimed 20+ hours per week for their team and increased lead conversion by 28%.
+
+If this resonates, I'd love to show you exactly how in a 20-minute demo.
+
+If the timing isn't right, no worries — feel free to reach out whenever it is.
+
+Best,
+{{sender_name}}
+Seevora`,
+      tone: 'professional',
+    },
+    {
+      name: 'Proposal Sent — CTA to Book Call',
+      category: 'proposal',
+      subject: 'Your custom Seevora proposal — next steps for {{company}}',
+      body: `Hi {{name}},
+
+As discussed, I've put together a tailored proposal for {{company}} based on your specific needs in {{industry}}.
+
+Key highlights:
+• AI Voice Receptionist for 24/7 call handling
+• WhatsApp automation for follow-ups & confirmations
+• Custom dashboard integration with your existing tools
+
+The next step is a quick 30-minute call to walk through it together and answer any questions.
+
+👉 [Book a Call with Seevora](https://seevora.in/book-a-call)
+
+Looking forward to it!
+
+{{sender_name}}
+Seevora`,
+      tone: 'professional',
+    },
+    {
+      name: 'Re-engagement — Cold/Dead Lead',
+      category: 'reengagement',
+      subject: 'Still thinking about AI for {{company}}?',
+      body: `Hi {{name}},
+
+It's been a while — hope things are going well at {{company}}!
+
+A lot has changed on our end since we last connected. We've launched new modules for {{industry}} businesses that are getting some great results.
+
+If AI automation has been on your radar recently, this might be the right time to reconnect.
+
+Would a 15-minute catch-up make sense?
+
+Cheers,
+{{sender_name}}
+Seevora`,
+      tone: 'friendly',
+    },
+    {
+      name: 'Welcome — New Qualified Lead',
+      category: 'welcome',
+      subject: 'Welcome to Seevora, {{name}}! Here\'s what\'s next',
+      body: `Hi {{name}},
+
+Welcome! We're excited to have {{company}} in the Seevora family.
+
+Based on our conversation, here's a quick summary of what we're building together:
+• Automated workflows tailored for {{industry}}
+• Onboarding within 5 business days after workflow audit
+
+Your dedicated account manager will be in touch within 24 hours to kick off the discovery session.
+
+In the meantime, feel free to reply with any questions.
+
+Warmly,
+{{sender_name}}
+Seevora — AI-Powered Growth`,
+      tone: 'friendly',
+    },
+  ];
+
+  for (const tmpl of templates) {
+    await pool.query(
+      `INSERT INTO email_templates (id, name, category, subject, body, variables, tone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT DO NOTHING`,
+      [
+        crypto.randomUUID(),
+        tmpl.name,
+        tmpl.category,
+        tmpl.subject,
+        tmpl.body,
+        JSON.stringify(['name', 'company', 'industry', 'sender_name']),
+        tmpl.tone,
+      ]
+    );
+  }
+
   const adminHash = await bcrypt.hash('admin123', 12);
   const hrHash = await bcrypt.hash('hr123', 12);
 
