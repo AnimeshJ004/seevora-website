@@ -247,6 +247,16 @@ function Hero() {
 
 
 function WhyChooseSeevora() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev === 0 ? whyReasons.length - 1 : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev === whyReasons.length - 1 ? 0 : prev + 1));
+  };
+
   return (
     <section className="why-choose-seevora section" id="why-seevora">
       <div className="container">
@@ -260,39 +270,66 @@ function WhyChooseSeevora() {
           </p>
         </div>
 
-        {/* 3-column reasons grid */}
-        <div className="why-motion-grid">
-          {whyReasons.map((reason, i) => (
-            <div
-              key={i}
-              data-animate="motion-card"
-              style={{ '--motion-delay': `${i * 0.09}s`, '--float-delay': `${i * 0.35}s` }}
-              className="why-reason-card"
-            >
-              {/* Top row: number + stat */}
-              <div className="why-card-top">
-                <div className="why-card-number">
-                  {String(i + 1).padStart(2, '0')}
+        {/* 3D Carousel */}
+        <div className="why-carousel-container">
+          <button className="carousel-nav-btn prev" onClick={handlePrev} aria-label="Previous">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          
+          <div className="why-carousel-track">
+            {whyReasons.map((reason, i) => {
+              let positionClass = 'hidden';
+              if (i === currentIndex) positionClass = 'active';
+              else if (i === (currentIndex - 1 + whyReasons.length) % whyReasons.length) positionClass = 'prev';
+              else if (i === (currentIndex + 1) % whyReasons.length) positionClass = 'next';
+
+              return (
+                <div
+                  key={i}
+                  className={`why-carousel-card ${positionClass}`}
+                  onClick={() => {
+                    if (positionClass === 'prev') handlePrev();
+                    if (positionClass === 'next') handleNext();
+                  }}
+                >
+                  <div className="why-carousel-avatar">
+                    <div className="avatar-icon-wrapper">
+                      {reason.icon}
+                    </div>
+                  </div>
+                  
+                  <div className="why-carousel-content">
+                    <div className="why-carousel-number">
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                    
+                    <h3 className="why-carousel-title">{reason.title}</h3>
+                    <p className="why-carousel-desc">{reason.desc}</p>
+
+                    <div className="why-carousel-stats-block">
+                      <div className="why-stat-item">
+                        <div className="why-stat-label">IMPACT / STAT:</div>
+                        <div className="why-stat-value">{reason.stat} {reason.statLabel}</div>
+                      </div>
+                      
+                      <div className="why-stat-item">
+                        <div className="why-stat-label">SEEVORA PROMISE:</div>
+                        <div className="why-stat-value">{reason.highlight}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="why-card-stat">
-                  <div className="why-card-stat-value">{reason.stat}</div>
-                  <div className="why-card-stat-label">{reason.statLabel}</div>
-                </div>
-              </div>
+              );
+            })}
+          </div>
 
-              <h3 className="why-card-title">{reason.title}</h3>
-
-              <p className="why-card-desc">{reason.desc}</p>
-
-              {/* Highlight tag */}
-              <div className="why-card-highlight">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7F33" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                <span>{reason.highlight}</span>
-              </div>
-            </div>
-          ))}
+          <button className="carousel-nav-btn next" onClick={handleNext} aria-label="Next">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
         </div>
       </div>
     </section>

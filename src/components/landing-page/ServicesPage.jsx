@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import educationAcademyImg from '../../assets/education_academy_classroom_service.png';
 import personalCareWellnessImg from '../../assets/personal_care_reputation_service.png';
@@ -161,6 +161,8 @@ const sectors = [
 ];
 
 export default function ServicesPage() {
+  const [expandedMobileIdx, setExpandedMobileIdx] = useState(null);
+
   useEffect(() => {
     const handleHashScroll = () => {
       const hash = window.location.hash.substring(1);
@@ -182,6 +184,10 @@ export default function ServicesPage() {
   const handleBookCall = (e) => {
     e.preventDefault();
     window.location.assign('/book-a-call');
+  };
+
+  const toggleMobileCard = (idx) => {
+    setExpandedMobileIdx((current) => (current === idx ? null : idx));
   };
 
   return (
@@ -207,8 +213,18 @@ export default function ServicesPage() {
               <div
                 key={idx}
                 id={s.hash}
-                className={`services-scroll-card border-${s.color} ${isFlipped ? 'flipped' : ''}`}
+                className={`services-scroll-card border-${s.color} ${isFlipped ? 'flipped' : ''} ${expandedMobileIdx === idx ? 'mobile-expanded' : ''}`}
                 data-animate={isFlipped ? 'service-card-3d-right' : 'service-card-3d-left'}
+                role="button"
+                tabIndex={0}
+                aria-expanded={expandedMobileIdx === idx}
+                onClick={() => toggleMobileCard(idx)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleMobileCard(idx);
+                  }
+                }}
               >
                 <div className={`carousel-grid ${isFlipped ? 'flipped' : ''}`}>
                   
@@ -222,6 +238,8 @@ export default function ServicesPage() {
                       />
                       <div className="carousel-image-tint" />
                       
+                      <div className="mobile-hint-line" />
+                      
                       {/* Floating stats badge */}
                       <div className="carousel-stats-overlay">
                         <span className="overlay-val">{s.metric}</span>
@@ -233,6 +251,7 @@ export default function ServicesPage() {
                   {/* Text Panel — staggered fade-up */}
                   <div
                     className="carousel-text-panel"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="card-number">{cardNum}</div>
                     <div className="carousel-header">
