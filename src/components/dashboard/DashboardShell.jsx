@@ -180,7 +180,8 @@ function getView(id, role, user) {
 
   const map = {
     businesses: <Businesses user={user} />, users: <Users user={user} />, 'support-tickets': <SupportTickets />,
-    leads: <CRMLeads user={user} />, 'email-bot': <EmailBot user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
+    leads: <CRMLeads user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
+    campaigns: <Campaigns user={user} />, 'email-templates': <EmailTemplates user={user} />, subscribers: <Subscribers user={user} />,
     'whatsapp-logs': <WhatsAppLogs />, reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
     'security-center': <SecurityCenter user={user} />, analytics: <Analytics />, settings: <Settings user={user} />,
     employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
