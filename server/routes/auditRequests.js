@@ -1,8 +1,8 @@
 import crypto from 'crypto';
-import net from 'net';
-import tls from 'tls';
 import express from 'express';
 import pool from '../config/db.js';
+import { sendMail } from '../utils/mailer.js';
+import { callBookingConfirmation, contactAdminNotification, contactThreadReply } from '../utils/emailTemplates.js';
 
 const router = express.Router();
 
@@ -54,88 +54,40 @@ function validateResponse(body) {
   return { isValid: true, errors: {}, data: { responseBody } };
 }
 
-function smtpConfigured() {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM);
-}
 
-function waitForLine(socket) {
-  return new Promise((resolve, reject) => {
-    const onData = (chunk) => {
-      const text = chunk.toString('utf8');
-      if (/^\d{3}[\s-]/m.test(text)) {
-        cleanup();
-        resolve(text);
-      }
-    };
-    const onError = (error) => {
-      cleanup();
-      reject(error);
-    };
-    const cleanup = () => {
-      socket.off('data', onData);
-      socket.off('error', onError);
-    };
-    socket.on('data', onData);
-    socket.on('error', onError);
-  });
-}
+async function sendEnquiryBotEmails(requestId, data) {
+  const bookingTpl = callBookingConfirmation({ name: data.name, email: data.email, company: data.company, phone: data.phone, message: data.message });
+  const customerResult = await sendMail({ to: data.email, ...bookingTpl });
 
-async function smtpCommand(socket, command, expectedCode) {
-  if (command) socket.write(`${command}\r\n`);
-  const response = await waitForLine(socket);
-  if (!response.startsWith(String(expectedCode))) {
-    throw new Error(`SMTP command failed: ${response.trim()}`);
-  }
-  return response;
-}
-
-async function sendEmail({ to, subject, text }) {
-  if (!smtpConfigured()) {
-    return { status: 'queued', error: 'SMTP is not configured.' };
+  const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER;
+  let adminResult = null;
+  if (adminEmail) {
+    const adminTpl = contactAdminNotification({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      company: data.company,
+      message: data.message,
+    });
+    adminResult = await sendMail({ to: adminEmail, ...adminTpl });
   }
 
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const from = process.env.SMTP_FROM;
-  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const socket = secure ? tls.connect({ host, port }) : net.connect({ host, port });
+  const status = customerResult.success ? 'sent' : 'failed';
+  const error = customerResult.success
+    ? null
+    : customerResult.error || 'Unable to send customer auto-reply';
 
-  try {
-    await smtpCommand(socket, null, 220);
-    await smtpCommand(socket, `EHLO ${process.env.SMTP_EHLO_DOMAIN || 'seevora.local'}`, 250);
+  await pool.query(
+    `UPDATE audit_requests
+     SET email_status = $2,
+         email_error = $3,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [requestId, status, error]
+  );
 
-    if (user && pass) {
-      await smtpCommand(socket, 'AUTH LOGIN', 334);
-      await smtpCommand(socket, Buffer.from(user).toString('base64'), 334);
-      await smtpCommand(socket, Buffer.from(pass).toString('base64'), 235);
-    }
-
-    await smtpCommand(socket, `MAIL FROM:<${from}>`, 250);
-    await smtpCommand(socket, `RCPT TO:<${to}>`, 250);
-    await smtpCommand(socket, 'DATA', 354);
-    socket.write([
-      `From: ${from}`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/plain; charset=utf-8',
-      '',
-      text,
-      '.',
-      '',
-    ].join('\r\n'));
-    await smtpCommand(socket, null, 250);
-    socket.write('QUIT\r\n');
-    return { status: 'sent', error: null };
-  } catch (error) {
-    return { status: 'failed', error: error.message };
-  } finally {
-    socket.end();
-  }
+  return { customer: customerResult, admin: adminResult, status, error };
 }
-
 router.post('/', async (req, res, next) => {
   try {
     const { isValid, errors, data } = validateAuditRequest(req.body);
@@ -155,9 +107,26 @@ router.post('/', async (req, res, next) => {
       [crypto.randomUUID(), data.name, data.email, data.company || null, data.phone || null, data.message, JSON.stringify(initialThread)]
     );
 
+    const requestId = result.rows[0].id;
+    const emailResult = await sendEnquiryBotEmails(requestId, data);
+    const updatedRequest = {
+      ...result.rows[0],
+      email_status: emailResult.status,
+      email_error: emailResult.error,
+    };
+
     return res.status(201).json({
-      message: 'Audit request received. We will get back to you within 24 hours.',
-      request: normalizeRequest(result.rows[0]),
+      message: emailResult.customer.success
+        ? 'Message received. The auto-reply bot sent a confirmation email.'
+        : `Message received, but the auto-reply email failed: ${emailResult.error}. Check SMTP account settings.`,
+      email: {
+        autoReply: emailResult.status,
+        adminNotification: emailResult.admin
+          ? (emailResult.admin.success ? 'sent' : 'failed')
+          : 'not_configured',
+        error: emailResult.error,
+      },
+      request: normalizeRequest(updatedRequest),
     });
   } catch (error) {
     return next(error);
@@ -265,11 +234,9 @@ router.post('/:id/respond', async (req, res, next) => {
     const request = requestResult.rows[0];
     if (!request) return res.status(404).json({ message: 'Audit request not found.' });
 
-    const emailResult = await sendEmail({
-      to: request.email,
-      subject: 'Seevora audit request response',
-      text: `Hi ${request.name},\n\n${data.responseBody}\n\nRegards,\nSeevora Team`,
-    });
+    const emailResult = await sendMail({ to: request.email, ...contactThreadReply({ toName: request.name, responseBody: data.responseBody, originalMessage: request.message }) });
+    emailResult.status = emailResult.success ? 'sent' : 'failed';
+    emailResult.error = emailResult.error || null;
 
     const currentThread = request.thread || [];
     const newReply = {

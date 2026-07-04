@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const API = (path, token, opts = {}) =>
   fetch(`/api${path}`, {
@@ -7,11 +7,11 @@ const API = (path, token, opts = {}) =>
   }).then(r => r.json());
 
 const STAGES = [
-  { id: 'new',        label: 'New',        color: '#6366f1', icon: 'Γ£ª' },
-  { id: 'contacted',  label: 'Contacted',  color: '#f59e0b', icon: '≡ƒôº' },
-  { id: 'qualified',  label: 'Qualified',  color: '#3b82f6', icon: 'Γ¡É' },
-  { id: 'proposal',   label: 'Proposal',   color: '#8b5cf6', icon: '≡ƒôä' },
-  { id: 'closed',     label: 'Closed Won', color: '#10b981', icon: '≡ƒÅå' },
+  { id: 'new',        label: 'New',        color: '#6366f1', icon: 'G£ª' },
+  { id: 'contacted',  label: 'Contacted',  color: '#f59e0b', icon: 'Email' },
+  { id: 'qualified',  label: 'Qualified',  color: '#3b82f6', icon: 'G¡É' },
+  { id: 'proposal',   label: 'Proposal',   color: '#8b5cf6', icon: '=ƒôä' },
+  { id: 'closed',     label: 'Closed Won', color: '#10b981', icon: '=ƒÅå' },
 ];
 
 const INDUSTRIES = ['Healthcare', 'Education', 'Fitness', 'Legal', 'Real Estate', 'Diagnostics', 'Wellness', 'Finance', 'Retail', 'Technology', 'Other'];
@@ -41,64 +41,65 @@ function AddLeadModal({ onClose, onSave, token }) {
   const [error, setError] = useState('');
 
   const handleSave = async () => {
-    if (!form.name) { setError('Name is required.'); return; }
+    if (!form.name.trim()) { setError('Name is required.'); return; }
     setSaving(true);
+    setError('');
     const res = await API('/leads', token, { method: 'POST', body: JSON.stringify(form) });
     setSaving(false);
     if (res.lead) { onSave(res.lead); onClose(); }
-    else setError(res.message || 'Failed to create lead');
+    else setError(res.message || res.error || 'Failed to create lead');
   };
 
-  const inp = { background: 'var(--bg-space,#0d1b2e)', border: '1px solid var(--glass-border,rgba(255,255,255,0.1))', borderRadius: 8, padding: '9px 12px', color: 'var(--text-primary,#f1f5f9)', fontSize: '0.85rem', width: '100%', outline: 'none', boxSizing: 'border-box' };
+  const inp = { background: '#ffffff', border: '1px solid #dbe3ef', borderRadius: 8, padding: '9px 12px', color: '#0f172a', fontSize: '0.85rem', width: '100%', outline: 'none', boxSizing: 'border-box' };
+  const labelStyle = { fontSize: '0.75rem', color: '#475569', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: 5 };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-      <div style={{ background: 'var(--bg-card,#0f2744)', border: '1px solid var(--glass-border,rgba(255,255,255,0.1))', borderRadius: 20, padding: 28, width: 520, maxHeight: '90vh', overflowY: 'auto', color: 'var(--text-primary,#f1f5f9)', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', padding: 20 }}>
+      <div style={{ background: '#ffffff', border: '1px solid #dbe3ef', borderRadius: 10, padding: 24, width: 540, maxHeight: '90vh', overflowY: 'auto', color: '#0f172a', boxShadow: '0 24px 80px rgba(15,23,42,0.22)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <h3 style={{ margin: 0, fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: '1.15rem' }}>Add New Lead</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted,#64748b)', fontSize: '1.4rem', cursor: 'pointer' }}>├ù</button>
+          <h3 style={{ margin: 0, fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: '1.15rem' }}>Add New Lead</h3>
+          <button onClick={onClose} style={{ border: '1px solid #dbe3ef', background: '#ffffff', color: '#64748b', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>Close</button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {[['name','Name *'],['email','Email'],['phone','Phone'],['company','Company'],['designation','Designation']].map(([k, label]) => (
-            <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted,#64748b)', fontWeight: 600 }}>{label}</label>
+          {[[ 'name','Name *' ],[ 'email','Email' ],[ 'phone','Phone' ],[ 'company','Company' ],[ 'designation','Designation' ]].map(([k, label]) => (
+            <label key={k} style={labelStyle}>
+              {label}
               <input style={inp} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={label} />
-            </div>
+            </label>
           ))}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted,#64748b)', fontWeight: 600 }}>Industry</label>
+          <label style={labelStyle}>
+            Industry
             <select style={inp} value={form.industry} onChange={e => setForm(f => ({ ...f, industry: e.target.value }))}>
               <option value="">Select industry</option>
               {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted,#64748b)', fontWeight: 600 }}>Source</label>
+          </label>
+          <label style={labelStyle}>
+            Source
             <select style={inp} value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}>
               {SOURCES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
             </select>
-          </div>
+          </label>
         </div>
 
-        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted,#64748b)', fontWeight: 600 }}>Notes</label>
-          <textarea style={{ ...inp, height: 70, resize: 'vertical' }} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any notes about this leadΓÇª" />
-        </div>
+        <label style={{ ...labelStyle, marginTop: 14 }}>
+          Notes
+          <textarea style={{ ...inp, height: 80, resize: 'vertical' }} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any notes about this lead" />
+        </label>
 
-        {error && <div style={{ marginTop: 12, color: '#f87171', fontSize: '0.8rem' }}>{error}</div>}
+        {error && <div style={{ marginTop: 12, color: '#b91c1c', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: 10, fontSize: 13 }}>{error}</div>}
 
         <div style={{ display: 'flex', gap: 10, marginTop: 22, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid var(--glass-border,rgba(255,255,255,0.15))', background: 'none', color: 'var(--text-muted,#64748b)', cursor: 'pointer', fontSize: '0.85rem' }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
-            {saving ? 'SavingΓÇª' : 'Add Lead'}
+          <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid #dbe3ef', background: '#ffffff', color: '#334155', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700 }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#4f46e5', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: '0.85rem', opacity: saving ? 0.75 : 1 }}>
+            {saving ? 'Saving...' : 'Add Lead'}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
 function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
   const [stage, setStage] = useState(lead.pipelineStage);
   const [score, setScore] = useState(lead.score);
@@ -122,15 +123,15 @@ function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
       <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border,rgba(255,255,255,0.08))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontFamily: "'Outfit',sans-serif", fontWeight: 800 }}>{lead.name}</h3>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)', marginTop: 2 }}>{lead.company || 'ΓÇö'} ┬╖ {lead.designation || 'No designation'}</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)', marginTop: 2 }}>{lead.company || '-'} - {lead.designation || 'No designation'}</div>
         </div>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted,#64748b)', fontSize: '1.3rem', cursor: 'pointer' }}>├ù</button>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted,#64748b)', fontSize: '1.3rem', cursor: 'pointer' }}>+ù</button>
       </div>
 
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
         {/* Contact info */}
         <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 16, display: 'grid', gap: 10 }}>
-          {[['≡ƒôº', 'Email', lead.email], ['≡ƒô₧', 'Phone', lead.phone], ['≡ƒÅ¡', 'Industry', lead.industry], ['≡ƒîÉ', 'Source', lead.source]].map(([icon, label, val]) => val ? (
+          {[['Email', 'Email', lead.email], ['Phone', 'Phone', lead.phone], ['Industry', 'Industry', lead.industry], ['Source', 'Source', lead.source]].map(([icon, label, val]) => val ? (
             <div key={label} style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: '0.82rem' }}>
               <span>{icon}</span>
               <span style={{ color: 'var(--text-muted,#64748b)', width: 60, flexShrink: 0 }}>{label}</span>
@@ -163,7 +164,7 @@ function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
         {/* Notes */}
         <div>
           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted,#64748b)', fontWeight: 600, display: 'block', marginBottom: 8 }}>Notes</label>
-          <textarea style={{ ...inp, height: 90, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add notes about this leadΓÇª" />
+          <textarea style={{ ...inp, height: 90, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add notes about this lead..." />
         </div>
 
         {/* Last contact */}
@@ -177,10 +178,10 @@ function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
       {/* Actions */}
       <div style={{ padding: 20, borderTop: '1px solid var(--glass-border,rgba(255,255,255,0.08))', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button onClick={() => onQuickEmail(lead)} style={{ padding: '11px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.88rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          ΓÜí Send AI Email
+          AI Send AI Email
         </button>
         <button onClick={handleSave} disabled={saving} style={{ padding: '10px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'var(--text-primary,#f1f5f9)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>
-          {saving ? 'SavingΓÇª' : '≡ƒÆ╛ Save Changes'}
+          {saving ? 'Saving...' : 'Save Save Changes'}
         </button>
       </div>
     </div>
@@ -225,19 +226,19 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
       <div style={{ background: 'var(--bg-card,#0f2744)', border: '1px solid var(--glass-border,rgba(255,255,255,0.1))', borderRadius: 20, padding: 28, width: 640, maxHeight: '90vh', overflowY: 'auto', color: 'var(--text-primary,#f1f5f9)', boxShadow: '0 40px 100px rgba(0,0,0,0.6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
           <div>
-            <h3 style={{ margin: 0, fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: '1.1rem' }}>ΓÜí AI Email to {lead.name}</h3>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)', marginTop: 3 }}>{lead.email} ┬╖ {lead.company || 'No company'}</div>
+            <h3 style={{ margin: 0, fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: '1.1rem' }}>AI AI Email to {lead.name}</h3>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)', marginTop: 3 }}>{lead.email} - {lead.company || 'No company'}</div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted,#64748b)', fontSize: '1.4rem', cursor: 'pointer' }}>├ù</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted,#64748b)', fontSize: '1.4rem', cursor: 'pointer' }}>+ù</button>
         </div>
 
         {result ? (
           <div>
             <div style={{ background: result.message?.includes('sent') ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${result.message?.includes('sent') ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 12, padding: 16, marginBottom: 16 }}>
               <div style={{ fontWeight: 700, color: result.message?.includes('sent') ? '#10b981' : '#f87171', marginBottom: 8 }}>
-                {result.message?.includes('sent') ? 'Γ£à Email Sent!' : 'ΓÜá∩╕Å ' + result.message}
+                {result.message?.includes('sent') ? 'Sent Email Sent!' : 'Warning: ' + result.message}
               </div>
-              {result.aiUsed && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)' }}>Γ£¿ Personalized by Gemini AI</div>}
+              {result.aiUsed && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)' }}>AI Personalized by Gemini AI</div>}
             </div>
             {result.subject && (
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 16 }}>
@@ -277,7 +278,7 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
             {preview && (
               <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: '0.72rem', color: '#6366f1', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {preview.aiUsed ? 'Γ£¿ AI Preview' : 'Template Preview'}
+                  {preview.aiUsed ? 'AI AI Preview' : 'Template Preview'}
                 </div>
                 <div style={{ fontWeight: 700, marginBottom: 8, fontSize: '0.88rem' }}>Subject: {preview.subject}</div>
                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.78rem', color: 'var(--text-muted,#94a3b8)', fontFamily: 'inherit', lineHeight: 1.7, maxHeight: 200, overflowY: 'auto' }}>{preview.body}</pre>
@@ -286,13 +287,13 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={handlePreview} disabled={previewing} style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.1)', color: '#6366f1', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
-                {previewing ? 'ΓÅ│ GeneratingΓÇª' : '≡ƒæü AI Preview'}
+                {previewing ? ' Generating...' : 'Preview AI Preview'}
               </button>
               <button onClick={handleSend} disabled={sending || !lead.email} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', cursor: sending || !lead.email ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.85rem', opacity: !lead.email ? 0.5 : 1 }}>
-                {sending ? 'ΓÅ│ SendingΓÇª' : 'ΓÜí Send Now'}
+                {sending ? ' Sending...' : 'AI Send Now'}
               </button>
             </div>
-            {!lead.email && <div style={{ fontSize: '0.78rem', color: '#f87171', marginTop: 8, textAlign: 'right' }}>ΓÜá∩╕Å This lead has no email address</div>}
+            {!lead.email && <div style={{ fontSize: '0.78rem', color: '#f87171', marginTop: 8, textAlign: 'right' }}>Warning: This lead has no email address</div>}
           </>
         )}
       </div>
@@ -326,15 +327,15 @@ function LeadCard({ lead, onClick, onQuickEmail, onStageChange, token }) {
         <ScoreBadge score={lead.score} />
       </div>
       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)', marginBottom: 10 }}>
-        {lead.company && <span>≡ƒÅó {lead.company}</span>}
-        {lead.industry && <span style={{ marginLeft: 8 }}>┬╖ {lead.industry}</span>}
+        {lead.company && <span>=ƒÅó {lead.company}</span>}
+        {lead.industry && <span style={{ marginLeft: 8 }}>- {lead.industry}</span>}
       </div>
-      {lead.email && <div style={{ fontSize: '0.73rem', color: 'var(--text-muted,#64748b)', marginBottom: 10 }}>≡ƒôº {lead.email}</div>}
+      {lead.email && <div style={{ fontSize: '0.73rem', color: 'var(--text-muted,#64748b)', marginBottom: 10 }}>Email {lead.email}</div>}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={e => { e.stopPropagation(); onQuickEmail(lead); }} title="Send AI Email" style={{ padding: '5px 10px', borderRadius: 6, border: 'none', background: 'rgba(99,102,241,0.15)', color: '#6366f1', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>ΓÜí AI Email</button>
-          <button onClick={e => moveStage(-1, e)} disabled={moving || lead.pipelineStage === 'new'} title="Move back" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'none', color: 'var(--text-muted,#64748b)', cursor: 'pointer', fontSize: '0.7rem' }}>ΓåÉ</button>
-          <button onClick={e => moveStage(1, e)} disabled={moving || lead.pipelineStage === 'closed'} title="Move forward" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'none', color: 'var(--text-muted,#64748b)', cursor: 'pointer', fontSize: '0.7rem' }}>ΓåÆ</button>
+          <button onClick={e => { e.stopPropagation(); onQuickEmail(lead); }} title="Send AI Email" style={{ padding: '5px 10px', borderRadius: 6, border: 'none', background: 'rgba(99,102,241,0.15)', color: '#6366f1', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700 }}>AI AI Email</button>
+          <button onClick={e => moveStage(-1, e)} disabled={moving || lead.pipelineStage === 'new'} title="Move back" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'none', color: 'var(--text-muted,#64748b)', cursor: 'pointer', fontSize: '0.7rem' }}>Back</button>
+          <button onClick={e => moveStage(1, e)} disabled={moving || lead.pipelineStage === 'closed'} title="Move forward" style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)', background: 'none', color: 'var(--text-muted,#64748b)', cursor: 'pointer', fontSize: '0.7rem' }}>Next</button>
         </div>
         <div style={{ fontSize: '0.68rem', color: 'var(--text-muted,#64748b)' }}>
           {new Date(lead.createdAt).toLocaleDateString()}
@@ -345,7 +346,7 @@ function LeadCard({ lead, onClick, onQuickEmail, onStageChange, token }) {
 }
 
 export default function CRMLeads({ user }) {
-  const token = localStorage.getItem('seevora_token') || '';
+  const token = localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [leads, setLeads] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -354,6 +355,8 @@ export default function CRMLeads({ user }) {
   const [quickEmailLead, setQuickEmailLead] = useState(null);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('kanban'); // 'kanban' | 'list'
+  const [bulkSendState, setBulkSendState] = useState('idle'); // 'idle'|'sending'|'done'|'error'
+  const [bulkResult, setBulkResult] = useState(null);
 
   const fetchLeads = useCallback(async () => {
     const res = await API(`/leads${search ? `?search=${encodeURIComponent(search)}` : ''}`, token);
@@ -373,6 +376,30 @@ export default function CRMLeads({ user }) {
     if (selectedLead?.id === updated.id) setSelectedLead(updated);
   };
 
+  const handleBulkSend = async () => {
+    const withEmail = leads.filter(l => l.email);
+    if (!withEmail.length) { alert('No leads have email addresses in CRM.'); return; }
+    if (!window.confirm(`Send personalised emails to ${withEmail.length} lead${withEmail.length > 1 ? 's' : ''}?\n\nEach email will say "Hi [Name]" with their details.`)) return;
+    setBulkSendState('sending');
+    setBulkResult(null);
+    try {
+      const leadIds = withEmail.map(l => l.id);
+      const res = await API('/leads/bulk-email', token, { method: 'POST', body: JSON.stringify({ leadIds }) });
+      if (res.success) {
+        setBulkSendState('done');
+        setBulkResult({ sent: res.sent, failed: res.failed });
+        setTimeout(() => { setBulkSendState('idle'); setBulkResult(null); }, 6000);
+      } else {
+        setBulkSendState('error');
+        alert(res.message || 'Bulk send failed. Check SMTP settings in .env');
+        setTimeout(() => setBulkSendState('idle'), 4000);
+      }
+    } catch {
+      setBulkSendState('error');
+      setTimeout(() => setBulkSendState('idle'), 4000);
+    }
+  };
+
   const stageGroups = STAGES.reduce((acc, s) => {
     acc[s.id] = leads.filter(l => l.pipelineStage === s.id);
     return acc;
@@ -384,14 +411,40 @@ export default function CRMLeads({ user }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ margin: 0, fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: '1.5rem' }}>CRM Pipeline</h2>
-          <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-muted,#64748b)' }}>{leads.length} leads ┬╖ AI-powered outbound email bot</p>
+          <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--text-muted,#64748b)' }}>{leads.length} leads - AI-powered outbound email bot</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search leadsΓÇª" style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--glass-border,rgba(255,255,255,0.1))', background: 'var(--bg-space,#0d1b2e)', color: 'var(--text-primary,#f1f5f9)', fontSize: '0.82rem', outline: 'none', width: 200 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search leads..." style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--glass-border,rgba(255,255,255,0.1))', background: 'var(--bg-space,#0d1b2e)', color: 'var(--text-primary,#f1f5f9)', fontSize: '0.82rem', outline: 'none', width: 200 }} />
           <div style={{ display: 'flex', border: '1px solid var(--glass-border,rgba(255,255,255,0.1))', borderRadius: 8, overflow: 'hidden' }}>
-            {[['kanban','Γûñ Kanban'],['list','Γÿ░ List']].map(([v,l]) => (
+            {[['kanban','Kanban'],['list','List']].map(([v,l]) => (
               <button key={v} onClick={() => setViewMode(v)} style={{ padding: '8px 14px', border: 'none', background: viewMode === v ? 'rgba(99,102,241,0.2)' : 'none', color: viewMode === v ? '#6366f1' : 'var(--text-muted,#64748b)', cursor: 'pointer', fontWeight: viewMode === v ? 700 : 400, fontSize: '0.82rem' }}>{l}</button>
             ))}
+          </div>
+          {/* Send Mail in Bulk */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+            <button
+              disabled={bulkSendState !== 'idle'}
+              onClick={handleBulkSend}
+              style={{
+                padding: '9px 18px', borderRadius: 8, border: 'none', cursor: bulkSendState !== 'idle' ? 'not-allowed' : 'pointer',
+                fontWeight: 700, fontSize: '0.85rem', color: '#fff', transition: 'all 0.25s',
+                background: bulkSendState === 'idle' ? 'linear-gradient(135deg,#14c9e1,#6366f1)' :
+                            bulkSendState === 'sending' ? '#475569' :
+                            bulkSendState === 'done'    ? 'linear-gradient(135deg,#10b981,#059669)' :
+                                                         'linear-gradient(135deg,#ef4444,#dc2626)',
+                opacity: bulkSendState === 'sending' ? 0.75 : 1,
+                boxShadow: bulkSendState === 'idle' ? '0 2px 12px rgba(99,102,241,0.35)' : 'none',
+              }}
+            >
+              {bulkSendState === 'idle'    ? '📧 Send Mail in Bulk' :
+               bulkSendState === 'sending' ? '📧 Sending to all…' :
+               bulkSendState === 'done'    ? '✓ All Mails Sent!' : '✕ Send Failed'}
+            </button>
+            {bulkResult && (
+              <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700 }}>
+                ✓ {bulkResult.sent} sent{bulkResult.failed > 0 ? ` · ${bulkResult.failed} failed` : ''}
+              </span>
+            )}
           </div>
           <button onClick={() => setShowAdd(true)} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>+ Add Lead</button>
         </div>
@@ -408,7 +461,7 @@ export default function CRMLeads({ user }) {
       </div>
 
       {loading ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted,#64748b)' }}>Loading leadsΓÇª</div>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted,#64748b)' }}>Loading leads...</div>
       ) : viewMode === 'kanban' ? (
         /* Kanban Board */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 14, flex: 1, minHeight: 0, overflowX: 'auto' }}>
@@ -451,13 +504,13 @@ export default function CRMLeads({ user }) {
                     <div style={{ fontWeight: 700 }}>{lead.name}</div>
                     {lead.designation && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted,#64748b)' }}>{lead.designation}</div>}
                   </td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.company || 'ΓÇö'}</td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.email || 'ΓÇö'}</td>
-                  <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.industry || 'ΓÇö'}</td>
+                  <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.company || '-'}</td>
+                  <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.email || '-'}</td>
+                  <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.industry || '-'}</td>
                   <td style={{ padding: '12px 14px' }}><StageBadge stage={lead.pipelineStage} /></td>
                   <td style={{ padding: '12px 14px' }}><ScoreBadge score={lead.score} /></td>
                   <td style={{ padding: '12px 14px' }}>
-                    <button onClick={() => setQuickEmailLead(lead)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: 'rgba(99,102,241,0.15)', color: '#6366f1', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>ΓÜí AI Email</button>
+                    <button onClick={() => setQuickEmailLead(lead)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: 'rgba(99,102,241,0.15)', color: '#6366f1', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>AI AI Email</button>
                   </td>
                 </tr>
               ))}
@@ -474,3 +527,6 @@ export default function CRMLeads({ user }) {
     </div>
   );
 }
+
+
+

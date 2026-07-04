@@ -29,6 +29,8 @@ import reviewsRoutes from './routes/reviews.js';
 import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
 import analyticsRoutes from './routes/analytics.js';
+import emailOutreachRoutes from './routes/emailOutreach.js';
+import emailBotRoutes from './routes/emailBot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -77,6 +79,30 @@ app.use('/api/reviews', reviewsRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/email-bot', emailBotRoutes);
+
+// Start background email campaign scheduler
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const { rows } = await pool.query(
+      `SELECT id FROM email_campaigns 
+       WHERE status = 'scheduled' AND scheduled_at <= $1`,
+      [now]
+    );
+    if (rows.length > 0) {
+      console.log(`[Scheduler] Found ${rows.length} scheduled campaigns ready to send.`);
+      const { sendCampaign } = await import('./utils/campaignSender.js');
+      for (const row of rows) {
+        console.log(`[Scheduler] Sending campaign: ${row.id}`);
+        await sendCampaign(row.id);
+      }
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error running scheduled campaigns job:', error.message);
+  }
+}, 30000); // Check every 30 seconds
+
 
 app.use((err, _req, res, _next) => {
   console.error(err);

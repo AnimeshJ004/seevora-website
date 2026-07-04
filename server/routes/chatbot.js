@@ -1,4 +1,6 @@
 import express from 'express';
+import pool from '../config/db.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -27,18 +29,9 @@ Industries served:
 Pricing is custom based on modules, integrations, and volume. Encourage users to book a discovery call for an exact quote.
 `;
 
-const SYSTEM_PROMPT = `
-You are Seevora AI, the friendly website chatbot for Seevora.
-Use the company context to answer questions clearly and conversationally.
-Tone: warm, helpful, concise, professional, and lightly Indian-market aware.
-You may use English, Hindi, or Hinglish if the user does.
-Keep answers under 120 words unless the user asks for detail.
-Do not invent exact prices, client names, legal guarantees, or unsupported claims.
-If asked for a quote, complex implementation, partnership, or account-specific request, suggest booking a discovery call.
-If the user asks unrelated questions, answer briefly if harmless, then connect back to how Seevora may help when appropriate.
-
-Company context:
-${COMPANY_CONTEXT}
+const EMAIL_SYSTEM_PROMPT = `
+You are an expert B2B email copywriter and outbound sales strategist.
+Your job is to write high-converting email copy, follow-ups, and sequences for Seevora.
 `;
 
 const recentRequests = new Map();
@@ -47,7 +40,7 @@ function rateLimit(req, res, next) {
   const key = req.ip || 'unknown';
   const now = Date.now();
   const windowMs = 60_000;
-  const maxRequests = 20;
+  const maxRequests = 30;
   const bucket = recentRequests.get(key) || [];
   const active = bucket.filter((timestamp) => now - timestamp < windowMs);
 
@@ -94,13 +87,34 @@ router.post('/message', rateLimit, async (req, res, next) => {
       return res.status(400).json({ message: 'Message is too long.' });
     }
 
-    const input = [
-      ...normalizeHistory(req.body?.history),
-      { role: 'user', content: message },
+    const context = String(req.body?.context || '').trim();
+
+    // Check if custom sales agent prompt is saved in settings
+    let systemPrompt = DEFAULT_SALES_AGENT_PROMPT;
+    if (context === 'email_marketing') {
+      systemPrompt = EMAIL_SYSTEM_PROMPT;
+    } else {
+      try {
+        const settingsRes = await pool.query("SELECT value FROM system_settings WHERE key = 'ai_sales_agent_prompt'");
+        if (settingsRes.rowCount > 0 && settingsRes.rows[0].value) {
+          systemPrompt = settingsRes.rows[0].value;
+        }
+      } catch (err) {
+        console.warn('Could not read custom system prompt:', err.message);
+      }
+    }
+
+    const maxTokens = context === 'email_marketing' ? 700 : 350;
+    const history = normalizeHistory(req.body?.history);
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      { role: 'user', content: message }
     ];
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 18_000);
+    const timeout = setTimeout(() => controller.abort(), 18000);
 
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
@@ -127,9 +141,16 @@ router.post('/message', rateLimit, async (req, res, next) => {
       return res.status(response.status).json({ message: messageText });
     }
 
-    const reply = extractResponseText(payload);
+    const reply = payload.choices?.[0]?.message?.content?.trim();
+
     if (!reply) {
       return res.status(502).json({ message: 'Anthropic returned an empty reply.' });
+      return res.status(502).json({ message: 'AI returned an empty reply.' });
+    }
+
+    // Trigger lead parsing & CRM saving asynchronously
+    if (context !== 'email_marketing') {
+      extractAndSaveLead(message, history).catch(() => {});
     }
 
     return res.json({ reply });
