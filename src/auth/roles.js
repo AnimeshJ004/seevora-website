@@ -19,8 +19,9 @@ export const PERMISSIONS = {
     'dashboard',
     // Platform
     'businesses', 'users',
-    // Operations
-    'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    // Operations & CRM / Marketing
+    'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config',
     // Productivity
     'task-management', 'project-management', 'time-tracking',
     // System
@@ -32,7 +33,8 @@ export const PERMISSIONS = {
   admin: [
     'dashboard',
     'businesses', 'users',
-    'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config',
     'task-management', 'project-management', 'time-tracking',
     'audit-logs', 'system-logs', 'security-center', 'settings',
     'hr-leave',
@@ -49,7 +51,7 @@ export const PERMISSIONS = {
   ],
   manager: [
     'dashboard',
-    'leads', 'email-bot', 'appointments', 'analytics',
+    'leads', 'appointments', 'analytics',
   ],
   support: [
     'dashboard',

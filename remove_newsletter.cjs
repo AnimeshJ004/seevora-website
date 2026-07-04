@@ -1,0 +1,13 @@
+const fs = require("fs");
+let c = fs.readFileSync("src/components/dashboard/DashboardShell.jsx","utf8");
+c = c.replace(/import Newsletter\s+from\s+['"][^'"]+['"];?\r?\n/g,"");
+c = c.replace(/,?\{id:'newsletter',label:'Newsletter'\}/g,"");
+c = c.replace(/'newsletter':'Newsletter',?\s*/g,"");
+c = c.replace(/newsletter:\s*<Newsletter[^>]*\/>,?\s*/g,"");
+c = c.replace(/newsletter:\s*<Ic[^>]+\/>,?\r?\n/g,"");
+fs.writeFileSync("src/components/dashboard/DashboardShell.jsx",c,"utf8");
+let r = fs.readFileSync("src/auth/roles.js","utf8");
+r = r.replace(/'newsletter',?\s*/g,"");
+fs.writeFileSync("src/auth/roles.js",r,"utf8");
+if (fs.existsSync("server/routes/newsletter.js")) fs.unlinkSync("server/routes/newsletter.js");
+console.log("Newsletter removed");

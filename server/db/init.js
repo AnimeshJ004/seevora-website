@@ -63,6 +63,10 @@ export async function initDb() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS audit_requests_created_idx ON audit_requests (created_at DESC);
   `);
+  await pool.query(`
+    ALTER TABLE audit_requests
+    ADD COLUMN IF NOT EXISTS thread JSONB NOT NULL DEFAULT '[]'::jsonb;
+  `).catch(e => console.log(e.message));
 
   await pool.query(`
     ALTER TABLE users
@@ -368,6 +372,7 @@ export async function initDb() {
       name VARCHAR(200) NOT NULL,
       template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
       status VARCHAR(40) NOT NULL DEFAULT 'draft',
+      campaign_type VARCHAR(60) NOT NULL DEFAULT 'newsletter',
       tone VARCHAR(60) NOT NULL DEFAULT 'professional',
       language VARCHAR(40) NOT NULL DEFAULT 'english',
       sender_persona VARCHAR(200),
@@ -386,6 +391,10 @@ export async function initDb() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS email_campaigns_status_idx ON email_campaigns (status);
   `);
+  await pool.query(`
+    ALTER TABLE email_campaigns
+    ADD COLUMN IF NOT EXISTS campaign_type VARCHAR(60) NOT NULL DEFAULT 'newsletter';
+  `).catch(() => {});
 
   /* ── Campaign Leads (many-to-many) ─────────────────────────────────── */
   await pool.query(`
@@ -413,11 +422,15 @@ export async function initDb() {
       status VARCHAR(40) NOT NULL DEFAULT 'sent',
       error_message TEXT,
       opened_at TIMESTAMPTZ,
+      clicked_at TIMESTAMPTZ,
       replied_at TIMESTAMPTZ,
       sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+
+  await pool.query(`ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMPTZ;`).catch(() => {});
+  await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS name VARCHAR(200);`).catch(() => {});
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS email_logs_campaign_idx ON email_logs (campaign_id);
@@ -736,6 +749,26 @@ Seevora — AI-Powered Growth`,
       verified_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key VARCHAR(255) PRIMARY KEY,
+      value TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_audit_logs (
+      id UUID PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(255) NOT NULL,
+      ip_address VARCHAR(45),
+      details TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `).catch(e => console.log(e.message));
 }

@@ -16,10 +16,8 @@ import recruitmentRoutes from './routes/recruitment.js';
 import payrollRoutes from './routes/payroll.js';
 import documentRoutes from './routes/documents.js';
 import employeeDocumentRoutes from './routes/employeeDocuments.js';
-import newsletterRoutes from './routes/newsletter.js';
 import webhooksRoutes from './routes/webhooks.js';
 import leadsRoutes from './routes/leads.js';
-import emailBotRoutes from './routes/emailBot.js';
 import employeeLeavesRoutes from './routes/employeeLeaves.js';
 import productivityRoutes from './routes/productivity.js';
 import businessesRoutes from './routes/businesses.js';
@@ -28,6 +26,8 @@ import appointmentsRoutes from './routes/appointments.js';
 import reviewsRoutes from './routes/reviews.js';
 import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
+import emailOutreachRoutes from './routes/emailOutreach.js';
+import emailBotRoutes from './routes/emailBot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -64,10 +64,8 @@ app.use('/api/hr/payroll', payrollRoutes);
 app.use('/api/hr/documents', documentRoutes);
 app.use('/api/employee/leaves', employeeLeavesRoutes);
 app.use('/api/employee', employeeDocumentRoutes);
-app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/leads', leadsRoutes);
-app.use('/api/email-bot', emailBotRoutes);
 app.use('/api/productivity', productivityRoutes);
 app.use('/api/businesses', businessesRoutes);
 app.use('/api/users', usersRoutes);
@@ -75,6 +73,30 @@ app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/email-bot', emailBotRoutes);
+
+// Start background email campaign scheduler
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const { rows } = await pool.query(
+      `SELECT id FROM email_campaigns 
+       WHERE status = 'scheduled' AND scheduled_at <= $1`,
+      [now]
+    );
+    if (rows.length > 0) {
+      console.log(`[Scheduler] Found ${rows.length} scheduled campaigns ready to send.`);
+      const { sendCampaign } = await import('./utils/campaignSender.js');
+      for (const row of rows) {
+        console.log(`[Scheduler] Sending campaign: ${row.id}`);
+        await sendCampaign(row.id);
+      }
+    }
+  } catch (error) {
+    console.error('[Scheduler] Error running scheduled campaigns job:', error.message);
+  }
+}, 30000); // Check every 30 seconds
+
 
 app.use((err, _req, res, _next) => {
   console.error(err);

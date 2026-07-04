@@ -1,44 +1,40 @@
 import express from 'express';
+import pool from '../config/db.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/responses';
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
-const MAX_MESSAGE_LENGTH = 900;
-const MAX_HISTORY_ITEMS = 10;
+const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const MAX_MESSAGE_LENGTH = 1000;
+const MAX_HISTORY_ITEMS = 12;
 
-const COMPANY_CONTEXT = `
-Seevora Private Limited is an Indian AI automation company focused on SMBs.
-Core offer: custom Enterprise AI automation that turns manual business workflows into profit centers.
-Main capabilities:
-- 24/7 AI Voice Receptionist for missed calls, appointment booking, customer intent capture, and urgent query routing.
-- WhatsApp Business API automation for confirmations, reminders, follow-ups, payment links, document collection, and customer updates.
-- Hindi-first customer experience with English, Hindi, and Hinglish support.
-- Custom dashboards and integrations for calendars, billing, EMR/LIS systems, CRMs, UPI workflows, document workflows, and business databases.
-- Typical setup time is 5 business days after workflow audit and rule mapping.
-Industries served:
-- Healthcare and clinics: patient calls, appointment scheduling, reminders, intake, EMR sync.
-- Education and academies: admission enquiries, demo class bookings, fee reminders, parent/student follow-ups.
-- Personal care and wellness: slot booking, no-show reminders, repeat bookings, Google reviews, social workflows.
-- Diagnostics and pathology: test booking, sample collection scheduling, report-ready notifications.
-- Fitness and gyms: trial follow-ups, renewals, session scheduling, engagement.
-- Legal, CA, and financial advisory: consultation booking, document intake, reminders, secure follow-up.
-- Property and real estate: lead qualification, catalog sharing, property visit scheduling.
-Pricing is custom based on modules, integrations, and volume. Encourage users to book a discovery call for an exact quote.
+const DEFAULT_SALES_AGENT_PROMPT = `
+You are Seevora's Elite AI Sales Agent. Your primary mission is to generate and convert high-quality leads for Seevora Private Limited.
+
+About Seevora:
+Seevora is an AI automation agency for SMBs. We build:
+1. 24/7 AI Voice Receptionists (captures intent, books appointments, handles missed calls).
+2. WhatsApp API Automation (reminders, confirmations, UPI payment links, document collection).
+3. Custom dashboards and databases.
+Setup time is 5 business days.
+
+Your Sales Strategy:
+- Always maintain a professional, consultative, sales-oriented tone.
+- Actively guide the user through the sales funnel.
+- Recommend specific Seevora services based on what business they run (e.g. clinics need voice/appointment scheduling, CAs need document collection and WhatsApp reminders, Salons need no-show reductions).
+- Qualify prospects by politely asking about their business:
+  1. What industry or business do they run?
+  2. What is their main manual bottleneck (missed calls, follow-ups, documents)?
+  3. Their Name and Contact details (Email / Phone).
+- Encourage booking a free AI Growth Consultation or demo.
+- If they ask complex technical integration or contract questions, capture their contact info and say: "I will escalate this query to our senior integration engineer who will reach out to you within 2 hours."
+- Never act as a general assistant. If they ask about unrelated tasks (e.g. writing essays, weather), politely redirect them to how Seevora AI can help automate their business.
 `;
 
-const SYSTEM_PROMPT = `
-You are Seevora AI, the friendly website chatbot for Seevora.
-Use the company context to answer questions clearly and conversationally.
-Tone: warm, helpful, concise, professional, and lightly Indian-market aware.
-You may use English, Hindi, or Hinglish if the user does.
-Keep answers under 120 words unless the user asks for detail.
-Do not invent exact prices, client names, legal guarantees, or unsupported claims.
-If asked for a quote, complex implementation, partnership, or account-specific request, suggest booking a discovery call.
-If the user asks unrelated questions, answer briefly if harmless, then connect back to how Seevora may help when appropriate.
-
-Company context:
-${COMPANY_CONTEXT}
+const EMAIL_SYSTEM_PROMPT = `
+You are an expert B2B email copywriter and outbound sales strategist.
+Your job is to write high-converting email copy, follow-ups, and sequences for Seevora.
 `;
 
 const recentRequests = new Map();
@@ -47,7 +43,7 @@ function rateLimit(req, res, next) {
   const key = req.ip || 'unknown';
   const now = Date.now();
   const windowMs = 60_000;
-  const maxRequests = 20;
+  const maxRequests = 30;
   const bucket = recentRequests.get(key) || [];
   const active = bucket.filter((timestamp) => now - timestamp < windowMs);
 
@@ -72,19 +68,98 @@ function normalizeHistory(history = []) {
     .filter((item) => item.content.trim());
 }
 
-function extractResponseText(payload) {
-  if (typeof payload?.output_text === 'string' && payload.output_text.trim()) {
-    return payload.output_text.trim();
-  }
+async function extractAndSaveLead(message, history) {
+  if (!process.env.OPENAI_API_KEY) return;
 
-  const parts = [];
-  for (const output of payload?.output || []) {
-    for (const content of output?.content || []) {
-      if (typeof content?.text === 'string') parts.push(content.text);
+  try {
+    const chatLog = [...history, { role: 'user', content: message }]
+      .map(h => `${h.role === 'user' ? 'Customer' : 'Sales Agent'}: ${h.content}`)
+      .join('\n');
+
+    const extractionPrompt = `
+Analyze the chat transcript between a Customer and our Sales Agent.
+If the customer has provided contact information (like name, email, phone, company, or industry), extract it.
+Also extract their business requirements or what they want to automate in the "notes" field.
+
+Return a JSON object with these keys:
+{
+  "name": "Full Name (string or null)",
+  "email": "Email Address (string or null)",
+  "phone": "Phone Number (string or null)",
+  "company": "Company Name (string or null)",
+  "industry": "Industry Type e.g. Healthcare, Salon, Legal (string or null)",
+  "notes": "What they want to automate / requirements (string or null)"
+}
+
+Only return the JSON. If no contact information is present, return null.
+Transcript:
+${chatLog}
+`;
+
+    const response = await fetch(OPENAI_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages: [{ role: 'user', content: extractionPrompt }],
+        max_tokens: 250,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) return;
+    const payload = await response.json();
+    const data = JSON.parse(payload.choices[0].message.content || '{}');
+
+    if (data && (data.name || data.email || data.phone)) {
+      // Check if lead already exists
+      let existingLead = null;
+      if (data.email) {
+        const check = await pool.query('SELECT * FROM leads WHERE LOWER(email) = LOWER($1)', [data.email]);
+        existingLead = check.rows[0];
+      } else if (data.phone) {
+        const check = await pool.query('SELECT * FROM leads WHERE phone = $1', [data.phone]);
+        existingLead = check.rows[0];
+      }
+
+      if (existingLead) {
+        const mergedNotes = [existingLead.notes, data.notes].filter(Boolean).join('\n\n');
+        await pool.query(
+          `UPDATE leads SET
+             name = COALESCE($2, name),
+             company = COALESCE($3, company),
+             industry = COALESCE($4, industry),
+             notes = $5,
+             score = GREATEST(score, 80),
+             updated_at = NOW()
+           WHERE id = $1`,
+          [existingLead.id, data.name, data.company, data.industry, mergedNotes]
+        );
+        console.log(`[AI Sales Agent] Updated existing lead: ${existingLead.id}`);
+      } else {
+        const leadId = crypto.randomUUID();
+        await pool.query(
+          `INSERT INTO leads (id, name, email, phone, company, industry, source, pipeline_stage, score, notes)
+           VALUES ($1, $2, $3, $4, $5, $6, 'website', 'new', 75, $7)`,
+          [
+            leadId,
+            data.name || 'Anonymous Prospect',
+            data.email || null,
+            data.phone || null,
+            data.company || null,
+            data.industry || null,
+            data.notes || 'Interested via chat chatbot.'
+          ]
+        );
+        console.log(`[AI Sales Agent] Created new qualified lead from chat: ${leadId}`);
+      }
     }
+  } catch (err) {
+    console.error('[AI Sales Agent] Lead extraction failed:', err.message);
   }
-
-  return parts.join('\n').trim();
 }
 
 router.post('/message', rateLimit, async (req, res, next) => {
@@ -102,13 +177,34 @@ router.post('/message', rateLimit, async (req, res, next) => {
       return res.status(400).json({ message: 'Message is too long.' });
     }
 
-    const input = [
-      ...normalizeHistory(req.body?.history),
-      { role: 'user', content: message },
+    const context = String(req.body?.context || '').trim();
+    
+    // Check if custom sales agent prompt is saved in settings
+    let systemPrompt = DEFAULT_SALES_AGENT_PROMPT;
+    if (context === 'email_marketing') {
+      systemPrompt = EMAIL_SYSTEM_PROMPT;
+    } else {
+      try {
+        const settingsRes = await pool.query("SELECT value FROM system_settings WHERE key = 'ai_sales_agent_prompt'");
+        if (settingsRes.rowCount > 0 && settingsRes.rows[0].value) {
+          systemPrompt = settingsRes.rows[0].value;
+        }
+      } catch (err) {
+        console.warn('Could not read custom system prompt:', err.message);
+      }
+    }
+
+    const maxTokens = context === 'email_marketing' ? 700 : 350;
+    const history = normalizeHistory(req.body?.history);
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history,
+      { role: 'user', content: message }
     ];
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 18_000);
+    const timeout = setTimeout(() => controller.abort(), 18000);
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -118,25 +214,30 @@ router.post('/message', rateLimit, async (req, res, next) => {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        instructions: SYSTEM_PROMPT,
-        input,
-        max_output_tokens: 260,
+        messages,
+        max_tokens: maxTokens,
+        temperature: 0.7
       }),
       signal: controller.signal,
     });
 
     clearTimeout(timeout);
 
-    const payload = await response.json().catch(() => ({}));
-
     if (!response.ok) {
-      const messageText = payload?.error?.message || 'OpenAI request failed.';
-      return res.status(response.status).json({ message: messageText });
+      const errPayload = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ message: errPayload?.error?.message || 'AI request failed.' });
     }
 
-    const reply = extractResponseText(payload);
+    const payload = await response.json();
+    const reply = payload.choices?.[0]?.message?.content?.trim();
+
     if (!reply) {
-      return res.status(502).json({ message: 'OpenAI returned an empty reply.' });
+      return res.status(502).json({ message: 'AI returned an empty reply.' });
+    }
+
+    // Trigger lead parsing & CRM saving asynchronously
+    if (context !== 'email_marketing') {
+      extractAndSaveLead(message, history).catch(() => {});
     }
 
     return res.json({ reply });

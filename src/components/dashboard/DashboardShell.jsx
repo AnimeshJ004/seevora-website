@@ -8,11 +8,13 @@ import AdminDashboard  from './views/admin/AdminDashboard';
 import Businesses      from './views/platform/Businesses';
 import Users           from './views/platform/Users';
 import SupportTickets  from './views/admin/SupportTickets';
-import CRMLeads        from './views/admin/CRMLeadsSimple';
-import EmailBot        from './views/admin/EmailBot';
+import CRMLeads        from './views/admin/CRMLeads';
 import Appointments    from './views/operations/Appointments';
 import AIVoiceLogs     from './views/admin/AIVoiceLogs';
 import WhatsAppLogs    from './views/admin/WhatsAppLogs';
+import Subscribers     from './views/admin/Subscribers';
+import Campaigns       from './views/admin/Campaigns';
+import EmailTemplates  from './views/admin/EmailTemplates';
 import Reviews         from './views/operations/Reviews';
 import AuditLogs       from './views/admin/AuditLogs';
 import SecurityCenter  from './views/system/SecurityCenter';
@@ -55,11 +57,13 @@ const NAVICONS = {
   appointments:             <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18" />,
   'ai-voice-logs':          <Ic d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v4 M8 23h8" />,
   'whatsapp-logs':          <Ic d="M21 11.5a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0z" />,
+  subscribers:              <Ic d="M4 4h16v16H4z M22 6l-10 7L2 6" />,
+  campaigns:                <Ic d="M3 11l18-8-8 18-2-7-8-3z" />,
+  'email-templates':        <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h5" />,
   reviews:                  <Ic d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />,
   'audit-logs':             <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15l2 2 4-4" />,
   'security-center':        <Ic d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
-  'email-bot':              <Ic d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M22 6l-10 7L2 6" />,
-  analytics:                <Ic d="M18 20V10 M12 20V4 M6 20v-6 M2 20h20" />,
+    analytics:                <Ic d="M18 20V10 M12 20V4 M6 20v-6 M2 20h20" />,
   settings:                 <Ic d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />,
   employees:                <Ic d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" />,
   attendance:               <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18 M8 14h.01 M12 14h.01 M16 14h.01" />,
@@ -82,14 +86,16 @@ const NAVICONS = {
 const NAV = {
   super_admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'}] },
-    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'}] },
+    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'}] },
+    { label: 'Email Bot',   items: [{id:'email-templates',label:'Email Templates'},{id:'campaigns',label:'Campaigns'}] },
     { label: 'Productivity',items: [{id:'task-management',label:'Task Management'},{id:'project-management',label:'Project Management'},{id:'time-tracking',label:'Time Tracking'}] },
     { label: 'System',      items: [{id:'audit-logs',label:'Audit Logs'},{id:'security-center',label:'Security Center'},{id:'settings',label:'Settings'}] },
     { label: 'HR Module',   items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'},{id:'document-verifications',label:'Verifications'}] },
   ],
   admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'}] },
-    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'settings',label:'Settings'}] },
+    { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'settings',label:'Settings'}] },
+    { label: 'Email Bot',   items: [{id:'email-templates',label:'Email Templates'},{id:'campaigns',label:'Campaigns'}] },
     { label: 'Productivity',items: [{id:'task-management',label:'Task Management'},{id:'project-management',label:'Project Management'},{id:'time-tracking',label:'Time Tracking'}] },
   ],
   hr: [
@@ -104,7 +110,7 @@ const NAV = {
     { label: 'Self Service',    items: [{id:'my-attendance',label:'My Attendance'},{id:'my-leave',label:'My Leave'},{id:'my-documents',label:'My Documents'}] },
   ],
   manager: [
-    { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'leads',label:'Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
+    { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'leads',label:'Leads'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
   ],
   support: [
     { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'support-tickets',label:'Support Tickets'},{id:'audit-logs',label:'Audit Requests'}] },
@@ -114,8 +120,8 @@ const NAV = {
 const TITLES = {
   dashboard:'Dashboard', businesses:'Businesses', users:'Users & Roles',
   'support-tickets':'Support Tickets', leads:'CRM / Leads', appointments:'Appointments',
-  'ai-voice-logs':'AI Voice Agent', 'whatsapp-logs':'WhatsApp Marketing', reviews:'Reputation', 'email-bot':'Email Marketing Bot',
-  'audit-logs':'Audit Requests', 'security-center':'Security Center', analytics:'Analytics', settings:'Settings',
+  'ai-voice-logs':'AI Voice Agent', 'whatsapp-logs':'WhatsApp Marketing', reviews:'Reputation', 'audit-logs':'Audit Requests', 'security-center':'Security Center', analytics:'Analytics', settings:'Settings',
+  subscribers:'Subscribers', campaigns:'Email Campaigns', 'email-templates':'Email Templates',
   employees:'Employees', attendance:'Attendance', leave:'Leave Management',
   recruitment:'Recruitment', payroll:'Payroll', documents:'Employee Documents',
   'document-verifications':'Document Verifications',
@@ -162,8 +168,9 @@ function getView(id, role, user) {
 
   const map = {
     businesses: <Businesses user={user} />, users: <Users user={user} />, 'support-tickets': <SupportTickets />,
-    leads: <CRMLeads user={user} />, 'email-bot': <EmailBot user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
-    'whatsapp-logs': <WhatsAppLogs />, reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
+    leads: <CRMLeads user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
+    'whatsapp-logs': <WhatsAppLogs />, subscribers: <Subscribers />, campaigns: <Campaigns />, 'email-templates': <EmailTemplates />,
+    reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
     'security-center': <SecurityCenter user={user} />, analytics: <Analytics />, settings: <Settings user={user} />,
     employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
@@ -671,3 +678,4 @@ export default function DashboardShell({ user, onLogout }) {
     </div>
   );
 }
+
