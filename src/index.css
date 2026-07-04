@@ -1103,6 +1103,98 @@ select {
   transform: rotate(-7deg);
 }
 
+.hero-metric-card,
+.hero-chart-card {
+  width: 148px;
+}
+
+.hero-metric-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.hero-float-card .hero-metric-value {
+  display: inline-flex;
+  font-size: 1.08rem;
+  letter-spacing: 0;
+}
+
+.hero-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hero-metric-chip--up {
+  color: #12885e;
+  background: rgba(18, 136, 94, 0.1);
+}
+
+.hero-metric-chip--down {
+  color: #b42318;
+  background: rgba(244, 63, 94, 0.1);
+}
+
+.hero-float-card small {
+  display: block;
+  margin-top: 10px;
+  color: #9aa4b2;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.hero-chart-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 170px;
+}
+
+.hero-chart-bars {
+  width: 62px;
+  height: 54px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: end;
+  gap: 5px;
+  padding: 7px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+.hero-chart-bars span {
+  display: block;
+  height: var(--bar-h);
+  min-height: 10px;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(180deg, #4f46e5 0%, #8b5cf6 100%);
+}
+
+.hero-chart-bars span:nth-child(2),
+.hero-chart-bars span:nth-child(4) {
+  background: linear-gradient(180deg, #111827 0%, #334155 100%);
+}
+
+.hero-chart-copy {
+  min-width: 0;
+}
+
+.hero-chart-copy span {
+  font-size: 1rem;
+}
+
 .hero-content.centered {
   max-width: 800px;
   margin-bottom: 26px;
@@ -8169,11 +8261,13 @@ textarea.form-input {
 
 .home-landing .hero-float-card {
   min-width: 126px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: 8px;
   border: 1px solid rgba(228, 233, 242, 0.94);
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(14px);
+  animation: heroFloatMetric 7s ease-in-out infinite;
 }
 
 .home-landing .hero-float-card span {
@@ -8185,15 +8279,42 @@ textarea.form-input {
 }
 
 .home-landing .hero-float-card-left {
-  top: 50%;
+  left: max(3vw, calc(50% - 650px));
+  top: 43%;
+  transform: rotate(7deg);
 }
 
 .home-landing .hero-float-card-right {
-  top: 53%;
+  right: max(2vw, calc(50% - 650px));
+  top: 49%;
+  transform: rotate(-5deg);
+  animation-delay: -2s;
 }
 
 .home-landing .hero-float-card-bottom {
-  bottom: 10%;
+  left: max(4vw, calc(50% - 610px));
+  bottom: 30%;
+  transform: rotate(-6deg);
+  animation-delay: -4s;
+}
+
+.home-landing .hero-metric-card--calls {
+  box-shadow: 0 20px 56px rgba(79, 70, 229, 0.12);
+}
+
+.home-landing .hero-metric-card--shows {
+  box-shadow: 0 20px 56px rgba(111, 127, 51, 0.12);
+}
+
+@keyframes heroFloatMetric {
+  0%,
+  100% {
+    margin-top: 0;
+  }
+
+  50% {
+    margin-top: -10px;
+  }
 }
 
 .home-landing .hero-content.centered {
@@ -8755,17 +8876,19 @@ textarea.form-input {
   }
 
   .home-landing .hero-float-card-left {
-    left: 4vw;
+    left: 2vw;
     top: 56%;
   }
 
   .home-landing .hero-float-card-right {
-    right: 4vw;
+    right: 2vw;
     top: 60%;
   }
 
   .home-landing .hero-float-card-bottom {
-    display: none;
+    left: 3vw;
+    bottom: 26%;
+    display: flex;
   }
 
   .home-landing .problems-showcase,

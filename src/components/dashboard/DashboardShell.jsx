@@ -32,6 +32,10 @@ import DocumentVerifications from './views/hr/DocumentVerifications';
 // Employee views
 import DocumentUpload    from './views/employee/DocumentUpload';
 import VerificationStatus from './views/employee/VerificationStatus';
+import MyTasks from './views/employee/MyTasks';
+import MyAttendance from './views/employee/MyAttendance';
+import TeamTasks from './views/manager/TeamTasks';
+import TeamAttendance from './views/manager/TeamAttendance';
 
 /* ── SVG icon helper ── */
 function Ic({ d, size = 16 }) {
@@ -71,6 +75,8 @@ const NAVICONS = {
   'my-attendance':          <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18 M8 14h.01 M12 14h.01 M16 14h.01" />,
   'my-leave':               <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
   'my-documents':           <Ic d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8" />,
+  'my-tasks':               <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
+  'team-tasks':             <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
   'document-upload':        <Ic d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12" />,
   'verification-status':    <Ic d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" />,
   'task-management':        <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
@@ -91,6 +97,7 @@ const NAV = {
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'}] },
     { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'settings',label:'Settings'}] },
     { label: 'Productivity',items: [{id:'task-management',label:'Task Management'},{id:'project-management',label:'Project Management'},{id:'time-tracking',label:'Time Tracking'}] },
+    { label: 'People',      items: [{id:'employees',label:'Employees'}] },
   ],
   hr: [
     { label: 'Overview',         items: [{id:'dashboard',label:'Dashboard'}] },
@@ -101,10 +108,10 @@ const NAV = {
   employee: [
     { label: 'Workspace',       items: [{id:'dashboard',label:'Dashboard'}] },
     { label: 'Verification',    items: [{id:'document-upload',label:'Document Upload'},{id:'verification-status',label:'Verification Status'}] },
-    { label: 'Self Service',    items: [{id:'my-attendance',label:'My Attendance'},{id:'my-leave',label:'My Leave'},{id:'my-documents',label:'My Documents'}] },
+    { label: 'Self Service',    items: [{id:'my-attendance',label:'My Attendance'},{id:'my-leave',label:'My Leave'},{id:'my-documents',label:'My Documents'},{id:'my-tasks',label:'My Tasks'}] },
   ],
   manager: [
-    { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'leads',label:'Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
+    { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'team-tasks',label:'Team Tasks'},{id:'team-attendance',label:'Team Attendance'},{id:'leads',label:'Leads'},{id:'email-bot',label:'Email Bot'},{id:'appointments',label:'Appointments'},{id:'analytics',label:'Analytics'}] },
   ],
   support: [
     { label: 'Work', items: [{id:'dashboard',label:'Dashboard'},{id:'support-tickets',label:'Support Tickets'},{id:'audit-logs',label:'Audit Requests'}] },
@@ -120,6 +127,7 @@ const TITLES = {
   recruitment:'Recruitment', payroll:'Payroll', documents:'Employee Documents',
   'document-verifications':'Document Verifications',
   'my-attendance':'My Attendance', 'my-leave':'My Leave', 'my-documents':'My Documents',
+  'my-tasks':'My Tasks', 'team-tasks':'Team Tasks', 'team-attendance':'Team Attendance',
   'document-upload':'Document Upload', 'verification-status':'Verification Status',
   'task-management':'Task Management', 'project-management':'Project Management', 'time-tracking':'Time Tracking',
 };
@@ -152,9 +160,12 @@ function getView(id, role, user) {
 
   if (id === 'dashboard' && role === 'employee') return <EmployeeDashboard user={user} />;
   if (id === 'dashboard' && role === 'manager')  return <ManagerDashboard user={user} />;
-  if (role === 'employee' && id === 'my-attendance') return <EmployeeSelfService user={user} type="attendance" />;
+  if (role === 'employee' && id === 'my-attendance') return <MyAttendance user={user} />;
   if (role === 'employee' && id === 'my-leave')      return <EmployeeSelfService user={user} type="leave" />;
   if (role === 'employee' && id === 'my-documents')  return <EmployeeSelfService user={user} type="documents" />;
+  if (role === 'employee' && id === 'my-tasks')      return <MyTasks user={user} />;
+  if (role === 'manager' && id === 'team-tasks')     return <TeamTasks user={user} />;
+  if (role === 'manager' && id === 'team-attendance') return <TeamAttendance user={user} />;
   if (id === 'dashboard') return role === 'hr' ? <HRDashboard user={user} /> : <AdminDashboard user={user} />;
 
   // HR verification view
@@ -164,8 +175,8 @@ function getView(id, role, user) {
     businesses: <Businesses user={user} />, users: <Users user={user} />, 'support-tickets': <SupportTickets />,
     leads: <CRMLeads user={user} />, 'email-bot': <EmailBot user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
     'whatsapp-logs': <WhatsAppLogs />, reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
-    'security-center': <SecurityCenter user={user} />, analytics: <Analytics />, settings: <Settings user={user} />,
-    employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
+    'security-center': <SecurityCenter user={user} />, analytics: <Analytics user={user} />, settings: <Settings user={user} />,
+    employees: <Employees user={user} />, attendance: <Attendance />, leave: <Leave />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
     'project-management': <ProjectManagement user={user} />, 'task-management': <TaskManagement user={user} />, 'time-tracking': <TimeTracking user={user} />
   };
@@ -174,11 +185,40 @@ function getView(id, role, user) {
 
 function ManagerDashboard({ user }) {
   const name = user?.name || user?.username || 'Manager';
+  const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
+  const [summary, setSummary] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSummary() {
+      try {
+        const response = await fetch('/api/analytics/manager', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || 'Unable to load manager analytics.');
+        if (!cancelled) {
+          setSummary(result.summary || {});
+          setError('');
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      }
+    }
+
+    loadSummary();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   const metrics = [
-    { label: 'Assigned Leads', value: '0', note: 'Pipeline owned by your team' },
-    { label: 'Appointments', value: '0', note: 'Upcoming client meetings' },
-    { label: 'Team Tasks', value: '0', note: 'Open operational follow-ups' },
-    { label: 'Conversion', value: '0%', note: 'Current reporting period' },
+    { label: 'Leads', value: summary?.leadsTotal ?? '...', note: `${summary?.followUpsDue ?? 0} follow-ups due` },
+    { label: 'Appointments', value: summary?.appointmentsUpcoming ?? '...', note: 'Upcoming client meetings' },
+    { label: 'Team Tasks', value: summary?.tasksOpen ?? '...', note: 'Open operational follow-ups' },
+    { label: 'Conversion', value: summary ? `${summary.conversionRate || 0}%` : '...', note: 'Current reporting period' },
   ];
 
   return (
@@ -189,7 +229,12 @@ function ManagerDashboard({ user }) {
         </h2>
         <p style={{ fontSize: '0.9rem' }}>Welcome, {name}. Review team activity, leads, appointments, and performance from one place.</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
+      {error && (
+        <div style={{ marginBottom: 14, background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 10, padding: '10px 12px', fontSize: '0.82rem', fontWeight: 700 }}>
+          {error}
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14, marginBottom: 18 }}>
         {metrics.map((metric) => (
           <RoleMetricCard key={metric.label} {...metric} color="#f97316" />
         ))}
@@ -231,11 +276,6 @@ function EmployeeDashboard({ user }) {
 
 function EmployeeSelfService({ type, user }) {
   const config = {
-    attendance: {
-      title: 'My Attendance',
-      subtitle: 'Your attendance records will appear here after HR starts syncing attendance data.',
-      rows: ['Today: Not marked yet', 'This week: 0 recorded days', 'Late marks: 0'],
-    },
     leave: {
       title: 'My Leave',
       subtitle: 'Track leave balance and requests from your employee workspace.',

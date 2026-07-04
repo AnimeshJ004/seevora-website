@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Avatar, Btn } from '../shared';
+import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Btn } from '../shared';
 import { hrApiFetch } from './hrApi';
 
 const EMPTY_FORM = {
@@ -12,11 +12,12 @@ const EMPTY_FORM = {
   joinedOn: new Date().toISOString().slice(0, 10),
   status: 'active',
   accountRole: 'employee',
+  managerId: '',
   username: '',
   password: 'Seevora@123',
 };
 
-export default function Employees() {
+export default function Employees({ user }) {
   const [search, setSearch] = useState('');
   const [filterKey, setFilterKey] = useState(0);
   const [employees, setEmployees] = useState([]);
@@ -31,6 +32,7 @@ export default function Employees() {
   const [selectedDept, setSelectedDept] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const employeesSectionRef = React.useRef(null);
+  const canManageEmployees = user?.role === 'hr';
 
   const showToast = (msg) => {
     setToast(msg);
@@ -76,6 +78,7 @@ export default function Employees() {
   };
 
   const openCreateModal = () => {
+    if (!canManageEmployees) return;
     setModalMode('create');
     setEditingEmployee(null);
     setForm(EMPTY_FORM);
@@ -84,6 +87,7 @@ export default function Employees() {
   };
 
   const openEditModal = (employee) => {
+    if (!canManageEmployees) return;
     setModalMode('edit');
     setEditingEmployee(employee);
     setForm({
@@ -96,6 +100,7 @@ export default function Employees() {
       joinedOn: employee.joined || new Date().toISOString().slice(0, 10),
       status: employee.status || 'active',
       accountRole: employee.accountRole || 'employee',
+      managerId: employee.managerId || '',
       username: employee.username || '',
       password: '',
     });
@@ -112,6 +117,10 @@ export default function Employees() {
 
   const handleSaveEmployee = async (event) => {
     event.preventDefault();
+    if (!canManageEmployees) {
+      showToast('Only HR can create, edit, or delete employee accounts.');
+      return;
+    }
     setIsSaving(true);
     setErrors({});
 
@@ -157,6 +166,10 @@ export default function Employees() {
   };
 
   const handleRemoveEmployee = async () => {
+    if (!canManageEmployees) {
+      showToast('Only HR can create, edit, or delete employee accounts.');
+      return;
+    }
     if (!editingEmployee || isSaving) return;
     const confirmed = window.confirm(`Remove ${editingEmployee.name} from employees? This will also remove the linked employee login account.`);
     if (!confirmed) return;
@@ -252,6 +265,13 @@ export default function Employees() {
     probation: employees.filter((employee) => employee.status === 'probation').length,
   };
 
+  const managerOptions = employees.filter((employee) => {
+    const title = String(employee.role || '').toLowerCase();
+    const accountRole = String(employee.accountRole || '').toLowerCase();
+    return employee.databaseId !== editingEmployee?.databaseId
+      && (accountRole === 'manager' || title.includes('manager'));
+  });
+
   return (
     <div ref={employeesSectionRef} style={{ position: 'relative' }}>
       {toast && (
@@ -269,9 +289,9 @@ export default function Employees() {
 
       <PageHeader
         title="Employees"
-        sub={isLoading ? 'Loading employees...' : `${employees.length} total employees`}
-        action="+ Add Account"
-        onAction={openCreateModal}
+        sub={isLoading ? 'Loading employees...' : `${employees.length} total employees${canManageEmployees ? '' : ' | read-only'}`}
+        action={canManageEmployees ? '+ Add Account' : undefined}
+        onAction={canManageEmployees ? openCreateModal : undefined}
       />
 
       <StatsGrid
@@ -299,7 +319,10 @@ export default function Employees() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['#', 'Employee', 'ID', 'Department', 'Role', 'Salary', 'Joined', 'Status', 'Login Role', 'Account', 'Actions'].map(h => (
+                {[
+                  '#', 'Employee', 'ID', 'Department', 'Role', 'Salary', 'Joined', 'Status', 'Login Role', 'Account',
+                  ...(canManageEmployees ? ['Actions'] : []),
+                ].map(h => (
                   <th key={h} style={{
                     textAlign: 'left', fontSize: '0.72rem', fontWeight: 600,
                     textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -312,7 +335,7 @@ export default function Employees() {
             <tbody>
               {!isLoading && f.length === 0 && (
                 <tr>
-                  <td colSpan={11} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  <td colSpan={canManageEmployees ? 11 : 10} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
                     No employees found.
                   </td>
                 </tr>
@@ -352,11 +375,13 @@ export default function Employees() {
                       ? <Badge label="Active" color="green" />
                       : <Badge label="No Account" color="gray" />}
                   </td>
-                  <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <Btn label="Edit" variant="ghost" size="sm" onClick={() => openEditModal(u)} />
-                    </div>
-                  </td>
+                  {canManageEmployees && (
+                    <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <Btn label="Edit" variant="ghost" size="sm" onClick={() => openEditModal(u)} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -364,7 +389,7 @@ export default function Employees() {
         </div>
       </Panel>
 
-      {isModalOpen && (
+      {canManageEmployees && isModalOpen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9998,
           background: 'rgba(15,23,42,0.45)',
@@ -421,6 +446,18 @@ export default function Employees() {
                   <option value="manager">Manager</option>
                   <option value="hr">Hr</option>
                 </select>
+              </div>
+              <div>
+                <label style={fieldLabelStyle}>Reports To (Manager)</label>
+                <select value={form.managerId} onChange={(e) => updateForm('managerId', e.target.value)} style={{ ...fieldInputStyle, borderColor: errors.managerId ? 'var(--accent-pink)' : 'var(--glass-border)' }}>
+                  <option value="">No manager assigned</option>
+                  {managerOptions.map((manager) => (
+                    <option key={manager.databaseId} value={manager.databaseId}>
+                      {manager.name} - {manager.role || 'Manager'}{manager.dept ? `, ${manager.dept}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {errors.managerId && <div style={{ color: 'var(--accent-pink)', fontSize: '0.72rem', marginTop: 5 }}>{errors.managerId}</div>}
               </div>
               <EmployeeField label="Username" name="username" value={form.username} error={errors.username} onChange={updateForm} placeholder="Auto from email if empty" />
               <EmployeeField

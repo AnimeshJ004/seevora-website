@@ -109,6 +109,15 @@ export async function initDb() {
   `);
 
   await pool.query(`
+    ALTER TABLE hr_employees
+    ADD COLUMN IF NOT EXISTS manager_id UUID REFERENCES hr_employees(id) ON DELETE SET NULL;
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS hr_employees_manager_idx ON hr_employees (manager_id);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS attendance_records (
       id UUID PRIMARY KEY,
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -665,6 +674,20 @@ Seevora — AI-Powered Growth`,
   `).catch(e => console.log(e.message));
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS task_comments (
+      id UUID PRIMARY KEY,
+      task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      author_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS task_comments_task_created_idx ON task_comments (task_id, created_at ASC);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS reviews (
       id UUID PRIMARY KEY,
       reviewer_name VARCHAR(160) NOT NULL,
@@ -722,6 +745,37 @@ Seevora — AI-Powered Growth`,
       message TEXT NOT NULL,
       meta JSONB,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_audit_logs (
+      id UUID PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(160) NOT NULL,
+      resource VARCHAR(120),
+      resource_id UUID,
+      details JSONB,
+      ip_address VARCHAR(45),
+      user_agent TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS system_audit_logs_created_idx ON system_audit_logs (created_at DESC);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS system_audit_logs_user_idx ON system_audit_logs (user_id, created_at DESC);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key VARCHAR(120) PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `).catch(e => console.log(e.message));
 

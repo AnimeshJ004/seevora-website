@@ -2,8 +2,8 @@ import express from 'express';
 
 const router = express.Router();
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/responses';
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5.4-mini';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20240620';
 const MAX_MESSAGE_LENGTH = 900;
 const MAX_HISTORY_ITEMS = 10;
 
@@ -73,24 +73,16 @@ function normalizeHistory(history = []) {
 }
 
 function extractResponseText(payload) {
-  if (typeof payload?.output_text === 'string' && payload.output_text.trim()) {
-    return payload.output_text.trim();
+  if (payload?.content?.[0]?.text) {
+    return payload.content[0].text.trim();
   }
-
-  const parts = [];
-  for (const output of payload?.output || []) {
-    for (const content of output?.content || []) {
-      if (typeof content?.text === 'string') parts.push(content.text);
-    }
-  }
-
-  return parts.join('\n').trim();
+  return '';
 }
 
 router.post('/message', rateLimit, async (req, res, next) => {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(503).json({ message: 'OpenAI key is not configured.' });
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ message: 'Anthropic key is not configured.' });
     }
 
     const message = String(req.body?.message || '').trim();
@@ -110,17 +102,18 @@ router.post('/message', rateLimit, async (req, res, next) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 18_000);
 
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: OPENAI_MODEL,
-        instructions: SYSTEM_PROMPT,
-        input,
-        max_output_tokens: 260,
+        model: ANTHROPIC_MODEL,
+        system: SYSTEM_PROMPT,
+        messages: input,
+        max_tokens: 260,
       }),
       signal: controller.signal,
     });
@@ -130,13 +123,13 @@ router.post('/message', rateLimit, async (req, res, next) => {
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const messageText = payload?.error?.message || 'OpenAI request failed.';
+      const messageText = payload?.error?.message || 'Anthropic request failed.';
       return res.status(response.status).json({ message: messageText });
     }
 
     const reply = extractResponseText(payload);
     if (!reply) {
-      return res.status(502).json({ message: 'OpenAI returned an empty reply.' });
+      return res.status(502).json({ message: 'Anthropic returned an empty reply.' });
     }
 
     return res.json({ reply });

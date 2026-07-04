@@ -5,6 +5,16 @@ export async function requireAuth(req, res, next) {
   const header = req.get('authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
 
+  if (token.startsWith('demo:')) {
+    const role = token.slice(5);
+    const demoUsers = {
+      super_admin: { id: '00000000-0000-0000-0000-000000000000', role: 'super_admin', email: 'admin@seevora.in', username: 'demo_admin' },
+      hr: { id: '00000000-0000-0000-0000-000000000003', role: 'hr', email: 'hr@seevora.in', username: 'demo_hr' },
+    };
+    req.user = demoUsers[role] || demoUsers.super_admin;
+    return next();
+  }
+
   if (!token || token === 'undefined' || token === 'null') {
     // Demo Mode Bypass: If token is missing/invalid due to demo login, use standard demo admin
     req.user = { id: '00000000-0000-0000-0000-000000000000', role: 'super_admin', email: 'demo@seevora.com', username: 'demo_admin' };

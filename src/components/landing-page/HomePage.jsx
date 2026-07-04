@@ -116,14 +116,6 @@ const heroCapabilities = [
   '5 Days Launch Ready',
 ];
 
-// ── Hero Typing Lines ──────────────────────────────────────────
-const HERO_LINES = [
-  { text: 'Turn Your Business', isGradient: false },
-  { text: 'Processes into',     isGradient: false },
-  { text: 'Profit Centers',     isGradient: true  },
-  { text: 'With AI.',           isGradient: false },
-];
-
 const HERO_ROTATING_PHRASES = [
   'Profit Centers',
   'Revenue Engines',
@@ -131,70 +123,22 @@ const HERO_ROTATING_PHRASES = [
   'Smart Workflows',
   'Automation Hubs',
   'Sales Machines',
+  'Lead Pipelines',
+  'Booking Engines',
+  'Client Journeys',
+  'AI Workflows',
 ];
 
 function Hero() {
-  const [linesDone,   setLinesDone]   = useState([]);
-  const [currentLine, setCurrentLine] = useState(0);
-  const [currentText, setCurrentText] = useState('');
-  const [showCursor,  setShowCursor]  = useState(true);
-  const [allDone,     setAllDone]     = useState(false);
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const charRef  = useRef(0);
-  const timerRef = useRef(null);
-  const rotatingReady = currentLine > 2;
 
   useEffect(() => {
-    if (currentLine >= HERO_LINES.length) {
-      setTimeout(() => setShowCursor(false), 1200);
-      setAllDone(true);
-      return;
-    }
-
-    const fullText = HERO_LINES[currentLine].text;
-    charRef.current = 0;
-    setCurrentText('');
-
-    const typeNext = () => {
-      charRef.current += 1;
-      setCurrentText(fullText.slice(0, charRef.current));
-      if (charRef.current < fullText.length) {
-        timerRef.current = setTimeout(typeNext, 40);
-      } else {
-        timerRef.current = setTimeout(() => {
-          setLinesDone(prev => [...prev, { text: fullText, isGradient: HERO_LINES[currentLine].isGradient }]);
-          setCurrentText('');
-          setCurrentLine(prev => prev + 1);
-        }, 200);
-      }
-    };
-
-    timerRef.current = setTimeout(typeNext, 500);
-    return () => clearTimeout(timerRef.current);
-  }, [currentLine]);
-
-  useEffect(() => {
-    if (!rotatingReady) return undefined;
-
     const interval = setInterval(() => {
       setPhraseIndex(prev => (prev + 1) % HERO_ROTATING_PHRASES.length);
     }, 2600);
 
     return () => clearInterval(interval);
-  }, [rotatingReady]);
-
-  const renderSpan = (text, isGradient, key, withCursor = false) => (
-    <span
-      key={key}
-      className={`hero-typed-line ${isGradient ? 'hero-typed-gradient' : 'hero-typed-3d'}`}
-      style={{ display: 'block', whiteSpace: 'nowrap' }}
-    >
-      {isGradient ? <span className="hero-rotating-phrase-text">{text}</span> : text}
-      {withCursor && showCursor && (
-        <span className="hero-typed-cursor" aria-hidden="true" />
-      )}
-    </span>
-  );
+  }, []);
 
   return (
     <section className="centered-hero" id="hero">
@@ -209,45 +153,60 @@ function Hero() {
       <div className="hero-reference-scene" aria-hidden="true">
         <div className="hero-orbit hero-orbit-one" />
         <div className="hero-orbit hero-orbit-two" />
+        <div className="hero-float-card hero-float-card-left hero-metric-card hero-metric-card--calls">
+          <div className="hero-metric-topline">
+            <span className="hero-metric-value">92%</span>
+            <span className="hero-metric-chip hero-metric-chip--up">+24%</span>
+          </div>
+          <strong>Missed calls saved</strong>
+          <small>AI Receptionist</small>
+        </div>
+        <div className="hero-float-card hero-float-card-right hero-metric-card hero-metric-card--shows">
+          <div className="hero-metric-topline">
+            <span className="hero-metric-value">40%</span>
+            <span className="hero-metric-chip hero-metric-chip--down">fewer</span>
+          </div>
+          <strong>No-show reduction</strong>
+          <small>WhatsApp reminders</small>
+        </div>
+        <div className="hero-float-card hero-float-card-bottom hero-chart-card">
+          <div className="hero-chart-bars" aria-hidden="true">
+            <span style={{ '--bar-h': '64%' }} />
+            <span style={{ '--bar-h': '78%' }} />
+            <span style={{ '--bar-h': '42%' }} />
+            <span style={{ '--bar-h': '90%' }} />
+          </div>
+          <div className="hero-chart-copy">
+            <span>5 days</span>
+            <strong>Launch ready</strong>
+          </div>
+        </div>
       </div>
 
       <div className="container">
         <div className="hero-content centered" data-animate>
           <h1 className="hero-title centered hero-title-typing">
-            {linesDone.map((line, i) => {
-              if (line.isGradient && rotatingReady) {
-                return (
-                  <span
-                    key="rotating-phrase-line"
-                    className="hero-typed-line hero-typed-gradient hero-rotating-phrase"
-                    style={{ display: 'block', whiteSpace: 'nowrap' }}
-                  >
-                    <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
-                      {HERO_ROTATING_PHRASES[phraseIndex]}
-                    </span>
-                  </span>
-                );
-              }
-
-              return renderSpan(line.text, line.isGradient, `done-${i}`);
-            })}
-            {currentLine < HERO_LINES.length &&
-              renderSpan(
-                currentText,
-                HERO_LINES[currentLine].isGradient,
-                `typing-${currentLine}`,
-                true
-              )
-            }
+            <span className="hero-typed-line hero-typed-3d" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+              Turn Your Business
+            </span>
+            <span className="hero-typed-line hero-typed-3d" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+              Processes into
+            </span>
+            <span
+              className="hero-typed-line hero-typed-gradient hero-rotating-phrase"
+              style={{ display: 'block', whiteSpace: 'nowrap' }}
+            >
+              <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
+                {HERO_ROTATING_PHRASES[phraseIndex]}
+              </span>
+            </span>
+            <span className="hero-typed-line hero-typed-3d" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+              With AI.
+            </span>
           </h1>
 
           <div
             className="hero-buttons centered"
-            style={{
-              opacity: allDone ? 1 : 0,
-              transform: allDone ? 'translateY(0)' : 'translateY(14px)',
-              transition: 'opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s'
-            }}
           >
             <button
               className="btn-pill btn-pill-primary"

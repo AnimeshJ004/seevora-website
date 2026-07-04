@@ -28,6 +28,7 @@ import appointmentsRoutes from './routes/appointments.js';
 import reviewsRoutes from './routes/reviews.js';
 import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
+import analyticsRoutes from './routes/analytics.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -75,6 +76,7 @@ app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/reviews', reviewsRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

@@ -128,6 +128,125 @@ router.get('/me', requireAuth, async (req, res, next) => {
   }
 });
 
+router.get('/history', requireAuth, async (req, res, next) => {
+  try {
+    if (!isTrackedAttendanceRole(req.user?.role)) {
+      return res.json({ attendance: [] });
+    }
+
+    const result = await pool.query(
+      `SELECT *
+       FROM attendance_records
+       WHERE user_id = $1
+       ORDER BY work_date DESC
+       LIMIT 30`,
+      [req.user.id]
+    );
+
+    return res.json({ attendance: result.rows.map((row) => normalizeAttendanceRow(row)) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/team', requireAuth, async (req, res, next) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'manager') {
+      return res.status(403).json({ message: 'Manager access is required.' });
+    }
+
+    const managerResult = await pool.query(
+      'SELECT id FROM hr_employees WHERE user_id = $1 LIMIT 1',
+      [req.user.id]
+    );
+    const managerEmployeeId = managerResult.rows[0]?.id || null;
+
+    if (!managerEmployeeId) {
+      return res.json({
+        officeHours: {
+          start: OFFICE_START_TIME,
+          end: OFFICE_END_TIME,
+          startLabel: '10:00 AM',
+          endLabel: '6:30 PM',
+        },
+        summary: { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0 },
+        attendance: [],
+      });
+    }
+
+    const directReportsResult = await pool.query(
+      'SELECT 1 FROM hr_employees WHERE manager_id = $1 LIMIT 1',
+      [managerEmployeeId]
+    );
+    const directReportsExist = directReportsResult.rowCount > 0;
+
+    const result = await pool.query(`
+      SELECT
+        e.id,
+        e.employee_code,
+        e.user_id,
+        e.name,
+        e.email,
+        e.department,
+        e.job_title,
+        u.role AS account_role,
+        a.id AS attendance_id,
+        a.work_date,
+        a.check_in_at,
+        a.check_out_at,
+        a.status,
+        a.worked_minutes,
+        a.office_start_time,
+        a.office_end_time,
+        a.created_at,
+        a.updated_at
+      FROM hr_employees e
+      LEFT JOIN users u ON u.id = e.user_id
+      LEFT JOIN attendance_records a
+        ON a.user_id = e.user_id
+       AND a.work_date = ${getKolkataDateSql()}
+      WHERE e.status = 'active'
+        AND (
+          e.id = $1
+          OR (
+            COALESCE(u.role, 'employee') = 'employee'
+            AND (e.manager_id = $1 OR ($2 = false AND e.manager_id IS NULL))
+          )
+        )
+      ORDER BY (e.id = $1) DESC, e.name ASC
+    `, [managerEmployeeId, directReportsExist]);
+
+    const attendance = result.rows.map((row) => normalizeAttendanceRow({
+      ...row,
+      status: row.attendance_id ? row.status : 'absent',
+      worked_minutes: row.worked_minutes || 0,
+    }));
+
+    const summary = attendance.reduce((acc, item) => {
+      acc.total += 1;
+      if (item.status === 'present') acc.present += 1;
+      if (item.status === 'full_day') acc.fullDay += 1;
+      if (item.status === 'half_day') acc.halfDay += 1;
+      if (item.status === 'absent') acc.absent += 1;
+      return acc;
+    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0 });
+
+    return res.json({
+      officeHours: {
+        start: OFFICE_START_TIME,
+        end: OFFICE_END_TIME,
+        startLabel: '10:00 AM',
+        endLabel: '6:30 PM',
+      },
+      summary,
+      attendance,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get('/today', requireAuth, async (req, res, next) => {
   try {
     if (!['hr', 'super_admin'].includes(String(req.user?.role || '').toLowerCase())) {

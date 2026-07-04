@@ -74,11 +74,11 @@
   height: 34px;
   padding: 5px;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.96);
+  background: transparent;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-  filter: none;
+  filter: brightness(0) invert(1);
 }
 
 .admin-sidebar-logo-text {

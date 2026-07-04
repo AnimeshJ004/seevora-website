@@ -35,7 +35,7 @@ export const PERMISSIONS = {
     'leads', 'email-bot', 'appointments', 'newsletter', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     'task-management', 'project-management', 'time-tracking',
     'audit-logs', 'system-logs', 'security-center', 'settings',
-    'hr-leave',
+    'employees', 'hr-leave',
   ],
   hr: [
     'dashboard',
@@ -45,11 +45,11 @@ export const PERMISSIONS = {
   employee: [
     'dashboard',
     'my-attendance', 'my-leave', 'my-documents',
-    'document-upload', 'verification-status',
+    'my-tasks', 'document-upload', 'verification-status',
   ],
   manager: [
     'dashboard',
-    'leads', 'email-bot', 'appointments', 'analytics',
+    'team-tasks', 'team-attendance', 'leads', 'email-bot', 'appointments', 'analytics',
   ],
   support: [
     'dashboard',
@@ -75,6 +75,10 @@ export const DEMO_USERS = [
 
 const DEMO_PASSWORD_OVERRIDES_KEY = 'seevora_demo_password_overrides';
 const DEMO_RESET_REQUESTS_KEY = 'seevora_demo_reset_requests';
+
+function demoTokenForRole(role) {
+  return `demo:${role || 'super_admin'}`;
+}
 
 function readStoredJson(key, fallback) {
   try {
@@ -174,7 +178,10 @@ export function login(email, password) {
   if (matches) {
     const session = { ...user };
     delete session.password;
+    session.token = demoTokenForRole(session.role);
     sessionStorage.setItem('seevora_session', JSON.stringify(session));
+    localStorage.setItem('seevoraAuthToken', session.token);
+    localStorage.setItem('seevoraUser', JSON.stringify(session));
     return { success: true, user: session };
   }
   return { success: false, error: 'Invalid credentials' };
@@ -194,14 +201,24 @@ export function getSession() {
     if (userRaw) {
       const u = JSON.parse(userRaw);
       if (u && u.role) {
-        if (token) u.token = token;
+        if (token && !token.startsWith('demo:')) u.token = token;
+        else {
+          u.token = demoTokenForRole(u.role);
+          localStorage.setItem('seevoraAuthToken', u.token);
+          localStorage.setItem('seevoraUser', JSON.stringify(u));
+        }
         return u;
       }
     }
     const raw = sessionStorage.getItem('seevora_session');
     if (raw) {
       const u = JSON.parse(raw);
-      if (token) u.token = token;
+      if (token && !token.startsWith('demo:')) u.token = token;
+      else if (u?.role) {
+        u.token = demoTokenForRole(u.role);
+        localStorage.setItem('seevoraAuthToken', u.token);
+        localStorage.setItem('seevoraUser', JSON.stringify(u));
+      }
       return u;
     }
     return null;

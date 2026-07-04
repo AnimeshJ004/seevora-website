@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { hrApiFetch } from "../hr/hrApi";
 
 const C = {
   bg:     "#f1f5f9",
@@ -41,24 +42,46 @@ export default function AdminDashboard({ user }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let ignore = false;
+
     const fetchStats = async () => {
       try {
         const token = user?.token || localStorage.getItem('seevoraAuthToken');
-        const res = await fetch('/api/dashboard/stats', {
+        const res = await hrApiFetch('/api/dashboard/stats', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || data?.message || `Dashboard stats request failed (${res.status})`);
+        }
+        if (!ignore) {
+          setStats({
+            employeesCount: 0,
+            leadsCount: 0,
+            projectsCount: 0,
+            appointmentsCount: 0,
+            presentToday: 0,
+            auditRequestsCount: 0,
+            taskStats: { todo: 0, in_progress: 0, done: 0 },
+            recentLeads: [],
+            upcomingAppointments: [],
+            recentAuditRequests: [],
+            recentAuditLogs: [],
+            ...data,
+          });
         }
       } catch (err) {
         console.error('Failed to fetch dashboard stats', err);
       } finally {
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     };
     fetchStats();
-  }, []);
+
+    return () => {
+      ignore = true;
+    };
+  }, [user?.token]);
 
   if (loading) {
     return <div style={{ padding: 40, color: C.muted, textAlign: 'center' }}>Loading dashboard...</div>;

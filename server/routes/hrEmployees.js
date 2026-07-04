@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -11,6 +12,15 @@ function cleanText(value) {
   return String(value || '').trim();
 }
 
+function requireEmployeeManagement(req, res, next) {
+  if (String(req.user?.role || '').toLowerCase() !== 'hr') {
+    return res.status(403).json({
+      message: 'Only HR can create, edit, or delete employee accounts.',
+    });
+  }
+  return next();
+}
+
 function toEmployee(row) {
   return {
     id: row.employee_code,
@@ -18,6 +28,8 @@ function toEmployee(row) {
     userId: row.user_id,
     username: row.username || '',
     accountRole: row.account_role || 'employee',
+    managerId: row.manager_id || '',
+    managerName: row.manager_name || '',
     name: row.name,
     email: row.email,
     phone: row.phone || '',
@@ -44,6 +56,7 @@ function validateEmployee(body) {
     joinedOn: cleanText(body.joinedOn || body.joined),
     status: cleanText(body.status || 'active').toLowerCase(),
     accountRole: cleanText(body.accountRole || 'employee').toLowerCase(),
+    managerId: cleanText(body.managerId),
     username: cleanText(body.username).toLowerCase(),
     password: String(body.password || DEFAULT_PASSWORD),
   };
@@ -109,13 +122,16 @@ async function createEmployeeCode(client) {
   return `EMP-${Date.now().toString().slice(-6)}`;
 }
 
+router.use(requireAuth);
+
 router.get('/', async (_req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
              e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
-             u.username, u.role AS account_role
+             e.manager_id, m.name AS manager_name, u.username, u.role AS account_role
       FROM hr_employees e
+      LEFT JOIN hr_employees m ON m.id = e.manager_id
       LEFT JOIN users u ON u.id = e.user_id
       ORDER BY e.created_at DESC
     `);
@@ -164,7 +180,7 @@ router.get('/summary', async (_req, res, next) => {
   }
 });
 
-router.post('/', async (req, res, next) => {
+router.post('/', requireEmployeeManagement, async (req, res, next) => {
   const client = await pool.connect();
 
   try {
@@ -172,6 +188,14 @@ router.post('/', async (req, res, next) => {
     if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
 
     await client.query('BEGIN');
+
+    if (data.managerId) {
+      const managerResult = await client.query('SELECT id FROM hr_employees WHERE id = $1 LIMIT 1', [data.managerId]);
+      if (!managerResult.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'Selected manager was not found.', errors: { managerId: 'Select a valid manager.' } });
+      }
+    }
 
     const existingEmployee = await client.query(
       'SELECT id FROM hr_employees WHERE LOWER(email) = LOWER($1) LIMIT 1',
@@ -211,11 +235,11 @@ router.post('/', async (req, res, next) => {
     const employeeResult = await client.query(
       `INSERT INTO hr_employees (
         id, user_id, employee_code, name, email, phone, department, job_title,
-        salary, joined_on, status, account_active
+        salary, joined_on, status, account_active, manager_id
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, $12)
        RETURNING id, user_id, employee_code, name, email, phone, department, job_title,
-                 salary, joined_on::text AS joined_on, status, account_active, created_at`,
+                 salary, joined_on::text AS joined_on, status, account_active, manager_id, created_at`,
       [
         employeeId,
         userId,
@@ -228,6 +252,7 @@ router.post('/', async (req, res, next) => {
         data.salary,
         data.joinedOn,
         data.status,
+        data.managerId || null,
       ]
     );
 
@@ -252,7 +277,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.put('/:employeeCode', async (req, res, next) => {
+router.put('/:employeeCode', requireEmployeeManagement, async (req, res, next) => {
   const client = await pool.connect();
 
   try {
@@ -273,6 +298,19 @@ router.put('/:employeeCode', async (req, res, next) => {
     if (!current) {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    if (data.managerId === current.id) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: 'An employee cannot report to themselves.', errors: { managerId: 'Select a different manager.' } });
+    }
+
+    if (data.managerId) {
+      const managerResult = await client.query('SELECT id FROM hr_employees WHERE id = $1 LIMIT 1', [data.managerId]);
+      if (!managerResult.rowCount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'Selected manager was not found.', errors: { managerId: 'Select a valid manager.' } });
+      }
     }
 
     const existingEmployee = await client.query(
@@ -345,10 +383,11 @@ router.put('/:employeeCode', async (req, res, next) => {
            salary = $6,
            joined_on = $7,
            status = $8,
+           manager_id = $9,
            updated_at = NOW()
-       WHERE id = $9
+       WHERE id = $10
        RETURNING id, user_id, employee_code, name, email, phone, department, job_title,
-                 salary, joined_on::text AS joined_on, status, account_active, created_at`,
+                 salary, joined_on::text AS joined_on, status, account_active, manager_id, created_at`,
       [
         data.name,
         data.email,
@@ -358,6 +397,7 @@ router.put('/:employeeCode', async (req, res, next) => {
         data.salary,
         data.joinedOn,
         data.status,
+        data.managerId || null,
         current.id,
       ]
     );
@@ -378,7 +418,7 @@ router.put('/:employeeCode', async (req, res, next) => {
   }
 });
 
-router.delete('/:employeeCode', async (req, res, next) => {
+router.delete('/:employeeCode', requireEmployeeManagement, async (req, res, next) => {
   const client = await pool.connect();
 
   try {

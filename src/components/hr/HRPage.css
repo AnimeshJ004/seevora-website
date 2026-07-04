@@ -67,6 +67,7 @@
   height: 28px;
   border-radius: 8px;
   object-fit: contain;
+  filter: brightness(0) invert(1);
 }
 
 .hr-sidebar-logo-text {
