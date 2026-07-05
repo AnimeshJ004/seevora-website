@@ -15,6 +15,7 @@ import WhatsAppLogs    from './views/admin/WhatsAppLogs';
 import Subscribers     from './views/admin/Subscribers';
 import Campaigns       from './views/admin/Campaigns';
 import EmailTemplates  from './views/admin/EmailTemplates';
+import InboundEmails    from './views/admin/InboundEmails';
 import Reviews         from './views/operations/Reviews';
 import AuditLogs       from './views/admin/AuditLogs';
 import SecurityCenter  from './views/system/SecurityCenter';
@@ -94,7 +95,7 @@ const NAV = {
   super_admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'}] },
     { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'}] },
-    { label: 'Email Bot',   items: [{id:'email-templates',label:'Email Templates'},{id:'campaigns',label:'Campaigns'}] },
+    { label: 'Email Bot',   items: [{id:'email-templates',label:'Email Templates'},{id:'campaigns',label:'Campaigns'},{id:'inbound-emails',label:'Email Inbox'}] },
     { label: 'Productivity',items: [{id:'task-management',label:'Task Management'},{id:'project-management',label:'Project Management'},{id:'time-tracking',label:'Time Tracking'}] },
     { label: 'System',      items: [{id:'audit-logs',label:'Audit Logs'},{id:'security-center',label:'Security Center'},{id:'settings',label:'Settings'}] },
     { label: 'HR Module',   items: [{id:'employees',label:'Employees'},{id:'attendance',label:'Attendance'},{id:'payroll',label:'Payroll'},{id:'documents',label:'Documents'},{id:'document-verifications',label:'Verifications'}] },
@@ -102,7 +103,7 @@ const NAV = {
   admin: [
     { label: 'Platform',    items: [{id:'dashboard',label:'Dashboard'},{id:'businesses',label:'Businesses'},{id:'users',label:'Users & Roles'}] },
     { label: 'Operations',  items: [{id:'leads',label:'CRM / Leads'},{id:'appointments',label:'Appointments'},{id:'ai-voice-logs',label:'AI Voice Agent'},{id:'whatsapp-logs',label:'WhatsApp Marketing'},{id:'settings',label:'Settings'}] },
-    { label: 'Email Bot',   items: [{id:'email-templates',label:'Email Templates'},{id:'campaigns',label:'Campaigns'}] },
+    { label: 'Email Bot',   items: [{id:'email-templates',label:'Email Templates'},{id:'campaigns',label:'Campaigns'},{id:'inbound-emails',label:'Email Inbox'}] },
     { label: 'Productivity',items: [{id:'task-management',label:'Task Management'},{id:'project-management',label:'Project Management'},{id:'time-tracking',label:'Time Tracking'}] },
     { label: 'People',      items: [{id:'employees',label:'Employees'}] },
   ],
@@ -129,7 +130,7 @@ const TITLES = {
   dashboard:'Dashboard', businesses:'Businesses', users:'Users & Roles',
   'support-tickets':'Support Tickets', leads:'CRM / Leads', appointments:'Appointments',
   'ai-voice-logs':'AI Voice Agent', 'whatsapp-logs':'WhatsApp Marketing', reviews:'Reputation', 'audit-logs':'Audit Requests', 'security-center':'Security Center', analytics:'Analytics', settings:'Settings',
-  subscribers:'Subscribers', campaigns:'Email Campaigns', 'email-templates':'Email Templates',
+  subscribers:'Subscribers', campaigns:'Email Campaigns', 'email-templates':'Email Templates', 'inbound-emails':'Email Inbox',
   employees:'Employees', attendance:'Attendance', leave:'Leave Management',
   recruitment:'Recruitment', payroll:'Payroll', documents:'Employee Documents',
   'document-verifications':'Document Verifications',
@@ -167,7 +168,7 @@ function getView(id, role, user) {
 
   if (id === 'dashboard' && role === 'employee') return <EmployeeDashboard user={user} />;
   if (id === 'dashboard' && role === 'manager')  return <ManagerDashboard user={user} />;
-  if (role === 'employee' && id === 'my-attendance') return <MyAttendance user={user} />;
+  if (role === 'employee' && id === 'my-attendance') return <EmployeeSelfService user={user} type="attendance" />;
   if (role === 'employee' && id === 'my-leave')      return <EmployeeSelfService user={user} type="leave" />;
   if (role === 'employee' && id === 'my-documents')  return <EmployeeSelfService user={user} type="documents" />;
   if (role === 'employee' && id === 'my-tasks')      return <MyTasks user={user} />;
@@ -181,8 +182,8 @@ function getView(id, role, user) {
   const map = {
     businesses: <Businesses user={user} />, users: <Users user={user} />, 'support-tickets': <SupportTickets />,
     leads: <CRMLeads user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
-    campaigns: <Campaigns user={user} />, 'email-templates': <EmailTemplates user={user} />, subscribers: <Subscribers user={user} />,
-    'whatsapp-logs': <WhatsAppLogs />, reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
+    'whatsapp-logs': <WhatsAppLogs />, subscribers: <Subscribers />, campaigns: <Campaigns />, 'email-templates': <EmailTemplates />, 'inbound-emails': <InboundEmails />,
+    reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
     'security-center': <SecurityCenter user={user} />, analytics: <Analytics />, settings: <Settings user={user} />,
     employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,

@@ -21,7 +21,7 @@ export const PERMISSIONS = {
     'businesses', 'users',
     // Operations & CRM / Marketing
     'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
-    'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config',
+    'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config', 'inbound-emails',
     // Productivity
     'task-management', 'project-management', 'time-tracking',
     // System
@@ -34,7 +34,7 @@ export const PERMISSIONS = {
     'dashboard',
     'businesses', 'users',
     'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
-    'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config',
+    'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config', 'inbound-emails',
     'task-management', 'project-management', 'time-tracking',
     'audit-logs', 'system-logs', 'security-center', 'settings',
     'employees', 'hr-leave',
