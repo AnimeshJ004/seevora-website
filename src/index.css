@@ -2456,7 +2456,7 @@ select {
 }
 
 .auth-link-button:hover {
-  color: #6f7f33;
+  color: #6F7F33;
 }
 
 .auth-link-button:disabled {
@@ -4777,13 +4777,13 @@ textarea.form-input {
 }
 
 .btn-whatsapp {
-  color: #25d366;
-  border-color: rgba(37, 211, 102, 0.3);
+  color: #6F7F33;
+  border-color: rgba(111, 127, 51, 0.3);
 }
 
 .btn-whatsapp:hover {
-  border-color: rgba(37, 211, 102, 0.6);
-  background: rgba(37, 211, 102, 0.06);
+  border-color: rgba(111, 127, 51, 0.6);
+  background: rgba(111, 127, 51, 0.06);
 }
 
 .final-cta-trust {
@@ -9574,7 +9574,7 @@ textarea.form-input {
 }
 
 .why-carousel-title {
-  color: #111827;
+  color: var(--landing-ink);
   font-family: 'Outfit', sans-serif;
   font-size: 1.6rem;
   font-weight: 850;
@@ -9582,7 +9582,7 @@ textarea.form-input {
 }
 
 .why-carousel-desc {
-  color: #4B5563;
+  color: var(--landing-muted);
   font-size: 0.95rem;
   line-height: 1.6;
   margin-bottom: 32px;
@@ -9604,17 +9604,18 @@ textarea.form-input {
 }
 
 .why-stat-label {
-  color: rgba(75, 85, 99, 0.7);
+  color: var(--landing-muted);
   font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  opacity: 0.75;
 }
 
 .why-stat-value {
-  color: #1F2937;
+  color: var(--landing-ink);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.5;
 }
 
