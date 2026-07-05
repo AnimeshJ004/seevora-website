@@ -432,6 +432,20 @@ export async function initDb() {
   await pool.query(`ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMPTZ;`).catch(() => {});
   await pool.query(`ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS name VARCHAR(200);`).catch(() => {});
 
+  /* ── Inbound Emails ─────────────────────────────────────────────────── */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS inbound_emails (
+      id UUID PRIMARY KEY,
+      from_email VARCHAR(255) NOT NULL,
+      to_email VARCHAR(255) NOT NULL,
+      subject TEXT,
+      body TEXT NOT NULL,
+      ai_reply TEXT,
+      status VARCHAR(40) NOT NULL DEFAULT 'received',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
   await pool.query(`
     CREATE INDEX IF NOT EXISTS email_logs_campaign_idx ON email_logs (campaign_id);
   `);

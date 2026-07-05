@@ -631,6 +631,82 @@ router.get('/track/click/:logId', async (req, res) => {
   res.send('Redirect link invalid');
 });
 
+/* ── 8. INBOUND EMAIL BOT ENDPOINTS ── */
+router.get('/inbound', async (req, res, next) => {
+  try {
+    const result = await pool.query('SELECT * FROM inbound_emails ORDER BY created_at DESC LIMIT 100');
+    res.json({ emails: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/inbound/:id/reply', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { body: replyBody } = req.body;
+    if (!replyBody) {
+      return res.status(400).json({ error: 'Reply body is required.' });
+    }
+
+    const { rows } = await pool.query('SELECT * FROM inbound_emails WHERE id = $1', [id]);
+    const email = rows[0];
+    if (!email) {
+      return res.status(404).json({ error: 'Inbound email not found.' });
+    }
+
+    // Send the reply email using sendMail
+    const subject = email.subject.toLowerCase().startsWith('re:') ? email.subject : `Re: ${email.subject || 'Support Request'}`;
+    const mailResult = await sendMail({
+      to: email.from_email,
+      subject: subject,
+      text: replyBody,
+      html: `<div style="font-family:sans-serif;color:#333;line-height:1.6;">${replyBody.replace(/\n/g, '<br/>')}</div>`
+    });
+
+    if (mailResult && mailResult.success) {
+      await pool.query(
+        `UPDATE inbound_emails SET status = 'replied', ai_reply = $2 WHERE id = $1`,
+        [id, replyBody]
+      );
+      return res.json({ success: true, message: 'Reply sent successfully.' });
+    } else {
+      return res.status(500).json({ error: mailResult?.error || 'Failed to send mail.' });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/inbound/:id/ai-suggest', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT * FROM inbound_emails WHERE id = $1', [id]);
+    const email = rows[0];
+    if (!email) {
+      return res.status(404).json({ error: 'Inbound email not found.' });
+    }
+
+    const prompt = `
+You are an AI support agent for Seevora.
+Please read the following email from a user and generate a polite, helpful reply.
+Keep the reply concise and professional.
+Subject: ${email.subject}
+Message: ${email.body}
+    `;
+
+    const { generateAIReply } = await import('../utils/ai.js');
+    const aiResponse = await generateAIReply({
+      prompt,
+      systemPrompt: 'You are an AI support agent for Seevora. Please read the email from a user and generate a polite, helpful, concise, and professional reply.'
+    });
+
+    res.json({ aiResponse });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
 
 

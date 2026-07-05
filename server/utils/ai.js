@@ -77,7 +77,7 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [] }
         body: JSON.stringify({
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
           messages,
-          max_tokens: 500,
+          max_completion_tokens: 500,
           temperature: 0.7
         })
       });

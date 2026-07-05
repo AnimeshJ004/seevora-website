@@ -28,18 +28,32 @@ Message: ${textBody}
       systemPrompt: 'You are an AI support agent for Seevora. Please read the email from a user and generate a polite, helpful, concise, and professional reply.'
     });
 
+    let mailSent = false;
     if (aiResponse) {
       const { sendMail } = await import('../utils/mailer.js');
       const { aiContactReply } = await import('../utils/emailTemplates.js');
 
-      await sendMail({
+      const mailResult = await sendMail({
         to: fromAddress,
         ...aiContactReply({
           name: fromAddress.split('@')[0],
           aiResponse
         })
       });
+      if (mailResult && mailResult.success) {
+        mailSent = true;
+      }
     }
+
+    const { default: pool } = await import('../config/db.js');
+    const { randomUUID } = await import('crypto');
+    const toAddress = req.body.to || req.body.recipient || process.env.SMTP_USER || 'info@seevora.in';
+
+    await pool.query(
+      `INSERT INTO inbound_emails (id, from_email, to_email, subject, body, ai_reply, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [randomUUID(), fromAddress, toAddress, subject || '', textBody, aiResponse || null, mailSent ? 'replied' : 'received']
+    );
 
     res.status(200).json({ message: 'Webhook processed and reply sent' });
   } catch (error) {
