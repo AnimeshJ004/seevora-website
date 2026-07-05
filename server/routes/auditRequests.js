@@ -2,7 +2,8 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
-import { callBookingConfirmation, contactAdminNotification, contactThreadReply } from '../utils/emailTemplates.js';
+import { callBookingConfirmation, contactAdminNotification, contactThreadReply, aiContactReply } from '../utils/emailTemplates.js';
+import { generateAIReply } from '../utils/ai.js';
 
 const router = express.Router();
 
@@ -56,7 +57,25 @@ function validateResponse(body) {
 
 
 async function sendEnquiryBotEmails(requestId, data) {
-  const bookingTpl = callBookingConfirmation({ name: data.name, email: data.email, company: data.company, phone: data.phone, message: data.message });
+  let bookingTpl = null;
+
+  try {
+    const systemPrompt = 'You are Seevora\'s AI Sales & Support Agent. Seevora is an AI-powered B2B automation company that helps businesses automate operations, communication, and workflows.\n\nGenerate a professional, friendly email response to a new inquiry. Introduce yourself briefly, directly address the client\'s message, highlight how Seevora\'s automation can assist them, and gently suggest booking a free discovery call at https://seevora.in/book-a-call.\n\nKeep the email natural and concise. Do NOT use any placeholders (like [Your Name] or [Date]). Sign off as "The Seevora Team".';
+    const prompt = `Client Name: ${data.name}\nCompany: ${data.company || 'N/A'}\nMessage: ${data.message}`;
+
+    const aiResponse = await generateAIReply({ prompt, systemPrompt });
+    if (aiResponse) {
+      bookingTpl = aiContactReply({ name: data.name, aiResponse });
+    }
+  } catch (err) {
+    console.error('[AI Enquiry Reply] Error generating AI reply:', err.message);
+  }
+
+  if (!bookingTpl) {
+    // Fallback to static email
+    bookingTpl = callBookingConfirmation({ name: data.name, email: data.email, company: data.company, phone: data.phone, message: data.message });
+  }
+
   const customerResult = await sendMail({ to: data.email, ...bookingTpl });
 
   const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_FROM || process.env.SMTP_USER;

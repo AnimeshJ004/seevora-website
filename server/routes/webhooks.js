@@ -1,16 +1,12 @@
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { sendEmail } from '../utils/email.js';
+import { generateAIReply } from '../utils/ai.js';
 
 const router = express.Router();
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy_key_if_not_provided');
 
 // Webhook endpoint to receive incoming emails
-// Note: You must configure your email provider (SendGrid/Mailgun) to forward emails to this endpoint.
 router.post('/email-inbound', async (req, res) => {
   try {
-    // Structure of req.body depends on your email provider's webhook payload
-    // Using a generic/SendGrid-like structure as an example:
     const fromAddress = req.body.from || req.body.sender;
     const subject = req.body.subject;
     const textBody = req.body.text || req.body.text_body;
@@ -19,9 +15,6 @@ router.post('/email-inbound', async (req, res) => {
       return res.status(400).json({ message: 'Missing from or text field' });
     }
 
-    // Initialize Gemini model
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
     const prompt = `
 You are an AI support agent for Seevora.
 Please read the following email from a user and generate a polite, helpful reply.
@@ -30,16 +23,23 @@ Subject: ${subject}
 Message: ${textBody}
     `;
 
-    const result = await model.generateContent(prompt);
-    const aiResponse = result.response.text();
-
-    // Send the AI-generated reply back to the user
-    await sendEmail({
-      to: fromAddress,
-      subject: `Re: ${subject || 'Your Inquiry'}`,
-      text: aiResponse,
-      html: `<p>${aiResponse.replace(/\n/g, '<br/>')}</p>`
+    const aiResponse = await generateAIReply({
+      prompt,
+      systemPrompt: 'You are an AI support agent for Seevora. Please read the email from a user and generate a polite, helpful, concise, and professional reply.'
     });
+
+    if (aiResponse) {
+      const { sendMail } = await import('../utils/mailer.js');
+      const { aiContactReply } = await import('../utils/emailTemplates.js');
+
+      await sendMail({
+        to: fromAddress,
+        ...aiContactReply({
+          name: fromAddress.split('@')[0],
+          aiResponse
+        })
+      });
+    }
 
     res.status(200).json({ message: 'Webhook processed and reply sent' });
   } catch (error) {
@@ -80,6 +80,7 @@ router.post('/audit-reply', async (req, res) => {
     };
     const updatedThread = [...currentThread, newReply];
 
+    // Save the user's reply first
     await pool.query(
       `UPDATE audit_requests
        SET thread = $2,
@@ -89,7 +90,47 @@ router.post('/audit-reply', async (req, res) => {
       [request.id, JSON.stringify(updatedThread)]
     );
 
-    res.status(200).json({ message: 'Reply added to audit request thread' });
+    // Generate AI response based on the entire conversation history
+    const aiResponse = await generateAIReply({
+      systemPrompt: 'You are Seevora\'s AI Support & Sales Agent. Seevora is an AI-powered B2B automation company. Answer the customer\'s email reply professionally and helpfully based on the email history. Keep it concise, friendly, and natural. Do NOT use placeholders. Sign off as "The Seevora Team".',
+      thread: updatedThread
+    });
+
+    if (aiResponse) {
+      const { sendMail } = await import('../utils/mailer.js');
+      const { contactThreadReply } = await import('../utils/emailTemplates.js');
+
+      const emailResult = await sendMail({
+        to: fromAddress,
+        ...contactThreadReply({
+          toName: request.name,
+          responseBody: aiResponse,
+          originalMessage: textBody
+        })
+      });
+
+      if (emailResult.success) {
+        const aiReply = {
+          id: randomUUID(),
+          sender: 'admin',
+          text: aiResponse,
+          timestamp: new Date().toISOString()
+        };
+        const finalThread = [...updatedThread, aiReply];
+
+        await pool.query(
+          `UPDATE audit_requests
+           SET thread = $2,
+               response_body = $3,
+               status = 'responded',
+               updated_at = NOW()
+           WHERE id = $1`,
+          [request.id, JSON.stringify(finalThread), aiResponse]
+        );
+      }
+    }
+
+    res.status(200).json({ message: 'Reply added and AI reply sent' });
   } catch (error) {
     console.error('Audit reply webhook error:', error);
     res.status(500).json({ message: 'Error processing webhook' });
@@ -97,3 +138,5 @@ router.post('/audit-reply', async (req, res) => {
 });
 
 export default router;
+
+

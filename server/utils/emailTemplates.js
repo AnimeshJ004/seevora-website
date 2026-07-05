@@ -224,3 +224,34 @@ export function callBookingConfirmation({ name, email, company, phone, message }
 
   return { subject, html, text };
 }
+
+/* ── 6. Personalized AI Agent Auto-Reply ── */
+export function aiContactReply({ name, aiResponse }) {
+  const firstName = name.split(' ')[0];
+  const subject = `Re: Your inquiry to Seevora — Hi ${firstName} 👋`;
+  
+  // Format the AI response for HTML with paragraph tags and proper breaks
+  const paragraphs = aiResponse.trim().split('\n\n');
+  const formattedHtml = paragraphs.map(p => {
+    // Basic formatting for bullet points if any
+    if (p.startsWith('-') || p.startsWith('*')) {
+      const items = p.split('\n').map(li => `<li>${li.replace(/^[-*]\s*/, '')}</li>`).join('');
+      return `<ul style="font-size:15px;color:#475569;line-height:1.7;margin:0 0 14px;padding-left:20px;">${items}</ul>`;
+    }
+    return `<p style="font-size:15px;color:#475569;line-height:1.7;margin:0 0 14px;">${p.replace(/\n/g, '<br/>')}</p>`;
+  }).join('');
+
+  const html = baseLayout(`
+    <h2>Hello ${firstName},</h2>
+    ${formattedHtml}
+    <hr class="divider"/>
+    <p style="font-size:13px;color:#94a3b8;">
+      This is an automated personalized reply from our AI agent. If you'd like to reach our human team directly, simply reply to this email or call us at
+      <a href="tel:${BRAND.phone}" style="color:${BRAND.color};">${BRAND.phone}</a>.
+    </p>
+  `);
+
+  const text = `Hi ${name},\n\n${aiResponse}\n\nBest regards,\nThe Seevora Team\n${BRAND.site}`;
+  return { subject, html, text };
+}
+
