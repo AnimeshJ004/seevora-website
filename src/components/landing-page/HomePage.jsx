@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Chatbot from './Chatbot';
+import img1 from '../../assets/services/img1.jpg';
+import imgVoice from '../../assets/services/img-voice.jpg';
+import imgHandshake from '../../assets/services/img-handshake.jpg';
+import imgAiPlug from '../../assets/services/img-ai-plug.jpg';
+import imgOffice from '../../assets/services/img-office.jpg';
 
 const whyReasons = [
   {
@@ -8,6 +13,7 @@ const whyReasons = [
     title: 'Custom B2B Sales Automation',
     desc: 'B2B sales client ke business ke liye tailored solutions. Hum off-the-shelf software nahi dete, aapke exact business operations ke liye custom automation build karte hai.',
     highlight: 'Built for complex B2B pipelines.',
+    image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=80',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.13 12 19.78 19.78 0 0 1 1.08 3.18 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.84a16 16 0 0 0 6.07 6.07l1.21-1.21a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -20,6 +26,7 @@ const whyReasons = [
     title: 'Deep Research & AI Mapping',
     desc: 'Client lete hai, smjhte hai unka business model. Deep research karke identify karte hai ki kahan AI safely and effectively use kiya ja sakta hai to modernize operations.',
     highlight: 'Data-driven business analysis.',
+    image: 'https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=800&q=80',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m13 2-8 10h6l-1 10 8-10h-6l1-10Z" />
@@ -32,6 +39,7 @@ const whyReasons = [
     title: 'Multiple AI Agents & Fusion',
     desc: 'Hum sirf ek chatbot nahi dete. Multiple AI agents aur existing software ko merge karte hai jisse client ka poora business model intelligently automate ho jaye.',
     highlight: 'Seamless software integration.',
+    image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=800&q=80',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -44,6 +52,7 @@ const whyReasons = [
     title: 'Massive Client Time Saving',
     desc: 'Manual tasks aur data entry ko AI agents handle karte hai. Client ka massive time saving hota hai, allowing them to focus on closing deals instead of paperwork.',
     highlight: 'Focus on growth, not admin.',
+    image: 'https://images.unsplash.com/photo-1512428559087-560fa5ceab42?auto=format&fit=crop&w=800&q=80',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -57,8 +66,9 @@ const whyReasons = [
     stat: 'Sales',
     statLabel: 'Growth Accelerated',
     title: 'Fusion Then Sales Growth',
-    desc: 'Pehle SW aur AI ko merge karte hai, workflow optimize karte hai, uske baad aggressively B2B sales aur conversion rates boost karte hai.',
-    highlight: 'End-to-end revenue generation.',
+    desc: 'Operations automate karke hum business ko itna efficient banate hai ki time aur resources bachte hai, jo directly lead karte hai massive sales growth mein.',
+    highlight: 'Efficiency that scales revenue.',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -72,6 +82,7 @@ const whyReasons = [
     title: 'Never Miss a Customer Again',
     desc: 'Seevora\'s AI Voice Receptionist answers every call around the clock - even at 2 AM. No leads lost to voicemail, no patients going to competitors.',
     highlight: 'Zero missed calls, guaranteed.',
+    image: imgVoice,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.13 12 19.78 19.78 0 0 1 1.08 3.18 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.84a16 16 0 0 0 6.07 6.07l1.21-1.21a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -85,6 +96,7 @@ const whyReasons = [
     title: 'WhatsApp-First Automation',
     desc: 'Your customers live on WhatsApp — so does Seevora. Automated confirmations, smart waitlists, and follow-up reminders reduce no-shows by 30–40% without lifting a finger.',
     highlight: 'Built for India\'s WhatsApp culture.',
+    image: imgHandshake,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -98,6 +110,7 @@ const whyReasons = [
     title: 'One Automation for Everything',
     desc: 'Voice calls, WhatsApp, appointment bookings, document collection, UPI reminders, Google reviews — all visible and manageable from a single clean dashboard.',
     highlight: 'No juggling 10 tools anymore.',
+    image: imgAiPlug,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -113,6 +126,7 @@ const whyReasons = [
     title: 'Measurable ROI in 90 Days',
     desc: 'Seevora clients consistently report 40% cost reduction and 2× faster lead response within 90 days. We track every metric so you know exactly what you\'re getting.',
     highlight: 'ROI-backed, not just promised.',
+    image: imgOffice,
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -365,31 +379,17 @@ function WhyChooseSeevora() {
                     if (positionClass === 'next') handleNext();
                   }}
                 >
-                  <div className="why-carousel-avatar">
-                    <div className="avatar-icon-wrapper">
-                      {reason.icon}
-                    </div>
-                  </div>
+                  {reason.image && (
+                    <div className="why-carousel-bg" style={{ backgroundImage: `url(${reason.image})` }} />
+                  )}
+                  <div className="why-carousel-overlay" />
 
                   <div className="why-carousel-content">
-                    <div className="why-carousel-number">
-                      {String(i + 1).padStart(2, '0')}
-                    </div>
-
                     <h3 className="why-carousel-title">{reason.title}</h3>
-                    <p className="why-carousel-desc">{reason.desc}</p>
-
-                    <div className="why-carousel-stats-block">
-                      <div className="why-stat-item">
-                        <div className="why-stat-label">IMPACT / STAT:</div>
-                        <div className="why-stat-value">{reason.stat} {reason.statLabel}</div>
-                      </div>
-
-                      <div className="why-stat-item">
-                        <div className="why-stat-label">SEEVORA PROMISE:</div>
-                        <div className="why-stat-value">{reason.highlight}</div>
-                      </div>
+                    <div className="why-carousel-badge">
+                      {reason.stat} {reason.statLabel}
                     </div>
+                    <p className="why-carousel-desc">{reason.desc}</p>
                   </div>
                 </div>
               );
