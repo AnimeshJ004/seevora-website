@@ -839,4 +839,209 @@ Seevora — AI-Powered Growth`,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `).catch(e => console.log(e.message));
+
+  // ── AI Sales Agent Tables ──────────────────────────────────────────────────
+  // Task 1.1 & 1.2: Sales Agent database schema with enhanced error handling
+  // All operations are idempotent (safe to run multiple times)
+
+  try {
+    console.log('[SalesAgent] Initializing database schema...');
+
+    // 1. Sessions table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sales_agent_sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id VARCHAR(100) UNIQUE NOT NULL,
+        visitor_id VARCHAR(100),
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        status VARCHAR(40) NOT NULL DEFAULT 'active',
+        lead_captured BOOLEAN NOT NULL DEFAULT false,
+        lead_id UUID,
+        message_count INTEGER NOT NULL DEFAULT 0,
+        services_discussed TEXT[],
+        last_activity_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ended_at TIMESTAMPTZ,
+        archived_at TIMESTAMPTZ
+      );
+    `);
+    console.log('[SalesAgent] ✓ sessions table created/verified');
+
+    // Session indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sales_agent_sessions(session_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_status ON sales_agent_sessions(status);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sales_agent_sessions(created_at DESC);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_last_activity ON sales_agent_sessions(last_activity_at DESC);`);
+    console.log('[SalesAgent] ✓ session indexes created/verified');
+
+    // 2. Messages table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sales_agent_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id UUID NOT NULL REFERENCES sales_agent_sessions(id) ON DELETE CASCADE,
+        sender VARCHAR(20) NOT NULL,
+        message_text TEXT NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('[SalesAgent] ✓ messages table created/verified');
+
+    // Message indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_session_id ON sales_agent_messages(session_id, created_at ASC);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON sales_agent_messages(created_at DESC);`);
+    console.log('[SalesAgent] ✓ message indexes created/verified');
+
+    // 3. Leads table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sales_agent_leads (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id UUID NOT NULL REFERENCES sales_agent_sessions(id) ON DELETE CASCADE,
+        name VARCHAR(200) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(40),
+        service_interest VARCHAR(200) NOT NULL,
+        source VARCHAR(80) NOT NULL DEFAULT 'sales_agent',
+        status VARCHAR(40) NOT NULL DEFAULT 'new',
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('[SalesAgent] ✓ leads table created/verified');
+
+    // Lead indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_email ON sales_agent_leads(LOWER(email));`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON sales_agent_leads(status);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_created_at ON sales_agent_leads(created_at DESC);`);
+    console.log('[SalesAgent] ✓ lead indexes created/verified');
+
+    // 4. Analytics table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sales_agent_analytics (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        session_id UUID NOT NULL REFERENCES sales_agent_sessions(id) ON DELETE CASCADE,
+        event_type VARCHAR(60) NOT NULL,
+        event_data JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log('[SalesAgent] ✓ analytics table created/verified');
+
+    // Analytics indexes
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON sales_agent_analytics(session_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON sales_agent_analytics(event_type);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON sales_agent_analytics(created_at DESC);`);
+    console.log('[SalesAgent] ✓ analytics indexes created/verified');
+
+    // 5. Default system prompt
+    await pool.query(`
+      INSERT INTO system_settings (key, value)
+      VALUES ('ai_sales_agent_prompt', $1)
+      ON CONFLICT (key) DO NOTHING;
+    `, [`You are an AI Sales Agent for Seevora Private Limited, an Indian AI automation company.
+
+## Your Role
+- Help potential clients understand Seevora's AI automation solutions
+- Answer questions about services, pricing, implementation, and industries served
+- Guide interested visitors toward booking a consultation or providing contact information
+- Maintain a professional, helpful, and confident tone
+
+## Company Information
+Seevora specializes in custom Enterprise AI automation for SMBs in India.
+
+### Core Services:
+1. **24/7 AI Voice Receptionist**
+   - Handles missed calls automatically
+   - Books appointments
+   - Captures customer intent
+   - Routes urgent queries to humans
+
+2. **WhatsApp Business API Automation**
+   - Automated confirmations and reminders
+   - Follow-up sequences
+   - Payment link distribution
+   - Document collection
+   - Customer status updates
+
+3. **Multi-language Support**
+   - Hindi-first approach
+   - English and Hinglish supported
+   - Natural conversation flow
+
+4. **Custom Integrations**
+   - Calendar systems
+   - Billing software
+   - EMR/LIS systems
+   - CRMs
+   - UPI payment workflows
+   - Document management
+   - Business databases
+
+### Industries Served:
+- Healthcare & Clinics
+- Education & Coaching
+- Personal Care & Wellness
+- Diagnostics & Pathology
+- Fitness & Gyms
+- Legal, CA & Financial Advisory
+- Real Estate & Property
+
+### Implementation:
+- Typical setup: 5 business days
+- Includes workflow audit and rule mapping
+- Custom pricing based on modules, integrations, and volume
+
+### Pricing:
+- Custom quotes based on specific needs
+- Encourage booking a discovery call for accurate pricing
+
+## Your Guidelines
+
+### Do:
+- Be conversational and friendly while maintaining professionalism
+- Ask clarifying questions to understand visitor needs
+- Highlight relevant services based on their industry or problem
+- Address concerns and objections with facts and social proof
+- Suggest booking a consultation when appropriate
+- Collect contact information from interested visitors
+
+### Don't:
+- Answer questions unrelated to Seevora or business automation
+- Provide specific legal advice or guaranteed regulatory compliance
+- Make promises about specific outcomes or ROI without qualification
+- Engage with profanity, abuse, or inappropriate topics
+- Invent features or capabilities not listed above
+- Give exact pricing without understanding requirements
+
+### Lead Capture:
+When a visitor shows strong interest (asks about implementation, pricing, or expresses need), offer to collect their information:
+"I'd love to connect you with our team for a personalized consultation. Can I get your name, email, and the service you're most interested in?"
+
+Keep responses concise (2-3 sentences typical, 4-5 maximum for complex topics).`]);
+    console.log('[SalesAgent] ✓ system prompt inserted/verified');
+
+    // Verify all tables exist
+    const { rows: tableCheck } = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+        AND table_name IN ('sales_agent_sessions', 'sales_agent_messages', 'sales_agent_leads', 'sales_agent_analytics')
+      ORDER BY table_name;
+    `);
+
+    if (tableCheck.length === 4) {
+      console.log('[SalesAgent] ✓ All tables verified successfully');
+      console.log('[SalesAgent] Migration completed successfully');
+    } else {
+      console.warn('[SalesAgent] ⚠ Warning: Expected 4 tables, found', tableCheck.length);
+      console.warn('[SalesAgent] Found tables:', tableCheck.map(r => r.table_name).join(', '));
+    }
+
+  } catch (error) {
+    console.error('[SalesAgent] ✗ Migration failed:', error.message);
+    console.error('[SalesAgent] Error details:', error);
+    throw new Error(`Sales Agent migration failed: ${error.message}`);
+  }
 }

@@ -13,6 +13,7 @@ import PrivacyPolicy from './components/landing-page/PrivacyPolicy';
 import TermsConditions from './components/landing-page/TermsConditions';
 import LoginPage from './components/dashboard/LoginPage';
 import DashboardShell from './components/dashboard/DashboardShell';
+import ChatWidget from './components/SalesAgent/ChatWidget';
 import { getSession, logout } from './auth/roles';
 
 function getRolePath(role) {
@@ -178,6 +179,7 @@ export default function App() {
         <HomePage />
       )}
       {!hideSiteChrome && <Footer />}
+      {!hideSiteChrome && <ChatWidget />}
     </>
   );
 }
