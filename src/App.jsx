@@ -1,19 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import Navbar from './components/landing-page/Navbar';
-import ServicesPage from './components/landing-page/ServicesPage';
-import ModulesPage from './components/landing-page/ModulesPage';
-import ImpactPage from './components/landing-page/ImpactPage';
-import HomePage from './components/landing-page/HomePage';
-import AboutPage from './components/landing-page/AboutPage';
-import Contact from './components/landing-page/Contact';
-import AuthPage from './components/landing-page/AuthPage';
 import Footer from './components/landing-page/Footer';
-import FAQ from './components/landing-page/FAQ';
-import PrivacyPolicy from './components/landing-page/PrivacyPolicy';
-import TermsConditions from './components/landing-page/TermsConditions';
-import LoginPage from './components/dashboard/LoginPage';
-import DashboardShell from './components/dashboard/DashboardShell';
 import { getSession, logout } from './auth/roles';
+
+// Lazy load page components for code splitting
+const HomePage = lazy(() => import('./components/landing-page/HomePage'));
+const ServicesPage = lazy(() => import('./components/landing-page/ServicesPage'));
+const ModulesPage = lazy(() => import('./components/landing-page/ModulesPage'));
+const ImpactPage = lazy(() => import('./components/landing-page/ImpactPage'));
+const AboutPage = lazy(() => import('./components/landing-page/AboutPage'));
+const Contact = lazy(() => import('./components/landing-page/Contact'));
+const FAQ = lazy(() => import('./components/landing-page/FAQ'));
+const PrivacyPolicy = lazy(() => import('./components/landing-page/PrivacyPolicy'));
+const TermsConditions = lazy(() => import('./components/landing-page/TermsConditions'));
+const AuthPage = lazy(() => import('./components/landing-page/AuthPage'));
+const LoginPage = lazy(() => import('./components/dashboard/LoginPage'));
+const DashboardShell = lazy(() => import('./components/dashboard/DashboardShell'));
+const NotFoundPage = lazy(() => import('./components/landing-page/NotFoundPage'));
 
 function getRolePath(role) {
   if (role === 'super_admin' || role === 'admin') return '/admin';
@@ -145,18 +148,81 @@ export default function App() {
       { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
     );
 
+    // 1. Observe elements currently in the DOM
     document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+
+    // 2. Set up MutationObserver to catch lazy-loaded elements
+    const mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1) { // Element node
+            if (node.hasAttribute('data-animate')) {
+              observer.observe(node);
+            }
+            node.querySelectorAll('[data-animate]').forEach(el => observer.observe(el));
+          }
+        });
+      });
+    });
+
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
   }, [path]);
 
-  if (['/admin', '/hr', '/dashboard', '/login'].includes(path)) return <DashboardRoute />;
+  // Loading fallback component
+  const LoadingFallback = () => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'var(--bg-deep)',
+      color: 'var(--text-primary)'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid rgba(99, 102, 241, 0.2)',
+          borderTopColor: '#6366f1',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px'
+        }} />
+        <p>Loading...</p>
+      </div>
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+
+  if (['/admin', '/hr', '/dashboard', '/login'].includes(path)) {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <DashboardRoute />
+      </Suspense>
+    );
+  }
 
   const hideSiteChrome = ['/admin', '/dashboard', '/hr', '/login'].includes(path);
+  
+  // Define valid routes
+  const validRoutes = ['/', '/faqs', '/privacy-policy', '/terms-and-conditions', '/about', '/services', '/modules', '/impact', '/book-a-call', '/login'];
+  const isValidRoute = validRoutes.includes(path);
 
   return (
-    <>
+    <Suspense fallback={<LoadingFallback />}>
       {!hideSiteChrome && <Navbar />}
-      {path === '/faqs' ? (
+      {!isValidRoute ? (
+        <NotFoundPage />
+      ) : path === '/faqs' ? (
         <FAQ isPage />
       ) : path === '/privacy-policy' ? (
         <PrivacyPolicy />
@@ -178,6 +244,6 @@ export default function App() {
         <HomePage />
       )}
       {!hideSiteChrome && <Footer />}
-    </>
+    </Suspense>
   );
 }

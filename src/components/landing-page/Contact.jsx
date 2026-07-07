@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateContactPageSchema, generateOrganizationSchema } from '../../utils/schemaGenerators';
 import logoIcon from '../../assets/logo-icon-clean.png';
 
 const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
@@ -50,12 +54,26 @@ export default function Contact() {
     }
   };
 
+  const contactPageSchema = generateContactPageSchema();
+  const organizationSchema = generateOrganizationSchema();
+
   return (
-    <section className="contact section book-call-page" id="book-a-call">
+    <>
+      <SEOHead
+        title={pagesSEO.contact.title}
+        description={pagesSEO.contact.description}
+        keywords={pagesSEO.contact.keywords}
+        path={pagesSEO.contact.path}
+        image={pagesSEO.contact.image}
+        type={pagesSEO.contact.type}
+      />
+      <StructuredData data={[organizationSchema, contactPageSchema]} />
+
+      <section className="contact section book-call-page" id="book-a-call">
       <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <h2 className="section-title">Schedule Your <span className="gradient-text">AI Growth Call</span></h2>
+          <h2 className="section-title"><span className="reveal-mask"><span className="reveal-text">Schedule Your <span className="gradient-text">AI Growth Call</span></span></span></h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             Book a free discovery call. We'll map your process, identify the opportunity, and show you what's possible — no strings attached.
           </p>
@@ -63,7 +81,7 @@ export default function Contact() {
 
         <div className="contact-grid">
           <div className="book-call-brand" data-animate="slide-left">
-            <img src={logoIcon} alt="Seevora" />
+            <img src={logoIcon} alt="Seevora" loading="lazy" decoding="async" />
             <h3>Seevora</h3>
             <p>
               Book a focused discovery call with our team. We will understand your workflow, identify automation opportunities, and recommend the right AI system for your business.
@@ -117,5 +135,6 @@ export default function Contact() {
         </div>
       </div>
     </section>
+    </>
   );
 }

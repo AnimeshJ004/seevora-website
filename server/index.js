@@ -29,6 +29,8 @@ import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
 import analyticsRoutes from './routes/analytics.js';
 import emailBotRoutes from './routes/emailBot.js';
+import sitemapHandler from './routes/sitemap.js';
+import robotsHandler from './routes/robots.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -77,6 +79,10 @@ app.use('/api/reviews', reviewsRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
+// SEO Routes
+app.get('/sitemap.xml', sitemapHandler);
+app.get('/robots.txt', robotsHandler);
 
 // Start background email campaign scheduler
 setInterval(async () => {

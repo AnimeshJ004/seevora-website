@@ -129,7 +129,7 @@ export async function initDb() {
       check_in_at TIMESTAMPTZ,
       check_out_at TIMESTAMPTZ,
       office_start_time TIME NOT NULL DEFAULT '10:00:00',
-      office_end_time TIME NOT NULL DEFAULT '18:30:00',
+      office_end_time TIME NOT NULL DEFAULT '18:00:00',
       status VARCHAR(40) NOT NULL DEFAULT 'present',
       worked_minutes INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

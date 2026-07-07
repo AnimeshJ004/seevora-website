@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Panel, Badge, StatsGrid } from '../shared';
+import EmployeeAttendancePanel from '../EmployeeAttendancePanel';
 import { hrApiFetch } from '../hr/hrApi';
 
 const OFFICE_START = '10:00 AM';
-const OFFICE_END = '6:30 PM';
+const OFFICE_END = '6:00 PM';
 
 function formatTime(value) {
   if (!value) return '—';
@@ -28,6 +29,8 @@ function statusMeta(status) {
       return { label: 'Half Day', color: 'orange' };
     case 'present':
       return { label: 'Present', color: 'cyan' };
+    case 'leave':
+      return { label: 'Leave', color: 'purple' };
     default:
       return { label: 'Absent', color: 'gray' };
   }
@@ -38,6 +41,7 @@ export default function TeamAttendance({ user }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const loadAttendance = async () => {
     setIsLoading(true);
@@ -180,7 +184,12 @@ export default function TeamAttendance({ user }) {
                 const meta = statusMeta(entry.status);
                 const isSelf = entry.userId && user?.id && entry.userId === user.id;
                 return (
-                  <tr key={entry.id}>
+                  <tr 
+                    key={entry.id}
+                    onClick={() => setSelectedEmployee(entry)}
+                    style={{ cursor: 'pointer' }}
+                    className="hover-row"
+                  >
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
                         {entry.name}{isSelf ? ' (You)' : ''}
@@ -209,6 +218,13 @@ export default function TeamAttendance({ user }) {
           </table>
         </div>
       </Panel>
+
+      {selectedEmployee && (
+        <EmployeeAttendancePanel 
+          employee={selectedEmployee} 
+          onClose={() => setSelectedEmployee(null)} 
+        />
+      )}
     </div>
   );
 }

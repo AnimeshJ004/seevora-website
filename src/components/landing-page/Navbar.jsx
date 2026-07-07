@@ -61,7 +61,7 @@ export default function Navbar() {
       <div className="jitter-nav-wrapper">
         <nav className={`jitter-nav-full${hidden ? ' hidden' : ''}`}>
           <a href="#" className="jnav-logo" onClick={scrollTop}>
-            <img src={logoIcon} alt="" className="logo-icon-img" />
+            <img src={logoIcon} alt="Seevora Logo" className="logo-icon-img" decoding="async" />
             <span className="logo-text">Seevora</span>
           </a>
           <div className="jnav-links">

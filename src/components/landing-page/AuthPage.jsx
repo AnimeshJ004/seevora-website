@@ -212,7 +212,9 @@ export default function AuthPage() {
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
           <h2 className="section-title">
-            Access Your <span className="gradient-text">Seevora Account</span>
+            <span className="reveal-mask">
+              <span className="reveal-text">Access Your <span className="gradient-text">Seevora Account</span></span>
+            </span>
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             Login to manage your AI workflow requests, audits, and implementation updates.
@@ -221,7 +223,7 @@ export default function AuthPage() {
 
         <div className="contact-grid">
           <div className="book-call-brand" data-animate="slide-left">
-            <img src={logoIcon} alt="Seevora" />
+            <img src={logoIcon} alt="Seevora" loading="lazy" decoding="async" />
             <h3>Seevora</h3>
             <p>
               Access your Seevora workspace to review audit details, track progress, and stay connected with your AI implementation team.

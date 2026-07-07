@@ -168,7 +168,7 @@ router.get('/team', requireAuth, async (req, res, next) => {
           start: OFFICE_START_TIME,
           end: OFFICE_END_TIME,
           startLabel: '10:00 AM',
-          endLabel: '6:30 PM',
+          endLabel: '6:00 PM',
         },
         summary: { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0 },
         attendance: [],
@@ -217,9 +217,10 @@ router.get('/team', requireAuth, async (req, res, next) => {
       ORDER BY (e.id = $1) DESC, e.name ASC
     `, [managerEmployeeId, directReportsExist]);
 
+    const isSunday = new Date().getDay() === 0;
     const attendance = result.rows.map((row) => normalizeAttendanceRow({
       ...row,
-      status: row.attendance_id ? row.status : 'absent',
+      status: row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent'),
       worked_minutes: row.worked_minutes || 0,
     }));
 
@@ -229,15 +230,16 @@ router.get('/team', requireAuth, async (req, res, next) => {
       if (item.status === 'full_day') acc.fullDay += 1;
       if (item.status === 'half_day') acc.halfDay += 1;
       if (item.status === 'absent') acc.absent += 1;
+      if (item.status === 'leave') acc.leave += 1;
       return acc;
-    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0 });
+    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0 });
 
     return res.json({
       officeHours: {
         start: OFFICE_START_TIME,
         end: OFFICE_END_TIME,
         startLabel: '10:00 AM',
-        endLabel: '6:30 PM',
+        endLabel: '6:00 PM',
       },
       summary,
       attendance,
@@ -281,9 +283,10 @@ router.get('/today', requireAuth, async (req, res, next) => {
       ORDER BY e.created_at DESC
     `);
 
+    const isSunday = new Date().getDay() === 0;
     const attendance = result.rows.map((row) => normalizeAttendanceRow({
       ...row,
-      status: row.attendance_id ? row.status : 'absent',
+      status: row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent'),
       worked_minutes: row.worked_minutes || 0,
     }));
 
@@ -293,18 +296,68 @@ router.get('/today', requireAuth, async (req, res, next) => {
       if (item.status === 'full_day') acc.fullDay += 1;
       if (item.status === 'half_day') acc.halfDay += 1;
       if (item.status === 'absent') acc.absent += 1;
+      if (item.status === 'leave') acc.leave += 1;
       return acc;
-    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0 });
+    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0 });
 
     return res.json({
       officeHours: {
         start: OFFICE_START_TIME,
         end: OFFICE_END_TIME,
         startLabel: '10:00 AM',
-        endLabel: '6:30 PM',
+        endLabel: '6:00 PM',
       },
       summary,
       attendance,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get('/employee/:userId/history', requireAuth, async (req, res, next) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (!['hr', 'manager', 'super_admin'].includes(role)) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    const { userId } = req.params;
+
+    const historyResult = await pool.query(
+      `SELECT * FROM attendance_records
+       WHERE user_id = $1
+       ORDER BY work_date DESC`,
+      [userId]
+    );
+
+    const history = historyResult.rows.map((row) => normalizeAttendanceRow(row));
+
+    let totalFullDays = 0;
+    history.forEach((record) => {
+      if (record.status === 'full_day') totalFullDays++;
+    });
+
+    // compute current week availability
+    const now = new Date();
+    // JS getDay(): 0 = Sunday, 1 = Monday. We want Monday=0 to Sunday=6 for week calculation
+    const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; 
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    let currentWeekDays = 0;
+    history.forEach((record) => {
+      const recDate = new Date(record.workDate);
+      if (recDate >= startOfWeek && ['present', 'full_day', 'half_day'].includes(record.status)) {
+        currentWeekDays++;
+      }
+    });
+
+    return res.json({
+      fullHistory: history,
+      totalFullDays,
+      currentWeekDays
     });
   } catch (error) {
     return next(error);

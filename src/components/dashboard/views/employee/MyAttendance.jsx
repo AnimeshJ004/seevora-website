@@ -3,7 +3,7 @@ import { Panel, Badge, StatsGrid } from '../shared';
 import { hrApiFetch } from '../hr/hrApi';
 
 const OFFICE_START = '10:00 AM';
-const OFFICE_END = '6:30 PM';
+const OFFICE_END = '6:00 PM';
 
 function formatTime(value) {
   if (!value) return '—';

@@ -3,11 +3,11 @@ import Chatbot from './Chatbot';
 
 const whyReasons = [
   {
-    stat: '24/7',
-    statLabel: 'Always On',
-    title: 'Never Miss a Customer Again',
-    desc: 'Seevora\'s AI Voice Receptionist answers every call around the clock — even at 2 AM. No leads lost to voicemail, no patients going to competitors.',
-    highlight: 'Zero missed calls, guaranteed.',
+    stat: 'B2B',
+    statLabel: 'Sales Solutions',
+    title: 'Custom B2B Sales Automation',
+    desc: 'B2B sales client ke business ke liye tailored solutions. Hum off-the-shelf software nahi dete, aapke exact business operations ke liye custom automation build karte hai.',
+    highlight: 'Built for complex B2B pipelines.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.13 12 19.78 19.78 0 0 1 1.08 3.18 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.84a16 16 0 0 0 6.07 6.07l1.21-1.21a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -15,17 +15,70 @@ const whyReasons = [
     )
   },
   {
-    stat: '5',
-    statLabel: 'Days to Live',
-    title: 'Deployed in 5 Business Days',
-    desc: 'No months-long setup, no generic SaaS templates. Our engineers map your exact salon, clinic, or CA workflow and launch a fully customised AI system — live in just 5 days.',
-    highlight: 'Fastest go-live in the industry.',
+    stat: '100%',
+    statLabel: 'Business Mapping',
+    title: 'Deep Research & AI Mapping',
+    desc: 'Client lete hai, smjhte hai unka business model. Deep research karke identify karte hai ki kahan AI safely and effectively use kiya ja sakta hai to modernize operations.',
+    highlight: 'Data-driven business analysis.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m13 2-8 10h6l-1 10 8-10h-6l1-10Z" />
       </svg>
     )
   },
+  {
+    stat: 'Merge',
+    statLabel: 'Software & AI',
+    title: 'Multiple AI Agents & Fusion',
+    desc: 'Hum sirf ek chatbot nahi dete. Multiple AI agents aur existing software ko merge karte hai jisse client ka poora business model intelligently automate ho jaye.',
+    highlight: 'Seamless software integration.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    )
+  },
+  {
+    stat: '10x',
+    statLabel: 'Time Saving',
+    title: 'Massive Client Time Saving',
+    desc: 'Manual tasks aur data entry ko AI agents handle karte hai. Client ka massive time saving hota hai, allowing them to focus on closing deals instead of paperwork.',
+    highlight: 'Focus on growth, not admin.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+      </svg>
+    )
+  },
+  {
+    stat: 'Sales',
+    statLabel: 'Growth Accelerated',
+    title: 'Fusion Then Sales Growth',
+    desc: 'Pehle SW aur AI ko merge karte hai, workflow optimize karte hai, uske baad aggressively B2B sales aur conversion rates boost karte hai.',
+    highlight: 'End-to-end revenue generation.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+        <polyline points="16 7 22 7 22 13" />
+      </svg>
+    )
+  },
+  {
+    stat: '24/7',
+    statLabel: 'Always On',
+    title: 'Never Miss a Customer Again',
+    desc: 'Seevora\'s AI Voice Receptionist answers every call around the clock - even at 2 AM. No leads lost to voicemail, no patients going to competitors.',
+    highlight: 'Zero missed calls, guaranteed.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.78 19.78 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.13 12 19.78 19.78 0 0 1 1.08 3.18 2 2 0 0 1 3.06 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.09 8.84a16 16 0 0 0 6.07 6.07l1.21-1.21a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+      </svg>
+    )
+  },
+
   {
     stat: '40%',
     statLabel: 'No-Show Reduction',
@@ -38,23 +91,11 @@ const whyReasons = [
       </svg>
     )
   },
-  {
-    stat: '8h',
-    statLabel: 'Saved per Week',
-    title: 'Hindi-First, Truly Local',
-    desc: 'Our AI speaks your customers\' language — Hindi, English, or Hinglish. No awkward chatbots that sound foreign. Seevora feels natural to every caller and chat user.',
-    highlight: 'Fluent in India\'s real language.',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        <path d="M8 10h8M8 14h5" />
-      </svg>
-    )
-  },
+
   {
     stat: '1',
     statLabel: 'Platform, All Ops',
-    title: 'One Dashboard for Everything',
+    title: 'One Automation for Everything',
     desc: 'Voice calls, WhatsApp, appointment bookings, document collection, UPI reminders, Google reviews — all visible and manageable from a single clean dashboard.',
     highlight: 'No juggling 10 tools anymore.',
     icon: (
@@ -109,17 +150,17 @@ const stats = [
 ];
 
 const heroCapabilities = [
-  'AI Receptionist',
-  'WhatsApp Follow-ups',
-  '24/7 AI Response',
-  '40% Fewer No-Shows',
-  '5 Days Launch Ready',
+  'B2B Sales Automation',
+  'Fusion',
+  'Deep Business Research',
+  'Massive Time Saving',
+  'Sales Scaling',
 ];
 
 const HERO_ROTATING_PHRASES = [
-  'Profit Centers',
+  'B2B Sales Engines',
   'Revenue Engines',
-  'Growth Systems',
+  'Fusion',
   'Smart Workflows',
   'Automation Hubs',
   'Sales Machines',
@@ -155,19 +196,19 @@ function Hero() {
         <div className="hero-orbit hero-orbit-two" />
         <div className="hero-float-card hero-float-card-left hero-metric-card hero-metric-card--calls">
           <div className="hero-metric-topline">
-            <span className="hero-metric-value">92%</span>
-            <span className="hero-metric-chip hero-metric-chip--up">+24%</span>
+            <span className="hero-metric-value">10x</span>
+            <span className="hero-metric-chip hero-metric-chip--up">+40%</span>
           </div>
-          <strong>Missed calls saved</strong>
-          <small>AI Receptionist</small>
+          <strong>Faster workflows</strong>
+          <small>Fusion AI</small>
         </div>
         <div className="hero-float-card hero-float-card-right hero-metric-card hero-metric-card--shows">
           <div className="hero-metric-topline">
-            <span className="hero-metric-value">40%</span>
-            <span className="hero-metric-chip hero-metric-chip--down">fewer</span>
+            <span className="hero-metric-value">3x</span>
+            <span className="hero-metric-chip hero-metric-chip--up">more</span>
           </div>
-          <strong>No-show reduction</strong>
-          <small>WhatsApp reminders</small>
+          <strong>Sales velocity</strong>
+          <small>Automated Pipelines</small>
         </div>
         <div className="hero-float-card hero-float-card-bottom hero-chart-card">
           <div className="hero-chart-bars" aria-hidden="true">
@@ -177,8 +218,8 @@ function Hero() {
             <span style={{ '--bar-h': '90%' }} />
           </div>
           <div className="hero-chart-copy">
-            <span>5 days</span>
-            <strong>Launch ready</strong>
+            <span>100%</span>
+            <strong>Custom Built</strong>
           </div>
         </div>
       </div>
@@ -186,22 +227,30 @@ function Hero() {
       <div className="container">
         <div className="hero-content centered" data-animate>
           <h1 className="hero-title centered hero-title-typing">
-            <span className="hero-typed-line hero-typed-3d" style={{ display: 'block', whiteSpace: 'nowrap' }}>
-              Turn Your Business
-            </span>
-            <span className="hero-typed-line hero-typed-3d" style={{ display: 'block', whiteSpace: 'nowrap' }}>
-              Processes into
-            </span>
-            <span
-              className="hero-typed-line hero-typed-gradient hero-rotating-phrase"
-              style={{ display: 'block', whiteSpace: 'nowrap' }}
-            >
-              <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
-                {HERO_ROTATING_PHRASES[phraseIndex]}
+            <span className="reveal-mask">
+              <span className="hero-typed-line hero-typed-3d reveal-text" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                Turn Your Business
               </span>
             </span>
-            <span className="hero-typed-line hero-typed-3d" style={{ display: 'block', whiteSpace: 'nowrap' }}>
-              With AI.
+            <span className="reveal-mask">
+              <span className="hero-typed-line hero-typed-3d reveal-text delay-1" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                Processes into
+              </span>
+            </span>
+            <span className="reveal-mask">
+              <span
+                className="hero-typed-line hero-typed-gradient hero-rotating-phrase reveal-text delay-2"
+                style={{ display: 'block', whiteSpace: 'nowrap' }}
+              >
+                <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
+                  {HERO_ROTATING_PHRASES[phraseIndex]}
+                </span>
+              </span>
+            </span>
+            <span className="reveal-mask">
+              <span className="hero-typed-line hero-typed-3d reveal-text delay-3" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                With AI.
+              </span>
             </span>
           </h1>
 
@@ -227,18 +276,20 @@ function Hero() {
         </div>
       </div>
 
-      <div className="hero-capability-strip" aria-label="Seevora automation capabilities">
-        {heroCapabilities.map((item, index) => (
-          <div className="hero-capability-item" key={item}>
-            <span className={`hero-capability-mark hero-capability-mark-${index + 1}`} aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z" />
-                <path d="M8.5 12h7" />
-              </svg>
-            </span>
-            <span>{item}</span>
-          </div>
-        ))}
+      <div className="hero-capability-strip" aria-label="Seevora automation capabilities" data-animate>
+        <div className="hero-capability-track">
+          {[...heroCapabilities, ...heroCapabilities].map((item, index) => (
+            <div className="hero-capability-item" key={`${item}-${index}`}>
+              <span className={`hero-capability-mark hero-capability-mark-${(index % heroCapabilities.length) + 1}`} aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z" />
+                  <path d="M8.5 12h7" />
+                </svg>
+              </span>
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -257,16 +308,36 @@ function WhyChooseSeevora() {
     setCurrentIndex((prev) => (prev === whyReasons.length - 1 ? 0 : prev + 1));
   };
 
+  const handleMouseMove = (e) => {
+    const { currentTarget, clientX, clientY } = e;
+    const { left, top, width, height } = currentTarget.getBoundingClientRect();
+    const x = (clientX - left) / width;
+    const y = (clientY - top) / height;
+    currentTarget.style.setProperty('--mouse-x', `${(x - 0.5) * 40}px`);
+    currentTarget.style.setProperty('--mouse-y', `${(y - 0.5) * 40}px`);
+    currentTarget.style.setProperty('--mouse-x-inv', `${(0.5 - x) * 40}px`);
+    currentTarget.style.setProperty('--mouse-y-inv', `${(0.5 - y) * 40}px`);
+  };
+
   return (
-    <section className="why-choose-seevora section" id="why-seevora">
+    <section className="why-choose-seevora section" id="why-seevora" onMouseMove={handleMouseMove}>
+      <div className="why-bg-glow" aria-hidden="true">
+        <div className="shape-3d shape-1 parallax-layer-1" />
+        <div className="shape-3d shape-2 parallax-layer-2" />
+        <div className="shape-3d shape-3 parallax-layer-3" />
+      </div>
       <div className="container">
         {/* Section Header */}
         <div className="why-motion-header" data-animate="motion-header">
           <h2 className="section-title">
-            Why <span className="gradient-text">Seevora</span> Is the Right Choice
+            <span className="reveal-mask">
+              <span className="reveal-text">Why <span className="gradient-text">Seevora</span> Is the Right Choice</span>
+            </span>
           </h2>
           <p className="section-subtitle why-motion-subtitle">
-            We're not a generic SaaS tool. Seevora is a custom-built AI automation partner for Indian SMBs — built for your workflow, your language, and your growth.
+            <span className="reveal-mask">
+              <span className="reveal-text delay-1">We're a technology integration company specializing in B2B sales automation. We merge AI agents with your existing software ecosystem to modernize your entire workflow and accelerate sales.</span>
+            </span>
           </p>
         </div>
 
@@ -277,7 +348,7 @@ function WhyChooseSeevora() {
               <path d="M15 18l-6-6 6-6" />
             </svg>
           </button>
-          
+
           <div className="why-carousel-track">
             {whyReasons.map((reason, i) => {
               let positionClass = 'hidden';
@@ -299,12 +370,12 @@ function WhyChooseSeevora() {
                       {reason.icon}
                     </div>
                   </div>
-                  
+
                   <div className="why-carousel-content">
                     <div className="why-carousel-number">
                       {String(i + 1).padStart(2, '0')}
                     </div>
-                    
+
                     <h3 className="why-carousel-title">{reason.title}</h3>
                     <p className="why-carousel-desc">{reason.desc}</p>
 
@@ -313,7 +384,7 @@ function WhyChooseSeevora() {
                         <div className="why-stat-label">IMPACT / STAT:</div>
                         <div className="why-stat-value">{reason.stat} {reason.statLabel}</div>
                       </div>
-                      
+
                       <div className="why-stat-item">
                         <div className="why-stat-label">SEEVORA PROMISE:</div>
                         <div className="why-stat-value">{reason.highlight}</div>
@@ -343,9 +414,15 @@ function Workflow() {
     <section className="workflow section" id="workflow">
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <h2 className="section-title">How It <span className="gradient-text">Works</span></h2>
+          <h2 className="section-title">
+            <span className="reveal-mask">
+              <span className="reveal-text">How It <span className="gradient-text">Works</span></span>
+            </span>
+          </h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
-            A structured, transparent approach from discovery to deployment.
+            <span className="reveal-mask">
+              <span className="reveal-text delay-1">A structured, transparent approach from discovery to deployment.</span>
+            </span>
           </p>
         </div>
 

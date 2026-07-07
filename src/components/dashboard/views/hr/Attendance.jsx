@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Panel, Badge, StatsGrid } from '../shared';
+import EmployeeAttendancePanel from '../EmployeeAttendancePanel';
 import { hrApiFetch } from './hrApi';
 
 const OFFICE_START = '10:00 AM';
-const OFFICE_END = '6:30 PM';
+const OFFICE_END = '6:00 PM';
 
 function formatTime(value) {
   if (!value) return '—';
@@ -28,6 +29,8 @@ function statusMeta(status) {
       return { label: 'Half Day', color: 'orange' };
     case 'present':
       return { label: 'Present', color: 'cyan' };
+    case 'leave':
+      return { label: 'Leave', color: 'purple' };
     default:
       return { label: 'Absent', color: 'gray' };
   }
@@ -38,6 +41,7 @@ export default function Attendance() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const loadAttendance = async () => {
     setIsLoading(true);
@@ -183,7 +187,12 @@ export default function Attendance() {
               {filteredAttendance.map((entry) => {
                 const meta = statusMeta(entry.status);
                 return (
-                  <tr key={entry.id}>
+                  <tr 
+                    key={entry.id} 
+                    onClick={() => setSelectedEmployee(entry)}
+                    style={{ cursor: 'pointer' }}
+                    className="hover-row"
+                  >
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{entry.name}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{entry.email}</div>
@@ -214,11 +223,18 @@ export default function Attendance() {
       <Panel title="Attendance Rules">
         <div style={{ display: 'grid', gap: 10, color: 'var(--text-secondary)', fontSize: '0.86rem', lineHeight: 1.7 }}>
           <div>Login marks the employee as <strong style={{ color: 'var(--text-primary)' }}>Present</strong> with login time.</div>
-          <div>Logout after <strong style={{ color: 'var(--text-primary)' }}>6:30 PM</strong> marks the day as <strong style={{ color: 'var(--text-primary)' }}>Full Day</strong>.</div>
+          <div>Logout after <strong style={{ color: 'var(--text-primary)' }}>6:00 PM</strong> marks the day as <strong style={{ color: 'var(--text-primary)' }}>Full Day</strong>.</div>
           <div>Logout before office end marks the day as <strong style={{ color: 'var(--text-primary)' }}>Half Day</strong>.</div>
           <div>The table shows both login and logout timestamps for each employee.</div>
         </div>
       </Panel>
+      
+      {selectedEmployee && (
+        <EmployeeAttendancePanel 
+          employee={selectedEmployee} 
+          onClose={() => setSelectedEmployee(null)} 
+        />
+      )}
     </div>
   );
 }

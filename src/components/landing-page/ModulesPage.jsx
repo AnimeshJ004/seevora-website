@@ -1,4 +1,8 @@
 import React, { useEffect } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateOrganizationSchema } from '../../utils/schemaGenerators';
 
 const modules = [
   {
@@ -77,14 +81,29 @@ export default function ModulesPage() {
     }
   }, []);
 
+  const organizationSchema = generateOrganizationSchema();
+
   return (
-    <div className="modules-page">
+    <>
+      <SEOHead
+        title={pagesSEO.modules.title}
+        description={pagesSEO.modules.description}
+        keywords={pagesSEO.modules.keywords}
+        path={pagesSEO.modules.path}
+        image={pagesSEO.modules.image}
+        type={pagesSEO.modules.type}
+      />
+      <StructuredData data={organizationSchema} />
+
+      <div className="modules-page">
       <div className="container">
         
         {/* Banner Header */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '64px' }}>
           <h1 className="section-title">
-            Six AI Modules. <span className="gradient-text">One Connected Platform.</span>
+            <span className="reveal-mask">
+              <span className="reveal-text">Six AI Modules. <span className="gradient-text">One Connected Platform.</span></span>
+            </span>
           </h1>
           <p className="section-subtitle" style={{ margin: '0 auto', maxWidth: '640px' }}>
             Each module is built specifically to automate manual bottlenecks, fully integrated to run your operations autonomously.
@@ -149,5 +168,6 @@ export default function ModulesPage() {
 
       </div>
     </div>
+    </>
   );
 }

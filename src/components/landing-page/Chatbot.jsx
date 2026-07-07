@@ -3,6 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 // Seevora context knowledge base for matching responses
 const SEEVORA_KNOWLEDGE = [
   {
+    keywords: ['b2b', 'sales', 'merge', 'software', 'agent', 'research', 'modernize'],
+    response: "We specialize in B2B sales automation! We research your business model, deploy multiple specialized AI agents, and seamlessly merge them with your existing software stack to accelerate your sales cycles and save massive amounts of time."
+  },
+  {
     keywords: ['what', 'do', 'about', 'service', 'company', 'product', 'platform', 'explain'],
     response: "Seevora is a next-generation Enterprise AI automation platform built specifically for Indian SMBs. We turn manual workflows into profit centers by automating customer operations: 24/7 Voice Receptionists, WhatsApp automated confirmations, client document collection, UPI billing reminders, and automated local Google SEO reviews. All customized to your specific business rules!"
   },
@@ -45,6 +49,8 @@ const SEEVORA_KNOWLEDGE = [
 ];
 
 const SUGGESTED_QUESTIONS = [
+  "How do you automate B2B sales?",
+  "What is multi-agent software merging?",
   "What does Seevora do?",
   "How does the Hindi-First AI work?",
   "How fast can you deploy?",

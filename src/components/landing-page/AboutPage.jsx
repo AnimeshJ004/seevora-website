@@ -1,4 +1,8 @@
 import React, { useRef, useCallback } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateOrganizationSchema } from '../../utils/schemaGenerators';
 
 export default function AboutPage() {
   const handleGoBack = (e) => {
@@ -11,43 +15,45 @@ export default function AboutPage() {
     window.location.assign('/book-a-call');
   };
 
+  const organizationSchema = generateOrganizationSchema();
+
   const badges = [
-    '7+ Sectors Served',
-    '6 Active AI Modules',
-    '5-Day Rapid Setup',
-    '24/7 Autopilot Support',
-    'Indore-Based Engineering',
-    'Strict Zero-Sale Data Policy',
-    '99.9% System Uptime',
-    'Full Hinglish/Hindi Voice Capability'
+    'B2B Sales Optimization',
+    'Deep Business Research',
+    'Multi-Agent Integration',
+    'Software & AI Merging',
+    'Massive Time Savings',
+    'Business Modernization',
+    'Custom AI Ecosystems',
+    'Automated Workflows'
   ];
 
   const pillars = [
     {
       title: 'Company Intro',
-      desc: 'Practical AI systems for measurable business growth.',
-      text: 'Seevora builds custom AI SaaS and automation systems that turn everyday operations into faster, smarter, trackable growth engines. Every solution is designed around real workflows, not generic templates.',
+      desc: 'Bespoke AI ecosystems for measurable sales growth.',
+      text: 'Seevora researches your B2B model and builds integrated AI systems that turn everyday operations into faster, smarter, trackable growth engines. We merge software and AI to modernize your business.',
       stroke: 'var(--accent-cyan)',
       icon: <span className="pillar-dot" />
     },
     {
       title: 'How We Work',
-      desc: 'We start with one process and make it perform.',
-      text: 'Our team identifies a high-impact workflow, audits the friction, builds a tailored AI system, and keeps improving it until the results are visible in speed, cost, accuracy, and ROI.',
+      desc: 'We start by understanding your business model.',
+      text: 'Our team conducts deep research into your current operations, identifies where AI can be utilized best, and merges specialized AI agents with your existing software stack to eliminate bottlenecks.',
       stroke: '#a78bfa',
       icon: <span className="pillar-dot" />
     },
     {
       title: 'Our Mission',
-      desc: 'Make AI useful for the work businesses repeat every day.',
-      text: 'Our mission is to help teams reduce manual effort, remove operational bottlenecks, and scale confidently with AI solutions that are clear, practical, and built to deliver value within months.',
+      desc: 'Make AI useful by seamlessly merging it with software.',
+      text: 'Our mission is to help B2B clients save massive amounts of time by integrating multiple specialized AI agents into their workflows, allowing their teams to focus entirely on closing sales and driving revenue.',
       stroke: 'var(--accent-green)',
       icon: <span className="pillar-dot" />
     },
     {
       title: 'Our Vision',
-      desc: 'A future where every business runs on smarter systems.',
-      text: 'We envision companies across manufacturing, BFSI, logistics, healthcare, retail, and beyond using AI as a dependable operating layer for faster decisions and better outcomes.',
+      desc: 'A future where every B2B model runs on smarter systems.',
+      text: 'We envision a landscape where complex software and multiple AI agents operate in perfect harmony, serving as a dependable, modernized operating layer for B2B companies worldwide.',
       stroke: 'var(--accent-orange)',
       icon: <span className="pillar-dot" />
     }
@@ -55,41 +61,54 @@ export default function AboutPage() {
 
   const details = [
     {
-      title: 'Bilingual Voice & Chat Automation',
-      desc: 'Communication styled for local markets.',
-      text: 'Seevora AI agents switch languages on-the-fly. Whether customer queries are in clean English, Hindi, or a mix of both (Hinglish), our models understand intent, context, and accents perfectly. This ensures that personal studios, coaching classes, or retail clients experience zero communication gap.'
+      title: 'Deep Business Research & Auditing',
+      desc: 'We don\'t just sell generic software.',
+      text: 'Before writing a single line of code, we study your specific B2B model. We map out your workflows, identify data bottlenecks, and pinpoint the exact areas where AI integration can revolutionize your daily operations.'
     },
     {
-      title: 'Indore-Based Direct Engineering Access',
-      desc: 'We are part of your team, not a support queue.',
-      text: 'We do not hide behind ticket-raising portals. As a Seevora client, you get direct WhatsApp group access to the specific engineers in Indore who configured your calendar matrices, database syncs, and voice scripts. If you need a script tweak or a custom report, we deploy it the same day.'
+      title: 'Multi-Agent & Software Merging',
+      desc: 'Creating a unified, automated engine.',
+      text: 'We deploy multiple specialized AI agents and seamlessly fuse them with your existing software ecosystem. Whether it\'s CRMs, ERPs, or custom tools, we ensure all systems communicate and function as a single modernized unit.'
     },
     {
-      title: 'Strict Data Residency & Privacy Protocol',
-      desc: 'Your customer data is entirely yours.',
-      text: 'Operating under CIN: U62011MP2026PTC082651, Seevora follows rigid privacy guidelines. We apply a Zero-Sale policy: your interaction transcripts, phone audio recordings, appointment lists, and customer detail rows are encrypted at rest and in transit. They are never sold or rented to external marketing modules.'
+      title: 'Massive Time & Resource Savings',
+      desc: 'Eliminating manual bottlenecks completely.',
+      text: 'By automating complex workflows and data handoffs between systems, we remove the need for repetitive manual effort. This saves your team countless hours every week, allowing them to focus on high-value strategic tasks.'
     },
     {
-      title: 'Deep Multi-Channel Integrations',
-      desc: 'Seamless connections to your current stack.',
-      text: 'Our AI doesn\'t operate in a silo. We configure webhook handshakes and database APIs to route patient reservations, fee confirmations, or real-estate inquiries directly into your existing CRM (like Salesforce, HubSpot, or custom spreadsheets), calendars, and gateways.'
+      title: 'Sales Automation & Acceleration',
+      desc: 'The ultimate goal is to drive growth.',
+      text: 'We modernize your operations specifically to accelerate your B2B sales cycles. By offloading redundant tasks to merged AI agents, your sales team is empowered to close deals faster and handle a significantly larger pipeline.'
     },
     {
-      title: 'Setup & Refined in 5 Days',
-      desc: 'Speed-to-value is our operating metric.',
-      text: 'Traditional custom software takes months to configure and deploy. Our team completes initial requirements freezing, maps out calendar systems, trains custom conversational voice weights, and pushes your chatbot/receptionist live in just 5 business days.'
+      title: 'End-to-End Business Modernization',
+      desc: 'Transforming how you operate.',
+      text: 'We handle the complete digital transformation of your business. From the initial research phase to the final software merge, we ensure that your new AI-powered model operates flawlessly and scales effortlessly.'
     }
   ];
 
   return (
-    <section className="about-page">
+    <>
+      <SEOHead
+        title={pagesSEO.about.title}
+        description={pagesSEO.about.description}
+        keywords={pagesSEO.about.keywords}
+        path={pagesSEO.about.path}
+        image={pagesSEO.about.image}
+        type={pagesSEO.about.type}
+      />
+      <StructuredData data={organizationSchema} />
+
+      <section className="about-page">
       <div className="bg-grid" />
       <div className="container">
         
         {/* Hero Section */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '50px' }}>
           <h2 className="section-title">
-            About <span className="gradient-text">Seevora</span>
+            <span className="reveal-mask">
+              <span className="reveal-text">About <span className="gradient-text">Seevora</span></span>
+            </span>
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto', maxWidth: '650px' }}>
             Building the next generation of custom automation, smart voice agents, and practical SaaS products.
@@ -101,10 +120,10 @@ export default function AboutPage() {
           <div className="about-intro-text">
             <h3>Our Identity</h3>
             <p>
-              Seevora Private Limited is an AI company based in Indore, Madhya Pradesh. We focus on building custom automation, practical SaaS products, and digital workflows designed to eliminate repetitive manual bottlenecks. We help organizations transition from rigid, manual processes to high-performing, intelligent systems that reduce human overhead, save on operations, and scale what works.
+              Seevora is a technology integration company specializing in B2B sales automation and operational modernization. We don't just offer off-the-shelf SaaS products; we take the time to deeply research and understand your unique business model. By identifying exact areas for optimization, we merge specialized AI agents with your existing software ecosystem to modernize your entire workflow.
             </p>
             <p style={{ marginTop: '16px' }}>
-              Unlike generic, off-the-shelf chatbot software, our engineering team works directly with business owners to audit existing workflows. We write custom integrations and train specialized models so that the AI functions precisely as a trained human team member would.
+              Our engineering team focuses on deploying multiple AI agents that communicate flawlessly with your current tools. This deep software merging strategy eliminates repetitive manual bottlenecks, saves your team massive amounts of time, and ultimately serves to accelerate your B2B sales cycles.
             </p>
           </div>
           <div className="about-page-badges-container">
@@ -170,8 +189,8 @@ export default function AboutPage() {
 
         {/* Bottom CTA Block */}
         <div className="about-bottom-cta" data-animate>
-          <h3>Ready to automate your manual workflows?</h3>
-          <p>Let our Indore-based engineering team audit your bottlenecks and build a custom AI roadmap for your business.</p>
+          <h3>Ready to modernize your B2B workflows?</h3>
+          <p>Let our engineering team research your business model and build a custom AI agent ecosystem for you.</p>
           <div className="about-cta-buttons">
             <a href="#" className="btn-glass" onClick={handleGoBack}>
               Return to Home
@@ -187,8 +206,11 @@ export default function AboutPage() {
 
       </div>
     </section>
+    </>
   );
 }
+
+// TiltCard Component
 
 function GlassCard({
   children,

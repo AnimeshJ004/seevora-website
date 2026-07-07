@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateFAQSchema } from '../../utils/schemaGenerators';
 
 const faqs = [
+  {
+    q: 'Do you provide solutions for B2B Sales clients?',
+    a: 'Yes. We conduct deep research into your B2B model and identify exactly where custom AI agents can automate your workflow, save time, and accelerate your sales cycles.',
+  },
+  {
+    q: 'What is Multi-Agent Software Merging?',
+    a: 'For complex business operations, we deploy multiple specialized AI agents and seamlessly merge them with your existing software stack (CRMs, ERPs) so they function as a unified, modernized ecosystem.',
+  },
   {
     q: 'Does Seevora replace my staff?',
     a: 'No. Seevora acts as a 24/7 assistant. It handles missed phone calls, answers repetitive WhatsApp questions, and books appointments automatically so your physical staff can focus on the in-person clients inside your clinic, salon, or studio.',
@@ -54,12 +66,33 @@ export default function FAQ({ isPage = false }) {
     window.location.assign('/book-a-call');
   };
 
+  // Generate FAQ schema for AEO optimization
+  const faqSchema = generateFAQSchema(faqs);
+
   return (
-    <section className={`faq section${isPage ? ' faq-page' : ''}`} id="faqs">
+    <>
+      {/* Only add SEO tags when rendered as a standalone page */}
+      {isPage && (
+        <>
+          <SEOHead
+            title={pagesSEO.faq.title}
+            description={pagesSEO.faq.description}
+            keywords={pagesSEO.faq.keywords}
+            path={pagesSEO.faq.path}
+            image={pagesSEO.faq.image}
+            type={pagesSEO.faq.type}
+          />
+          <StructuredData data={faqSchema} />
+        </>
+      )}
+
+      <section className={`faq section${isPage ? ' faq-page' : ''}`} id="faqs">
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
           <h2 className="section-title">
-            Frequently Asked <span className="gradient-text">Questions</span>
+            <span className="reveal-mask">
+              <span className="reveal-text">Frequently Asked <span className="gradient-text">Questions</span></span>
+            </span>
           </h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             Everything you need to know about working with Seevora.
@@ -106,5 +139,6 @@ export default function FAQ({ isPage = false }) {
         </div>
       </div>
     </section>
+    </>
   );
 }

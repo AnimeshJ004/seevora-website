@@ -67,7 +67,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="footer-brand">
             <a href="#" className="footer-logo" onClick={e => { e.preventDefault(); window.scrollTo({ top:0, behavior:'smooth' }); }}>
-              <img src={logoIcon} alt="Seevora" />
+              <img src={logoIcon} alt="Seevora" loading="lazy" decoding="async" />
               <span>Seevora</span>
             </a>
             <p className="footer-tagline">Custom AI SaaS, intelligent automations, and AI products designed around the way your business actually works.</p>

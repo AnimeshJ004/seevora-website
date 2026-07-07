@@ -1,45 +1,49 @@
 import React, { useEffect } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateOrganizationSchema } from '../../utils/schemaGenerators';
 
 const outcomes = [
   {
     num: '01',
-    category: 'Lead Capture',
-    title: 'More Leads. Zero Missed Opportunities.',
-    desc: 'Every inbound message, call, or form submission is captured and engaged instantly by our custom AI receptionist. No lead is left cold or ignored.',
-    metric: '100% Lead Engagement',
-    benefit: 'Recovers leads outside business hours and converts missed calls into live enquiries instantly.'
+    category: 'Business Research',
+    title: 'Deep Operational Mapping.',
+    desc: 'We start by thoroughly researching your B2B model to identify exact friction points and uncover where AI integration will drive the highest impact.',
+    metric: '100% Custom Strategy',
+    benefit: 'Ensures that every AI agent deployed is perfectly tailored to your unique business model.'
   },
   {
     num: '02',
-    category: 'Calendar Optimization',
-    title: 'Fewer No-Shows. Fuller Schedules.',
-    desc: 'Smart automated WhatsApp and Voice reminders ensure clients confirm their booking slots, filling your operational calendars automatically.',
-    metric: 'Up to 40% Lower No-Shows',
-    benefit: 'Automatically shifts waitlisted customers into cancellation gaps to maximize appointment capacity.'
+    category: 'Software Merging',
+    title: 'Seamless Multi-Agent Integration.',
+    desc: 'We don\'t just add another tool; we deploy specialized AI agents and fuse them deeply with your existing software stack, CRMs, and databases.',
+    metric: 'Unified Ecosystems',
+    benefit: 'Creates a fully modernized, interconnected workflow without replacing your current software.'
   },
   {
     num: '03',
-    category: 'Customer Retention',
-    title: 'Better Client Retention. More Repeat Business.',
-    desc: 'Keep customers coming back with automated post-visit feedback loops, loyalty program updates, and personalized booking reminders.',
-    metric: '+22% Repeat Appointments',
-    benefit: 'Builds tailored engagement paths automatically without requiring manual text templates or staff effort.'
+    category: 'Process Automation',
+    title: 'Eliminate Repetitive Manual Labor.',
+    desc: 'Complex data handoffs, lead routing, and repetitive operational tasks are completely automated by intelligent agents working in the background.',
+    metric: '80% Manual Task Reduction',
+    benefit: 'Frees your staff from tedious data entry, allowing them to focus entirely on high-value strategy.'
   },
   {
     num: '04',
-    category: 'Reputation Growth',
-    title: 'Stronger Online Presence. More Inbound Clients.',
-    desc: 'Automatically request reviews via WhatsApp from satisfied clients, boosting your Google local search rating and local organic visibility.',
-    metric: '4.9★ Average Rating Target',
-    benefit: 'Filters for happy customer feedback and requests 5-star ratings, keeping negative experiences internal.'
+    category: 'Revenue Generation',
+    title: 'Accelerated B2B Sales Cycles.',
+    desc: 'By automating lead qualification, meeting coordination, and follow-ups, we modernize your operations to drive deals through the pipeline faster.',
+    metric: '3x Sales Conversion Boost',
+    benefit: 'Empowers your sales team to handle a significantly larger pipeline with unprecedented speed.'
   },
   {
     num: '05',
-    category: 'Operational Speed',
-    title: 'Organised Operations. Time Freed for Growth.',
-    desc: 'Manual follow-ups, scheduling, and standard queries are completely handled by AI, freeing your staff to focus on high-value client care.',
-    metric: '25+ Hours Saved Weekly',
-    benefit: 'Gives management transparent operational metrics dashboards and saves hours of receptionist data entry.'
+    category: 'Time Efficiency',
+    title: 'Massive Time Savings Delivered.',
+    desc: 'The ultimate result of our multi-agent software merging is time. Your entire organizational workflow becomes faster, smoother, and highly efficient.',
+    metric: '100+ Hours Saved Weekly',
+    benefit: 'Provides management with transparent metrics while saving the entire team countless hours every week.'
   }
 ];
 
@@ -53,17 +57,32 @@ export default function ImpactPage() {
     window.scrollTo(0, 0);
   }, []);
 
+  const organizationSchema = generateOrganizationSchema();
+
   return (
-    <div className="impact-page" style={{ background: 'var(--bg-deep)', padding: '140px 0 100px' }}>
+    <>
+      <SEOHead
+        title={pagesSEO.impact.title}
+        description={pagesSEO.impact.description}
+        keywords={pagesSEO.impact.keywords}
+        path={pagesSEO.impact.path}
+        image={pagesSEO.impact.image}
+        type={pagesSEO.impact.type}
+      />
+      <StructuredData data={organizationSchema} />
+
+      <div className="impact-page" style={{ background: 'var(--bg-deep)', padding: '140px 0 100px' }}>
       <div className="container">
         
         {/* Page Banner Header */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '64px' }}>
           <h1 className="section-title">
-            Measurable Value. <span className="gradient-text">Delivered.</span>
+            <span className="reveal-mask">
+              <span className="reveal-text">Measurable Value. <span className="gradient-text">Delivered.</span></span>
+            </span>
           </h1>
           <p className="section-subtitle" style={{ margin: '0 auto', maxWidth: '640px' }}>
-            Every Seevora deployment focuses on real business metrics: more leads, fuller schedules, and operations that pay for themselves.
+            Every Seevora deployment focuses on real business metrics: deep workflow modernization, massive time savings, and accelerated B2B sales growth.
           </p>
         </div>
 
@@ -95,16 +114,17 @@ export default function ImpactPage() {
 
         {/* CTA Outro */}
         <div className="services-outro-cta" data-animate style={{ marginTop: '80px' }}>
-          <h4>Ready to maximize your business capacity?</h4>
-          <p>We build, install, and support custom AI automations designed around your operational targets.</p>
+          <h4>Ready to modernize your B2B sales operations?</h4>
+          <p>We research your business model and build custom AI agent ecosystems to drive your growth.</p>
           <div className="outro-buttons" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
             <a href="#" className="btn-primary" onClick={handleBookCall}>
-              Book an Assessment Call
+              Book a Business Audit
             </a>
           </div>
         </div>
 
       </div>
     </div>
+    </>
   );
 }
