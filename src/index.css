@@ -267,8 +267,9 @@ select {
 .gradient-text {
   background: var(--gradient-primary);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 /* ---------- Glass Card ---------- */
@@ -2872,6 +2873,8 @@ textarea.form-input {
   letter-spacing: 0;
   background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.015));
   -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   -webkit-text-fill-color: transparent;
   white-space: nowrap;
   pointer-events: none;
@@ -7018,6 +7021,8 @@ textarea.form-input {
   font-family: var(--font-display);
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
   -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   -webkit-text-fill-color: transparent;
   line-height: 1;
 }
@@ -7317,6 +7322,8 @@ textarea.form-input {
   line-height: 1;
   background: linear-gradient(135deg, #38bdf8, #c084fc);
   -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   -webkit-text-fill-color: transparent;
 }
 
@@ -8437,6 +8444,8 @@ textarea.form-input {
   line-height: 1;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   -webkit-text-fill-color: transparent;
 }
 
@@ -9195,8 +9204,9 @@ textarea.form-input {
 .gradient-text {
   background: var(--gradient-primary);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .home-landing .centered-hero {
@@ -13593,6 +13603,8 @@ textarea.form-input {
 .accenture-hero-title .gradient-word {
   background: linear-gradient(135deg, #a100ff 0%, #00d2ff 100%);
   -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
   -webkit-text-fill-color: transparent;
 }
 
@@ -14125,28 +14137,41 @@ textarea.form-input {
   margin: 0 auto 36px auto;
 }
 
+.bk-hero-content[data-animate],
+.bk-hero-content[data-animate].visible {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.bk-hero-title .reveal-text,
+.bk-hero-title .visible .reveal-text,
+.bk-hero-title [data-animate].visible .reveal-text {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.bk-hero-title .reveal-mask {
+  overflow: visible !important;
+}
+.bk-hero-title .hero-typed-3d,
+.bk-hero-title .hero-typed-gradient,
+.bk-hero-title .hero-rotating-phrase-text {
+  background: none !important;
+  -webkit-text-stroke: 0 !important;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+.bk-hero-title .hero-typed-3d,
 .bk-hero-title .hero-typed-gradient {
-  background: linear-gradient(90deg, #00D2FF 0%, #3A7BD5 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: #00D2FF;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  animation: heroLineIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both !important;
 }
 
 .bk-hero-title .hero-rotating-phrase-text {
-  background: linear-gradient(110deg,
-      #6B7280 0%,
-      #D1D5DB 25%,
-      #F9FAFB 45%,
-      #ffffff 50%,
-      #F9FAFB 55%,
-      #D1D5DB 75%,
-      #6B7280 100%) !important;
-  background-size: 250% 100% !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-text-stroke: 0px !important;
-  text-shadow: none !important;
-  animation: heroPhraseShinmer 3s ease-in-out infinite, heroPhraseSwap 2.6s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+  color: #9CA3AF !important;
+  -webkit-text-fill-color: #9CA3AF !important;
+  animation: heroPhraseSwap 2.6s cubic-bezier(0.22, 1, 0.36, 1) both !important;
 }
 
 @keyframes heroPhraseShinmer {
@@ -14159,10 +14184,8 @@ textarea.form-input {
   }
 }
 
-.bk-hero-title .hero-typed-3d {
-  color: #ffffff !important;
-  text-shadow: none !important;
-}
+
+
 
 .bk-hero-buttons {
   display: flex !important;
@@ -14327,13 +14350,14 @@ textarea.form-input {
 /* ── 3. Home Page Hero ──────────────────────────────────────────────────── */
 @media (max-width: 767px) {
   .bk-hero-section {
-    padding: 100px 0 80px 0 !important;
-    min-height: auto !important;
+    padding: 100px 0 54px 0 !important;
+    min-height: 100svh !important;
+    justify-content: flex-start !important;
   }
 
   .bk-hero-content {
     padding: 0 16px;
-    margin-bottom: 40px !important;
+    margin-bottom: 0 !important;
   }
 
   .bk-hero-title {
@@ -14363,22 +14387,65 @@ textarea.form-input {
 
   /* Capability strip — horizontal scroll on mobile */
   .home-landing .bk-capability-strip {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
     flex-wrap: nowrap !important;
     justify-content: flex-start !important;
-    padding: 14px 16px !important;
-    gap: 24px !important;
+    padding: 10px 0 !important;
+    gap: 0 !important;
+    scrollbar-width: none;
   }
 
-  .hero-capability-item {
-    flex-shrink: 0 !important;
+  .home-landing .bk-capability-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-landing .bk-capability-strip .hero-capability-track {
+    width: max-content !important;
+    min-width: max-content !important;
+    gap: 20px !important;
+    padding: 0 16px !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .home-landing .bk-capability-strip .hero-capability-item {
+    flex: 0 0 auto !important;
     white-space: nowrap !important;
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1.15 !important;
   }
 }
 
+@media (max-width: 1023px) {
+  .home-landing .bk-hero-section {
+    position: relative !important;
+    min-height: 100vh !important;
+    min-height: 100svh !important;
+    padding-bottom: 54px !important;
+  }
+
+  .home-landing .bk-capability-strip {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: none !important;
+  }
+}
 /* ── 4. Why Choose Seevora (Home) ───────────────────────────────────────── */
 @media (max-width: 767px) {
   .why-choose-seevora .container > div[style] {

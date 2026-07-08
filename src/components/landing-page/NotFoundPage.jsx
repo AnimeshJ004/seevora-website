@@ -128,8 +128,9 @@ export default function NotFoundPage() {
             font-weight: 900;
             background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
             -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             background-clip: text;
+            color: transparent;
+            -webkit-text-fill-color: transparent;
             line-height: 1;
             margin-bottom: 24px;
             letter-spacing: -0.02em;
