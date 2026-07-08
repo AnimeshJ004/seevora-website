@@ -3,6 +3,7 @@ import Navbar from './components/landing-page/Navbar';
 import Footer from './components/landing-page/Footer';
 import ChatWidget from './components/SalesAgent/ChatWidget';
 import { getSession, logout } from './auth/roles';
+import logoIcon from './assets/logo-icon.png';
 
 // Lazy load page components for code splitting
 const HomePage = lazy(() => import('./components/landing-page/HomePage'));
@@ -185,20 +186,23 @@ export default function App() {
       color: 'var(--text-primary)'
     }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: '48px',
-          height: '48px',
-          border: '4px solid rgba(99, 102, 241, 0.2)',
-          borderTopColor: '#6366f1',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto 16px'
-        }} />
-        <p>Loading...</p>
+        <img 
+          src={logoIcon} 
+          alt="Seevora Loading" 
+          style={{
+            width: '64px',
+            height: 'auto',
+            animation: 'spin3d 2s infinite linear',
+            margin: '0 auto 16px',
+            transformStyle: 'preserve-3d'
+          }} 
+        />
       </div>
       <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+        @keyframes spin3d {
+          0% { transform: perspective(400px) rotateY(0deg); }
+          50% { transform: perspective(400px) rotateY(180deg); }
+          100% { transform: perspective(400px) rotateY(360deg); }
         }
       `}</style>
     </div>
