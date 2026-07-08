@@ -122,7 +122,11 @@ export default function AboutPage() {
 
         {/* Hero */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '56px' }}>
-          <h2 className="section-title">About <span className="gradient-text">Seevora</span></h2>
+          <h2 className="section-title">
+            <span className="reveal-mask">
+              <span className="reveal-text">About <span className="gradient-text">Seevora</span></span>
+            </span>
+          </h2>
           <p className="section-subtitle" style={{ margin: '0 auto', maxWidth: '650px' }}>
             Building the next generation of custom automation, smart voice agents, and practical SaaS products.
           </p>

@@ -1,18 +1,6 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import Navbar from './components/landing-page/Navbar';
-import ServicesPage from './components/landing-page/ServicesPage';
-import ModulesPage from './components/landing-page/ModulesPage';
-import ImpactPage from './components/landing-page/ImpactPage';
-import HomePage from './components/landing-page/HomePage';
-import AboutPage from './components/landing-page/AboutPage';
-import Contact from './components/landing-page/Contact';
-import AuthPage from './components/landing-page/AuthPage';
 import Footer from './components/landing-page/Footer';
-import FAQ from './components/landing-page/FAQ';
-import PrivacyPolicy from './components/landing-page/PrivacyPolicy';
-import TermsConditions from './components/landing-page/TermsConditions';
-import LoginPage from './components/dashboard/LoginPage';
-import DashboardShell from './components/dashboard/DashboardShell';
 import ChatWidget from './components/SalesAgent/ChatWidget';
 import { getSession, logout } from './auth/roles';
 
@@ -258,7 +246,6 @@ export default function App() {
       )}
       {!hideSiteChrome && <Footer />}
       {!hideSiteChrome && <ChatWidget />}
-    </>
     </Suspense>
   );
 }

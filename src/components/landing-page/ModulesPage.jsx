@@ -50,12 +50,12 @@ const ModuleIcons = {
 
 /* ── Per-module accent colors ── */
 const MODULE_COLORS = {
-  cyan:   { border: '#6F7F33', glow: 'rgba(111,127,51,0.10)', pill: 'rgba(111,127,51,0.08)', pillText: '#4a5a1a' },
-  purple: { border: '#6F7F33', glow: 'rgba(111,127,51,0.10)', pill: 'rgba(111,127,51,0.08)', pillText: '#4a5a1a' },
-  green:  { border: '#6F7F33', glow: 'rgba(111,127,51,0.10)', pill: 'rgba(111,127,51,0.08)', pillText: '#4a5a1a' },
-  blue:   { border: '#6F7F33', glow: 'rgba(111,127,51,0.10)', pill: 'rgba(111,127,51,0.08)', pillText: '#4a5a1a' },
-  orange: { border: '#6F7F33', glow: 'rgba(111,127,51,0.10)', pill: 'rgba(111,127,51,0.08)', pillText: '#4a5a1a' },
-  pink:   { border: '#6F7F33', glow: 'rgba(111,127,51,0.10)', pill: 'rgba(111,127,51,0.08)', pillText: '#4a5a1a' },
+  cyan:   { border: '#9CA3AF', glow: 'rgba(156, 163, 175,0.10)', pill: 'rgba(156, 163, 175,0.08)', pillText: '#4B5563' },
+  purple: { border: '#9CA3AF', glow: 'rgba(156, 163, 175,0.10)', pill: 'rgba(156, 163, 175,0.08)', pillText: '#4B5563' },
+  green:  { border: '#9CA3AF', glow: 'rgba(156, 163, 175,0.10)', pill: 'rgba(156, 163, 175,0.08)', pillText: '#4B5563' },
+  blue:   { border: '#9CA3AF', glow: 'rgba(156, 163, 175,0.10)', pill: 'rgba(156, 163, 175,0.08)', pillText: '#4B5563' },
+  orange: { border: '#9CA3AF', glow: 'rgba(156, 163, 175,0.10)', pill: 'rgba(156, 163, 175,0.08)', pillText: '#4B5563' },
+  pink:   { border: '#9CA3AF', glow: 'rgba(156, 163, 175,0.10)', pill: 'rgba(156, 163, 175,0.08)', pillText: '#4B5563' },
 };
 
 const modules = [
@@ -166,7 +166,9 @@ export default function ModulesPage() {
         {/* Header */}
         <div data-animate style={{ textAlign: 'center', marginBottom: '80px' }}>
           <h1 className="section-title">
-            Six AI Modules. <span className="gradient-text">One Connected Platform.</span>
+            <span className="reveal-mask">
+              <span className="reveal-text">Six AI Modules. <span className="gradient-text">One Connected Platform.</span></span>
+            </span>
           </h1>
           <p className="section-subtitle" style={{ margin: '0 auto', maxWidth: '640px' }}>
             Each module is built to automate manual bottlenecks, fully integrated to run your operations autonomously.
@@ -215,7 +217,7 @@ export default function ModulesPage() {
                   <ul className="mod-content-features">
                     {m.features.map((f) => (
                       <li key={f}>
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#6F7F33" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         {f}

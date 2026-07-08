@@ -1,62 +1,138 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// Seevora context knowledge base for matching responses
+// Seevora knowledge base — used as offline fallback when server is unavailable
 const SEEVORA_KNOWLEDGE = [
+  // ── Seevora Company & Products ──
   {
-    keywords: ['b2b', 'sales', 'merge', 'software', 'agent', 'research', 'modernize'],
-    response: "We specialize in B2B sales automation! We research your business model, deploy multiple specialized AI agents, and seamlessly merge them with your existing software stack to accelerate your sales cycles and save massive amounts of time."
+    keywords: ['what is seevora', 'about seevora', 'what does seevora do', 'company', 'platform', 'product', 'explain seevora'],
+    response: "Seevora is an Indian enterprise AI automation company that turns manual business workflows into profit centers. We deploy AI Voice Receptionists, WhatsApp automations, custom dashboards, and multi-agent AI systems — all customized to your business in 5 days."
   },
   {
-    keywords: ['what', 'do', 'about', 'service', 'company', 'product', 'platform', 'explain'],
-    response: "Seevora is a next-generation Enterprise AI automation platform built specifically for Indian SMBs. We turn manual workflows into profit centers by automating customer operations: 24/7 Voice Receptionists, WhatsApp automated confirmations, client document collection, UPI billing reminders, and automated local Google SEO reviews. All customized to your specific business rules!"
+    keywords: ['b2b', 'sales automation', 'sales pipeline', 'lead generation', 'outreach', 'sales agent'],
+    response: "For B2B sales, Seevora deploys AI agents that handle lead qualification, follow-up sequences, demo scheduling, and WhatsApp outreach — all automated. This shortens sales cycles and lets your team focus on closing deals instead of chasing leads."
   },
   {
-    keywords: ['hindi', 'language', 'speak', 'english', 'hinglish', 'local', 'voice', 'dialect'],
-    response: "Seevora is Hindi-First. Our AI voice agents and chat reply fluently in English, Hindi, or a mix of both (Hinglish), matching the natural tongue and context of your local customers."
+    keywords: ['receptionist', 'missed call', 'phone', 'answer call', 'front desk', 'voice'],
+    response: "Our 24/7 AI Voice Receptionist answers every incoming call — even after hours. It greets callers, captures their intent, books appointments directly into your calendar, and routes urgent queries. You'll never lose a customer to a missed call again."
   },
   {
-    keywords: ['time', 'how long', 'deploy', 'fast', 'ready', 'launch', 'days', 'speed'],
-    response: "We get your custom AI receptionist or dashboard integration live in just 5 business days! Our engineering team audits your existing CA, salon, or clinical processes, maps the rules, and deploys without hassle."
+    keywords: ['whatsapp', 'whatsapp automation', 'message', 'sms', 'notification', 'follow up'],
+    response: "Seevora integrates with WhatsApp Business API to automate appointment confirmations, payment reminders (UPI links), document collection, follow-ups, and customer updates — all in the customer's preferred language."
   },
   {
-    keywords: ['book', 'call', 'contact', 'schedule', 'appointment', 'demo', 'meeting', 'consult'],
-    response: "Booking a call is easy! Scroll down to the 'Book a Call' section on this page, or click the 'Book a Call' button in the hero area to schedule a consultation with our integration engineers."
+    keywords: ['hindi', 'hinglish', 'language', 'multilingual', 'local language', 'regional'],
+    response: "Seevora is Hindi-First. Our AI agents speak English, Hindi, and Hinglish naturally — matching the tone and language of your local customers. This is especially effective for Indian SMBs serving regional markets."
   },
   {
-    keywords: ['price', 'pricing', 'cost', 'fee', 'charge', 'expensive', 'free', 'investment'],
-    response: "We offer custom-tailored pricing plans based on your required modules and call volumes. Most customers see a 40% operating cost reduction within 90 days. Get in touch by booking a call for a personalized quote!"
+    keywords: ['price', 'pricing', 'cost', 'fee', 'how much', 'subscription', 'plan', 'charge'],
+    response: "Pricing is custom-built based on the modules you need, your call volume, and integrations. Most clients see 40% operating cost reduction within 90 days. Book a free discovery call and we'll give you an exact quote tailored to your business."
   },
   {
-    keywords: ['clinic', 'doctor', 'patient', 'hospital', 'missed call', 'medical'],
-    response: "For clinics, Seevora acts as a 24/7 front desk assistant. It handles unanswered calls, books appointments directly into your digital calendar, and answers patient inquiries, preventing client loss to competitors."
+    keywords: ['setup', 'how long', 'deploy', 'launch', 'days', 'onboard', 'start', 'implementation'],
+    response: "We go live in 5 business days. Our team audits your current workflow, maps your business rules, builds the AI models, and deploys everything. After launch, we monitor and fine-tune the system continuously."
   },
   {
-    keywords: ['salon', 'studio', 'no-show', 'seat', 'remind', 'cancellation'],
-    response: "For salons and studios, Seevora automatically sends reminders and confirmations on WhatsApp, reducing client no-shows by 30-40%. If a slot is cancelled, it auto-fills it from your smart waiting list."
+    keywords: ['book', 'call', 'demo', 'schedule', 'appointment', 'consult', 'meeting', 'discovery'],
+    response: "Booking a discovery call is easy — click the 'Book a Call' button at the top of the page or scroll to the contact section. Our team will map your workflow and show you exactly how Seevora can automate it within 5 days."
+  },
+  // ── Industries ──
+  {
+    keywords: ['clinic', 'doctor', 'hospital', 'patient', 'medical', 'healthcare'],
+    response: "For clinics and healthcare, Seevora handles missed patient calls, appointment booking into your calendar or EMR system, pre-visit reminders, and intake automation — all in the patient's preferred language."
   },
   {
-    keywords: ['consultant', 'ca', 'file', 'tax', 'receipt', 'reminder', 'signature'],
-    response: "For CAs and consultants, Seevora automatically collects client documents, invoices, and tax receipts. It sends polite reminders and UPI payment links, saving your staff up to 8 hours of administrative work weekly."
+    keywords: ['salon', 'studio', 'spa', 'beauty', 'no-show', 'slot', 'booking'],
+    response: "For salons and studios, Seevora sends WhatsApp reminders before appointments, auto-fills cancelled slots from a waiting list, and handles new booking requests 24/7 — reducing no-shows by 30-40%."
   },
   {
-    keywords: ['whatsapp', 'chat', 'message', 'sms', 'notification'],
-    response: "Seevora integrates directly with WhatsApp Business API to send automated confirmations, payment reminders, document collection requests, and follow-ups — all in your customer's preferred language!"
+    keywords: ['ca', 'consultant', 'tax', 'finance', 'legal', 'document', 'invoice', 'receipt'],
+    response: "For CAs, lawyers, and consultants, Seevora automates document collection, UPI payment reminders, client follow-ups, and consultation scheduling — saving 6-8 hours of admin work per week."
   },
   {
-    keywords: ['receptionist', 'call', 'phone', 'missed', 'answer', 'front desk'],
-    response: "Our 24/7 AI Voice Receptionist answers every incoming call, even outside business hours. It greets callers, captures their intent, books appointments, and routes urgent queries — so you never miss a customer again."
-  }
+    keywords: ['gym', 'fitness', 'yoga', 'trainer', 'renewal', 'membership', 'trial'],
+    response: "For gyms and fitness centers, Seevora sends trial class follow-ups, membership renewal reminders, and session booking confirmations on WhatsApp — keeping clients engaged automatically."
+  },
+  {
+    keywords: ['education', 'school', 'academy', 'admission', 'tuition', 'coaching', 'student'],
+    response: "For education and coaching centers, Seevora handles admission inquiries via voice and WhatsApp, demo class scheduling, fee reminder sequences, and parent communication — all automated."
+  },
+  {
+    keywords: ['real estate', 'property', 'builder', 'broker', 'site visit', 'lead'],
+    response: "For real estate, Seevora qualifies incoming property inquiries, shares catalogs automatically on WhatsApp, and schedules site visits — ensuring no lead goes cold."
+  },
+  // ── AI & Technology Concepts ──
+  {
+    keywords: ['what is ai', 'artificial intelligence', 'how ai works', 'machine learning', 'deep learning', 'neural network'],
+    response: "Artificial Intelligence (AI) refers to systems that can perform tasks that normally require human intelligence — like understanding language, making decisions, and recognizing patterns. Modern AI is powered by large language models (LLMs) and neural networks trained on massive datasets."
+  },
+  {
+    keywords: ['llm', 'large language model', 'gpt', 'claude', 'gemini', 'chatgpt', 'generative ai'],
+    response: "LLMs (Large Language Models) like Claude, GPT-4, and Gemini are AI models trained on huge amounts of text. They can understand and generate human-like language, making them ideal for chatbots, voice agents, and content generation. Seevora uses these models to power our AI receptionists and sales agents."
+  },
+  {
+    keywords: ['ai agent', 'agent', 'autonomous', 'multi-agent', 'agentic'],
+    response: "An AI agent is a software system that perceives its environment, makes decisions, and takes actions autonomously to achieve a goal. Multi-agent systems use several specialized agents working together — for example, one agent handles calls, another processes WhatsApp, and another updates your CRM. This is exactly what Seevora deploys."
+  },
+  {
+    keywords: ['automation', 'automate', 'workflow', 'rpa', 'process automation'],
+    response: "Business automation uses technology to perform repetitive tasks without human intervention — things like sending reminders, collecting documents, booking appointments, and following up with clients. Seevora specializes in AI-powered automation that goes beyond simple rule-based bots to handle natural conversations."
+  },
+  {
+    keywords: ['crm', 'customer relationship', 'salesforce', 'hubspot', 'zoho'],
+    response: "A CRM (Customer Relationship Management) system tracks your customers, leads, and interactions in one place. Seevora integrates directly with popular CRMs to automatically log calls, update lead status, set follow-up reminders, and push appointment data — eliminating manual data entry."
+  },
+  {
+    keywords: ['api', 'integration', 'webhook', 'connect', 'software integration'],
+    response: "APIs (Application Programming Interfaces) allow different software systems to communicate with each other. Seevora uses APIs to connect our AI agents with your existing tools — calendar apps, CRMs, billing systems, EMRs, and WhatsApp — creating seamless automated workflows without replacing what you already use."
+  },
+  {
+    keywords: ['chatbot', 'bot', 'virtual assistant', 'ai chat', 'conversational ai'],
+    response: "Modern AI chatbots are far more sophisticated than older rule-based bots. They use NLP (natural language processing) to understand context, intent, and nuance — handling complex conversations naturally. Seevora deploys these for websites, WhatsApp, and voice channels simultaneously."
+  },
+  {
+    keywords: ['voice ai', 'voice agent', 'speech recognition', 'text to speech', 'tts', 'stt'],
+    response: "Voice AI converts spoken audio into text (STT), understands the intent, generates a response, and converts it back to speech (TTS) — all in under 2 seconds. Seevora's Voice Receptionists use this to handle real phone calls naturally in English, Hindi, and Hinglish."
+  },
+  // ── Sales & Business Strategy ──
+  {
+    keywords: ['sales strategy', 'how to sell', 'increase sales', 'sales tips', 'close deals', 'revenue'],
+    response: "Effective B2B sales strategy in 2024 focuses on: (1) fast lead response time — the first to respond wins, (2) multi-channel follow-up via calls and WhatsApp, (3) personalisation at scale using AI, and (4) clear ROI demonstration. Seevora automates steps 1-3 so your team only handles step 4."
+  },
+  {
+    keywords: ['follow up', 'follow-up', 'nurture', 'sequence', 'drip', 'pipeline'],
+    response: "Follow-up is where most sales are won or lost. Studies show 80% of sales require 5+ follow-ups, but most salespeople stop after 2. Seevora automates follow-up sequences over WhatsApp and calls — consistently reaching prospects without any manual effort."
+  },
+  {
+    keywords: ['lead', 'prospect', 'qualify', 'lead qualification', 'discovery'],
+    response: "Lead qualification means identifying which prospects are genuinely interested and ready to buy. Seevora's AI agents ask discovery questions in the initial conversation, score the lead, and route high-intent prospects to your sales team — so you focus only on buyers."
+  },
+  {
+    keywords: ['marketing', 'digital marketing', 'social media', 'content', 'seo', 'ads'],
+    response: "Good marketing generates leads — but the real money is in converting them quickly. Seevora complements your marketing by ensuring every inquiry gets an instant, intelligent response via voice or WhatsApp, dramatically improving your marketing ROI by capturing leads you'd otherwise lose."
+  },
+  {
+    keywords: ['roi', 'return on investment', 'benefit', 'value', 'impact', 'result'],
+    response: "Seevora customers typically see: 30-50% reduction in missed customer inquiries, 30-40% reduction in appointment no-shows, 40% reduction in operating costs, and 6-8 hours saved per week per staff member — usually within the first 90 days of deployment."
+  },
+  {
+    keywords: ['startup', 'smb', 'small business', 'scale', 'grow', 'expansion'],
+    response: "For growing SMBs, automation is the fastest way to scale without proportionally increasing headcount. Seevora lets you handle 3x the customer volume with your existing team by automating all repetitive customer-facing tasks — calls, reminders, follow-ups, and document collection."
+  },
+  {
+    keywords: ['upi', 'payment', 'billing', 'invoice', 'collection', 'outstanding'],
+    response: "Seevora automates payment follow-ups via WhatsApp — sending polite reminders with UPI payment links at the right intervals. This improves collections without awkward phone calls and typically reduces outstanding invoices by 25-35%."
+  },
 ];
 
 const SUGGESTED_QUESTIONS = [
-  "How do you automate B2B sales?",
-  "What is multi-agent software merging?",
   "What does Seevora do?",
-  "How does the Hindi-First AI work?",
+  "What is an AI agent?",
+  "How do you automate B2B sales?",
   "How fast can you deploy?",
-  "How do I book a call?",
-  "What industries do you serve?",
-  "Tell me about pricing"
+  "What is WhatsApp automation?",
+  "Tell me about pricing",
+  "How does AI voice receptionist work?",
+  "What industries do you serve?"
 ];
 
 const API_FALLBACK_ORIGIN = import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000';
@@ -91,41 +167,67 @@ async function chatbotFetch(endpoint, options) {
 function getLocalBotResponse(text) {
   const query = text.toLowerCase().trim();
 
-  const greetings = ['hi', 'hello', 'hey', 'greetings', 'hola', 'yo', 'good morning', 'good afternoon', 'good evening', 'namaste'];
+  // ── Conversational / Greeting ──
+  const greetings = ['hi', 'hello', 'hey', 'greetings', 'hola', 'yo', 'good morning', 'good afternoon', 'good evening', 'namaste', 'namaskar', 'jai hind'];
   const isGreeting = greetings.some(g => query === g || query.startsWith(g + ' ') || query.endsWith(' ' + g));
-
   if (isGreeting) {
-    return "Hi! I'm Seevora AI. Nice to meet you. You can ask me casually about Seevora, AI receptionists, WhatsApp follow-ups, pricing, or which automation would fit your business.";
+    return "Hi! I'm Seevora AI — your business automation advisor. Ask me anything about sales, AI, business strategy, or how Seevora can automate your workflows. I'm here to help!";
   }
 
-  if (/\b(how are you|how r you|kaise ho|kya haal|what'?s up|sup)\b/.test(query)) {
-    return "I'm doing well, thanks for asking. I'm here to help you understand Seevora in a friendly way. Tell me what kind of business you run, and I can suggest useful automations.";
+  if (/\b(how are you|how r you|kaise ho|kya haal|what'?s up|sup|theek ho)\b/.test(query)) {
+    return "Doing great, thanks for asking! I'm ready to help you with anything — Seevora's services, AI automation, sales strategy, or general business questions. What's on your mind?";
   }
 
-  if (/\b(thanks|thank you|thankyou|dhanyavad|shukriya)\b/.test(query)) {
-    return "You're welcome. Ask me anything else about Seevora or your business workflow, and I'll keep it simple.";
+  if (/\b(thanks|thank you|thankyou|dhanyavad|shukriya|bahut achha|great|awesome)\b/.test(query)) {
+    return "You're welcome! Feel free to ask anything else — about Seevora, AI, business automation, or anything you need help with.";
   }
 
-  if (/\b(who are you|your name|are you ai|bot)\b/.test(query)) {
-    return "I'm Seevora AI, the website assistant for Seevora. I can explain the company, services, industries, setup process, and help you decide whether a discovery call makes sense.";
+  if (/\b(who are you|your name|are you ai|are you a bot|what are you)\b/.test(query)) {
+    return "I'm Seevora AI — an intelligent business advisor trained to help you with AI automation, sales strategy, business operations, and everything about Seevora's products. What would you like to know?";
   }
 
-  if (/\b(help|what can you do|can you help)\b/.test(query)) {
-    return "Yes. I can explain Seevora's AI receptionist, WhatsApp automation, appointment booking, document collection, reminders, industry use cases, and pricing approach. You can also just tell me your business problem.";
+  if (/\b(help|what can you do|can you help|capabilities)\b/.test(query)) {
+    return "I can help you with: Seevora's products and pricing, AI and automation concepts, B2B sales strategies, business operations, workflow automation, and general business questions. Just ask away!";
   }
 
+  // ── Knowledge base match ──
   const matched = SEEVORA_KNOWLEDGE.find(item =>
     item.keywords.some(keyword => query.includes(keyword))
   );
-
   if (matched) return matched.response;
 
+  // ── AI & Technology general fallbacks ──
+  if (/\b(ai|artificial intelligence|machine learning|deep learning|neural|llm|gpt|claude|gemini)\b/.test(query)) {
+    return "AI (Artificial Intelligence) enables machines to understand language, make decisions, and automate complex tasks. Seevora uses AI to power voice receptionists, WhatsApp automation, and multi-agent sales pipelines — purpose-built for Indian SMBs.";
+  }
+
+  if (/\b(crm|salesforce|hubspot|zoho|customer management)\b/.test(query)) {
+    return "A CRM helps you track customers, leads, and interactions in one place. Seevora integrates directly with your CRM — automatically logging calls, updating lead status, and setting follow-up reminders without any manual data entry.";
+  }
+
+  if (/\b(sales|revenue|leads|pipeline|conversion|close)\b/.test(query)) {
+    return "The fastest way to improve sales is faster lead response + consistent follow-up. Seevora automates both — answering leads instantly via voice and WhatsApp, then following up in a structured sequence until they convert.";
+  }
+
+  if (/\b(automation|automate|workflow|process|manual|repetitive)\b/.test(query)) {
+    return "Business automation removes manual, repetitive work from your team's plate — things like sending reminders, collecting documents, following up with clients, and booking appointments. Seevora specializes in AI-powered automation tailored to your specific business rules.";
+  }
+
+  if (/\b(marketing|seo|ads|social media|content|brand)\b/.test(query)) {
+    return "Great marketing drives traffic — but converting those leads quickly is where revenue is made. Seevora ensures every marketing-generated inquiry gets an instant intelligent response, maximizing your marketing ROI.";
+  }
+
+  if (/\b(roi|cost|saving|benefit|result|impact|outcome)\b/.test(query)) {
+    return "Seevora customers typically see 40% operating cost reduction and 30-50% fewer missed inquiries within 90 days. Most clients recover the investment cost in the first month through saved staff hours and recovered lost leads.";
+  }
+
+  // ── Smart general fallback ──
   let cleanTopic = query;
   const prefixes = [
     'tell me about', 'tell me more about', 'can you explain', 'can you tell me about',
-    'how does seevora handle', 'how do you handle', 'do you support', 'do you have',
+    'how does', 'how do', 'do you support', 'do you have',
     'what is', 'what are', 'information on', 'i want to know about', 'explain',
-    'how to', 'can you', 'please', 'show me', 'about'
+    'how to', 'please', 'show me', 'about'
   ];
   prefixes.sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
@@ -141,10 +243,10 @@ function getLocalBotResponse(text) {
       .split(/\s+/)
       .map(w => w.charAt(0).toUpperCase() + w.slice(1))
       .join(' ');
-    return `Excellent question! Seevora's custom AI pipelines can be trained to automate and handle processes related to **${topic}**. During our 5-day integration phase, our engineering team maps your specific business rules and builds custom voice/chat models to support it seamlessly. Would you like to schedule a 15-minute discovery call?`;
+    return `Great question about ${topic}! I'm currently in offline mode and can't give you a full AI answer — but Seevora's team is expert at applying AI automation to exactly these kinds of business challenges. Book a free call and let's discuss it: click 'Book a Call' at the top of the page.`;
   }
 
-  return "That's an interesting question! Seevora offers fully custom AI integrations tailored to your business rules. Our voice receptionists and automated chat workflows speak Hinglish, English, and Hindi fluently. Would you like to schedule a quick 15-minute call with our team to discuss your specific needs?";
+  return "I'm currently in offline mode but I'm happy to help! You can reach Seevora's team directly at contact@seevora.in, or click 'Book a Call' at the top of the page for a free discovery session.";
 }
 
 export default function Chatbot() {
@@ -240,9 +342,9 @@ export default function Chatbot() {
           width: 60px;
           height: 60px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6F7F33 0%, #8fa03e 100%);
+          background: linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%);
           border: none;
-          box-shadow: 0 8px 32px rgba(111, 127, 51, 0.5), 0 2px 8px rgba(0,0,0,0.15);
+          box-shadow: 0 8px 32px rgba(156, 163, 175, 0.5), 0 2px 8px rgba(0,0,0,0.15);
           cursor: pointer;
           z-index: 10000;
           display: flex;
@@ -252,7 +354,7 @@ export default function Chatbot() {
         }
         .seeva-fab:hover {
           transform: scale(1.1);
-          box-shadow: 0 12px 40px rgba(111, 127, 51, 0.6), 0 4px 12px rgba(0,0,0,0.2);
+          box-shadow: 0 12px 40px rgba(156, 163, 175, 0.6), 0 4px 12px rgba(0,0,0,0.2);
         }
         .seeva-fab svg {
           width: 26px;
@@ -270,7 +372,7 @@ export default function Chatbot() {
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: #10b981;
+          background: #9CA3AF;
           border: 2px solid #fff;
           animation: seevaPulse 2s infinite;
         }
@@ -323,7 +425,7 @@ export default function Chatbot() {
 
         /* ── Panel Header ── */
         .seeva-panel-header {
-          background: linear-gradient(135deg, #6F7F33 0%, #8fa03e 100%);
+          background: linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%);
           padding: 20px 24px;
           display: flex;
           align-items: center;
@@ -365,8 +467,8 @@ export default function Chatbot() {
           width: 7px;
           height: 7px;
           border-radius: 50%;
-          background: #10b981;
-          box-shadow: 0 0 6px #10b981;
+          background: #9CA3AF;
+          box-shadow: 0 0 6px #9CA3AF;
           display: inline-block;
         }
         .seeva-panel-close {
@@ -400,12 +502,12 @@ export default function Chatbot() {
         .seeva-welcome-banner {
           background: linear-gradient(135deg, #f0f4e8 0%, #e8efd5 100%);
           padding: 14px 24px;
-          border-bottom: 1px solid #dde8c0;
+          border-bottom: 1px solid #c7e8f4;
           flex-shrink: 0;
         }
         .seeva-welcome-banner p {
           font-size: 0.8rem;
-          color: #4a5a1a;
+          color: #0f2742;
           margin: 0;
           line-height: 1.5;
         }
@@ -454,7 +556,7 @@ export default function Chatbot() {
           width: 24px;
           height: 24px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6F7F33, #8fa03e);
+          background: linear-gradient(135deg, #9CA3AF, #4B5563);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -463,7 +565,7 @@ export default function Chatbot() {
         .seeva-msg-bot-name {
           font-size: 0.7rem;
           font-weight: 600;
-          color: #6F7F33;
+          color: #9CA3AF;
         }
         .seeva-bubble {
           padding: 12px 16px;
@@ -479,7 +581,7 @@ export default function Chatbot() {
           box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
         .seeva-msg-row.user .seeva-bubble {
-          background: linear-gradient(135deg, #6F7F33 0%, #8fa03e 100%);
+          background: linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%);
           color: #ffffff;
           border-top-right-radius: 4px;
         }
@@ -534,10 +636,10 @@ export default function Chatbot() {
         .seeva-chip {
           padding: 7px 14px;
           background: #ffffff;
-          border: 1.5px solid #d4e09a;
+          border: 1.5px solid rgba(156, 163, 175, 0.4);
           border-radius: 100px;
           font-size: 0.75rem;
-          color: #6F7F33;
+          color: #9CA3AF;
           cursor: pointer;
           transition: all 0.2s;
           font-weight: 500;
@@ -546,9 +648,9 @@ export default function Chatbot() {
           font-family: 'Outfit', sans-serif;
         }
         .seeva-chip:hover {
-          background: #6F7F33;
+          background: #9CA3AF;
           color: #ffffff;
-          border-color: #6F7F33;
+          border-color: #9CA3AF;
           transform: translateY(-1px);
         }
 
@@ -575,16 +677,16 @@ export default function Chatbot() {
           color: #1e293b;
         }
         .seeva-input:focus {
-          border-color: #6F7F33;
+          border-color: #9CA3AF;
           background: #ffffff;
-          box-shadow: 0 0 0 3px rgba(111, 127, 51, 0.1);
+          box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.1);
         }
         .seeva-input::placeholder { color: #94a3b8; }
         .seeva-send-btn {
           width: 44px;
           height: 44px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #6F7F33 0%, #8fa03e 100%);
+          background: linear-gradient(135deg, #9CA3AF 0%, #4B5563 100%);
           border: none;
           display: flex;
           align-items: center;
@@ -592,11 +694,11 @@ export default function Chatbot() {
           cursor: pointer;
           transition: transform 0.2s, box-shadow 0.2s;
           flex-shrink: 0;
-          box-shadow: 0 4px 12px rgba(111, 127, 51, 0.35);
+          box-shadow: 0 4px 12px rgba(156, 163, 175, 0.35);
         }
         .seeva-send-btn:hover {
           transform: scale(1.08);
-          box-shadow: 0 6px 18px rgba(111, 127, 51, 0.5);
+          box-shadow: 0 6px 18px rgba(156, 163, 175, 0.5);
         }
         .seeva-send-btn svg {
           width: 18px;
@@ -618,7 +720,7 @@ export default function Chatbot() {
           flex-shrink: 0;
         }
         .seeva-powered span {
-          color: #6F7F33;
+          color: #9CA3AF;
           font-weight: 600;
         }
 

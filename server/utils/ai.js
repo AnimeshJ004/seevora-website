@@ -8,7 +8,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
  * @param {Array} params.thread - Optional conversation thread for chat history.
  * @returns {Promise<string>} Generated text reply.
  */
-export async function generateAIReply({ prompt, systemPrompt = '', thread = [] }) {
+export async function generateAIReply({ prompt, systemPrompt = '', thread = [], maxTokens = 500 }) {
   // 1. ANTHROPIC CLAUDE SUPPORT
   if (process.env.ANTHROPIC_API_KEY) {
     try {
@@ -33,7 +33,7 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [] }
         },
         body: JSON.stringify({
           model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-          max_tokens: 500,
+          max_tokens: maxTokens,
           system: systemPrompt,
           messages
         })
@@ -77,7 +77,7 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [] }
         body: JSON.stringify({
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
           messages,
-          max_completion_tokens: 500,
+          max_completion_tokens: maxTokens,
           temperature: 0.7
         })
       });

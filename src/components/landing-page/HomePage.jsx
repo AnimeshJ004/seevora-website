@@ -196,108 +196,93 @@ function Hero() {
   }, []);
 
   return (
-    <section className="centered-hero" id="hero">
-      <div className="hero-curves-bg" aria-hidden="true">
-        <svg viewBox="0 0 1440 900" preserveAspectRatio="none">
-          <path d="M-140 620C210 430 380 390 720 520C1050 646 1200 610 1580 390" />
-          <path d="M-100 720C260 520 470 500 760 620C1030 732 1230 706 1540 520" />
-          <path d="M-120 520C220 342 438 312 730 430C1040 556 1220 520 1540 330" />
-        </svg>
+    <section className="bk-hero-section bk-hero-video-section" id="hero">
+      {/* === VIDEO BACKGROUND === */}
+      <div className="bk-hero-video-bg" aria-hidden="true">
+        <video
+          className="bk-hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+        >
+          {/* Primary: Futuristic Digital Grid with Dynamic Flow (glowing AI network nodes) */}
+          <source src="https://videos.pexels.com/video-files/34645139/14683902_2560_1440_30fps.mp4" type="video/mp4" />
+          {/* Fallback: Abstract Wavy Digital Grid with Floating Particles */}
+          <source src="https://videos.pexels.com/video-files/34189669/14492116_1920_1080_30fps.mp4" type="video/mp4" />
+        </video>
+        {/* Dark overlay so text stays readable */}
+        <div className="bk-hero-video-overlay" />
       </div>
 
-      <div className="hero-reference-scene" aria-hidden="true">
-        <div className="hero-orbit hero-orbit-one" />
-        <div className="hero-orbit hero-orbit-two" />
-        <div className="hero-float-card hero-float-card-left hero-metric-card hero-metric-card--calls">
-          <div className="hero-metric-topline">
-            <span className="hero-metric-value">10x</span>
-            <span className="hero-metric-chip hero-metric-chip--up">+40%</span>
-          </div>
-          <strong>Faster workflows</strong>
-          <small>Fusion AI</small>
-        </div>
-        <div className="hero-float-card hero-float-card-right hero-metric-card hero-metric-card--shows">
-          <div className="hero-metric-topline">
-            <span className="hero-metric-value">3x</span>
-            <span className="hero-metric-chip hero-metric-chip--up">more</span>
-          </div>
-          <strong>Sales velocity</strong>
-          <small>Automated Pipelines</small>
-        </div>
-        <div className="hero-float-card hero-float-card-bottom hero-chart-card">
-          <div className="hero-chart-bars" aria-hidden="true">
-            <span style={{ '--bar-h': '64%' }} />
-            <span style={{ '--bar-h': '78%' }} />
-            <span style={{ '--bar-h': '42%' }} />
-            <span style={{ '--bar-h': '90%' }} />
-          </div>
-          <div className="hero-chart-copy">
-            <span>100%</span>
-            <strong>Custom Built</strong>
-          </div>
-        </div>
-      </div>
-
-      <div className="container">
-        <div className="hero-content centered" data-animate>
-          <h1 className="hero-title centered hero-title-typing">
-            <span className="reveal-mask">
-              <span className="hero-typed-line hero-typed-3d reveal-text" style={{ display: 'block', whiteSpace: 'nowrap' }}>
-                Turn Your Business
-              </span>
-            </span>
-            <span className="reveal-mask">
-              <span className="hero-typed-line hero-typed-3d reveal-text delay-1" style={{ display: 'block', whiteSpace: 'nowrap' }}>
-                Processes into
-              </span>
-            </span>
-            <span className="reveal-mask">
-              <span
-                className="hero-typed-line hero-typed-gradient hero-rotating-phrase reveal-text delay-2"
-                style={{ display: 'block', whiteSpace: 'nowrap' }}
-              >
-                <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
-                  {HERO_ROTATING_PHRASES[phraseIndex]}
+      <div className="bk-hero-container container">
+        <div className="bk-hero-grid bk-hero-grid--video">
+          {/* Left Column: Content */}
+          <div className="bk-hero-content" data-animate>
+            <h1 className="hero-title bk-hero-title hero-title-typing">
+              <span className="reveal-mask">
+                <span className="hero-typed-line hero-typed-3d reveal-text" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                  Turn Your Business
                 </span>
               </span>
-            </span>
-            <span className="reveal-mask">
-              <span className="hero-typed-line hero-typed-3d reveal-text delay-3" style={{ display: 'block', whiteSpace: 'nowrap' }}>
-                With AI.
+              <span className="reveal-mask">
+                <span className="hero-typed-line hero-typed-3d reveal-text delay-1" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                  Processes into
+                </span>
               </span>
-            </span>
-          </h1>
+              <span className="reveal-mask">
+                <span
+                  className="hero-typed-line hero-typed-gradient hero-rotating-phrase reveal-text delay-2"
+                  style={{ display: 'block', whiteSpace: 'nowrap' }}
+                >
+                  <span key={phraseIndex} className="hero-rotating-phrase-text hero-rotating-phrase-text--swap">
+                    {HERO_ROTATING_PHRASES[phraseIndex]}
+                  </span>
+                </span>
+              </span>
+              <span className="reveal-mask">
+                <span className="hero-typed-line hero-typed-3d reveal-text delay-3" style={{ display: 'block', whiteSpace: 'nowrap' }}>
+                  With AI.
+                </span>
+              </span>
+            </h1>
 
-          <div
-            className="hero-buttons centered"
-          >
-            <button
-              className="btn-pill btn-pill-primary"
-              onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Book a Call
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </button>
-            <button
-              className="btn-pill btn-pill-secondary"
-              onClick={() => document.getElementById('why-seevora')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Explore Solutions
-            </button>
+            <p className="bk-hero-subtitle">
+              Seevora helps businesses automate their operations, accelerate sales, and scale effortlessly — all powered by intelligent AI.
+            </p>
+
+            <div className="hero-buttons bk-hero-buttons">
+              <button
+                className="btn-pill btn-pill-primary bk-btn-primary"
+                onClick={() => {
+                  window.history.pushState(null, '', '/book-a-call');
+                }}
+              >
+                Book a Call
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+              <button
+                className="btn-pill btn-pill-secondary bk-btn-secondary"
+                onClick={() => document.getElementById('why-seevora')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Explore Solutions
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="hero-capability-strip" aria-label="Seevora automation capabilities" data-animate>
+      <div className="hero-capability-strip bk-capability-strip" aria-label="Seevora automation capabilities">
         <div className="hero-capability-track">
           {[...heroCapabilities, ...heroCapabilities].map((item, index) => (
             <div className="hero-capability-item" key={`${item}-${index}`}>
               <span className={`hero-capability-mark hero-capability-mark-${(index % heroCapabilities.length) + 1}`} aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M12 3 20 7.5v9L12 21l-8-4.5v-9L12 3Z" />
-                  <path d="M8.5 12h7" />
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M8.5 12.5l2.5 2.5 4.5-4.5" />
                 </svg>
               </span>
               <span>{item}</span>
@@ -485,7 +470,11 @@ function Stats() {
       <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />
       <div className="container">
         <div data-animate style={{ textAlign: 'center' }}>
-          <h2 className="section-title">Results You Can <span className="gradient-text">Expect</span></h2>
+          <h2 className="section-title">
+            <span className="reveal-mask">
+              <span className="reveal-text">Results You Can <span className="gradient-text">Expect</span></span>
+            </span>
+          </h2>
           <p className="section-subtitle" style={{ margin: '0 auto' }}>
             Our AI solutions deliver measurable business outcomes from day one.
           </p>

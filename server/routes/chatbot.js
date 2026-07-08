@@ -1,39 +1,73 @@
 import express from 'express';
 import pool from '../config/db.js';
-import crypto from 'crypto';
+import { generateAIReply } from '../utils/ai.js';
 
 const router = express.Router();
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20240620';
 const MAX_MESSAGE_LENGTH = 900;
 const MAX_HISTORY_ITEMS = 10;
 
-const COMPANY_CONTEXT = `
-Seevora Private Limited is an Indian AI automation company focused on SMBs.
-Core offer: custom Enterprise AI automation that turns manual business workflows into profit centers.
-Main capabilities:
-- 24/7 AI Voice Receptionist for missed calls, appointment booking, customer intent capture, and urgent query routing.
-- WhatsApp Business API automation for confirmations, reminders, follow-ups, payment links, document collection, and customer updates.
-- Hindi-first customer experience with English, Hindi, and Hinglish support.
-- Custom dashboards and integrations for calendars, billing, EMR/LIS systems, CRMs, UPI workflows, document workflows, and business databases.
-- Typical setup time is 5 business days after workflow audit and rule mapping.
-Industries served:
-- Healthcare and clinics: patient calls, appointment scheduling, reminders, intake, EMR sync.
-- Education and academies: admission enquiries, demo class bookings, fee reminders, parent/student follow-ups.
-- Personal care and wellness: slot booking, no-show reminders, repeat bookings, Google reviews, social workflows.
-- Diagnostics and pathology: test booking, sample collection scheduling, report-ready notifications.
-- Fitness and gyms: trial follow-ups, renewals, session scheduling, engagement.
-- Legal, CA, and financial advisory: consultation booking, document intake, reminders, secure follow-up.
-- Property and real estate: lead qualification, catalog sharing, property visit scheduling.
-Pricing is custom based on modules, integrations, and volume. Encourage users to book a discovery call for an exact quote.
+// ─────────────────────────────────────────────────────────────────────────────
+// SEEVORA MASTER SYSTEM PROMPT
+// Covers: Seevora products, sales, business strategy, AI concepts, general help
+// ─────────────────────────────────────────────────────────────────────────────
+const SEEVORA_SYSTEM_PROMPT = `
+You are Seevora AI — an intelligent business advisor, AI automation expert, and friendly assistant for Seevora Private Limited's website.
+
+ABOUT SEEVORA:
+Seevora Private Limited is an Indian enterprise AI automation company that turns manual business workflows into revenue-generating profit centers. We serve Indian SMBs across healthcare, education, legal, fitness, retail, diagnostics, and real estate sectors.
+
+SEEVORA PRODUCTS & SERVICES:
+- 24/7 AI Voice Receptionist: Answers every missed call, captures customer intent, books appointments, routes urgent queries — even outside business hours
+- WhatsApp Business API Automation: Automated confirmations, reminders, payment links (UPI), document collection, follow-ups in customer's preferred language
+- Hindi-First AI: Fluent in English, Hindi, and Hinglish — naturally matches the local customer's language
+- Custom Dashboards & Integrations: CRM, EMR/LIS systems, billing platforms, calendars, document workflows, Google Reviews automation
+- Multi-Agent AI Systems: Multiple specialized AI agents working together to automate the entire customer journey
+- Setup: 5 business days after workflow audit and rule mapping
+- Pricing: Custom based on modules and volume — encourage discovery call for exact quote
+- Impact: Customers typically see 30-50% reduction in no-shows and 40% reduction in operating costs within 90 days
+
+INDUSTRIES SERVED:
+- Clinics & Healthcare: patient call handling, appointment booking, reminders, EMR sync, intake automation
+- Education & Academies: admission inquiries, demo class bookings, fee reminders, parent follow-ups
+- Salons & Personal Care: slot booking, WhatsApp reminders, no-show prevention, Google reviews
+- Diagnostics & Pathology: test booking, sample collection scheduling, report notifications
+- Fitness & Gyms: trial follow-ups, membership renewals, session scheduling
+- CA, Legal & Financial Advisors: consultation booking, document intake, UPI reminders, secure follow-up
+- Real Estate: lead qualification, property catalog sharing, site visit scheduling
+
+YOUR ROLE & CAPABILITIES:
+You can answer questions about:
+1. Seevora's products, services, pricing, setup, and use cases
+2. AI and automation concepts: how LLMs work, what AI agents are, voice AI, chatbots, NLP, automation ROI
+3. Sales strategy: B2B sales, lead generation, follow-up sequences, cold outreach, client retention, sales funnel
+4. Business operations: workflow optimization, cost reduction, team productivity, SOPs, scaling SMBs
+5. Technology: CRM systems, WhatsApp Business API, VoIP, integrations, APIs, cloud tools
+6. General helpful questions: any business, entrepreneurship, or professional topic
+7. Casual conversation: greetings, how-are-you, general chat — be warm and human
+
+PERSONALITY & RULES:
+- Be helpful, knowledgeable, warm, and professional — like a smart business advisor friend
+- Keep answers concise (2-4 sentences) unless the user clearly wants detail
+- Match the user's language: if they write in Hindi or Hinglish, respond the same way naturally
+- Only suggest booking a discovery call when the user shows clear buying intent or asks about pricing/implementation — NOT on every message
+- Never say "I don't know" — always give useful context, explain concepts, or redirect helpfully
+- If asked something unrelated to business or Seevora, still be helpful and answer naturally
+- Connect general topics back to Seevora's value when it's natural, but don't force it
+- Be conversational, not scripted — avoid robotic, templated-sounding responses
+- When mentioning specific prices, always say pricing is custom and suggest a discovery call
 `;
 
 const EMAIL_SYSTEM_PROMPT = `
-You are an expert B2B email copywriter and outbound sales strategist.
-Your job is to write high-converting email copy, follow-ups, and sequences for Seevora.
+You are an expert B2B email copywriter and outbound sales strategist for Seevora Private Limited, an Indian AI automation company.
+Your job is to write high-converting email copy, follow-up sequences, and cold outreach campaigns.
+Focus on Indian SMB market language, pain points around missed calls, manual workflows, and business automation ROI.
+Keep emails concise, personalized, and action-oriented. Always include a clear CTA.
 `;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RATE LIMITER
+// ─────────────────────────────────────────────────────────────────────────────
 const recentRequests = new Map();
 
 function rateLimit(req, res, next) {
@@ -53,31 +87,60 @@ function rateLimit(req, res, next) {
   return next();
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 function normalizeHistory(history = []) {
   if (!Array.isArray(history)) return [];
 
   return history
     .slice(-MAX_HISTORY_ITEMS)
     .map((item) => ({
-      role: item?.sender === 'user' ? 'user' : 'assistant',
-      content: String(item?.text || '').slice(0, MAX_MESSAGE_LENGTH),
+      sender: item?.sender === 'user' ? 'user' : 'assistant',
+      text: String(item?.text || '').slice(0, MAX_MESSAGE_LENGTH),
     }))
-    .filter((item) => item.content.trim());
+    .filter((item) => item.text.trim());
 }
 
-function extractResponseText(payload) {
-  if (payload?.content?.[0]?.text) {
-    return payload.content[0].text.trim();
+// Cache the custom system prompt from DB (5-min TTL)
+let cachedCustomPrompt = null;
+let promptCachedAt = null;
+const PROMPT_CACHE_TTL = 5 * 60 * 1000;
+
+async function getSystemPrompt(context) {
+  if (context === 'email_marketing') {
+    return EMAIL_SYSTEM_PROMPT;
   }
-  return '';
+
+  // Return cached if still fresh
+  const now = Date.now();
+  if (cachedCustomPrompt && promptCachedAt && now - promptCachedAt < PROMPT_CACHE_TTL) {
+    return cachedCustomPrompt;
+  }
+
+  // Try to load custom prompt from DB
+  try {
+    const result = await pool.query(
+      "SELECT value FROM system_settings WHERE key = 'ai_sales_agent_prompt' LIMIT 1"
+    );
+    if (result.rowCount > 0 && result.rows[0].value) {
+      cachedCustomPrompt = result.rows[0].value;
+      promptCachedAt = now;
+      return cachedCustomPrompt;
+    }
+  } catch (err) {
+    console.warn('[Chatbot] Could not read custom system prompt from DB:', err.message);
+  }
+
+  // Fall back to the master prompt
+  return SEEVORA_SYSTEM_PROMPT;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /message  — Main chat endpoint
+// ─────────────────────────────────────────────────────────────────────────────
 router.post('/message', rateLimit, async (req, res, next) => {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(503).json({ message: 'Anthropic key is not configured.' });
-    }
-
     const message = String(req.body?.message || '').trim();
     if (!message) {
       return res.status(400).json({ message: 'Message is required.' });
@@ -88,76 +151,30 @@ router.post('/message', rateLimit, async (req, res, next) => {
     }
 
     const context = String(req.body?.context || '').trim();
-
-    // Check if custom sales agent prompt is saved in settings
-    let systemPrompt = DEFAULT_SALES_AGENT_PROMPT;
-    if (context === 'email_marketing') {
-      systemPrompt = EMAIL_SYSTEM_PROMPT;
-    } else {
-      try {
-        const settingsRes = await pool.query("SELECT value FROM system_settings WHERE key = 'ai_sales_agent_prompt'");
-        if (settingsRes.rowCount > 0 && settingsRes.rows[0].value) {
-          systemPrompt = settingsRes.rows[0].value;
-        }
-      } catch (err) {
-        console.warn('Could not read custom system prompt:', err.message);
-      }
-    }
-
-    const maxTokens = context === 'email_marketing' ? 700 : 350;
     const history = normalizeHistory(req.body?.history);
+    const maxTokens = context === 'email_marketing' ? 700 : 400;
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...history,
-      { role: 'user', content: message }
-    ];
+    // Get the appropriate system prompt (DB custom → master fallback)
+    const systemPrompt = await getSystemPrompt(context);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 18000);
-
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        system: SYSTEM_PROMPT,
-        messages: input,
-        max_tokens: 260,
-      }),
-      signal: controller.signal,
+    // Delegate to the ai.js utility — supports Anthropic, OpenAI, Gemini
+    const reply = await generateAIReply({
+      prompt: message,
+      systemPrompt,
+      thread: history,
+      maxTokens,
     });
 
-    clearTimeout(timeout);
-
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const messageText = payload?.error?.message || 'Anthropic request failed.';
-      return res.status(response.status).json({ message: messageText });
-    }
-
-    const reply = payload.choices?.[0]?.message?.content?.trim();
-
     if (!reply) {
-      return res.status(502).json({ message: 'Anthropic returned an empty reply.' });
-      return res.status(502).json({ message: 'AI returned an empty reply.' });
-    }
-
-    // Trigger lead parsing & CRM saving asynchronously
-    if (context !== 'email_marketing') {
-      extractAndSaveLead(message, history).catch(() => {});
+      return res.status(502).json({ message: 'AI returned an empty reply. Please try again.' });
     }
 
     return res.json({ reply });
   } catch (err) {
-    if (err?.name === 'AbortError') {
+    if (err?.name === 'AbortError' || err?.message === 'AI_TIMEOUT') {
       return res.status(504).json({ message: 'AI response timed out. Please try again.' });
     }
+    console.error('[Chatbot] Unexpected error:', err.message);
     return next(err);
   }
 });

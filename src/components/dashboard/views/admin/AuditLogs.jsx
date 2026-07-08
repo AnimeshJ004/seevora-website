@@ -377,8 +377,8 @@ function RequestList({ requests, selected, mode, onSelect }) {
             style={{
               padding: 14,
               borderRadius: 12,
-              border: isSelected ? '1px solid rgba(111,127,51,0.44)' : '1px solid var(--glass-border)',
-              background: isSelected ? 'rgba(111,127,51,0.08)' : 'var(--bg-space)',
+              border: isSelected ? '1px solid rgba(156, 163, 175,0.44)' : '1px solid var(--glass-border)',
+              background: isSelected ? 'rgba(156, 163, 175,0.08)' : 'var(--bg-space)',
               cursor: 'pointer',
               textAlign: 'left',
             }}
