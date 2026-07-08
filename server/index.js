@@ -29,6 +29,8 @@ import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
 import analyticsRoutes from './routes/analytics.js';
 import emailBotRoutes from './routes/emailBot.js';
+import salesAgentRoutes from './routes/salesAgent.js';
+import { runSessionCleanup } from './utils/sessionCleanup.js';
 import sitemapHandler from './routes/sitemap.js';
 import robotsHandler from './routes/robots.js';
 
@@ -79,6 +81,7 @@ app.use('/api/reviews', reviewsRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/sales-agent', salesAgentRoutes);
 
 // SEO Routes
 app.get('/sitemap.xml', sitemapHandler);
@@ -105,6 +108,11 @@ setInterval(async () => {
     console.error('[Scheduler] Error running scheduled campaigns job:', error.message);
   }
 }, 30000); // Check every 30 seconds
+
+// Hourly cleanup: archive sales agent sessions older than 24 hours
+setInterval(runSessionCleanup, 60 * 60 * 1000);
+// Run once at startup too
+runSessionCleanup();
 
 
 app.use((err, _req, res, _next) => {
