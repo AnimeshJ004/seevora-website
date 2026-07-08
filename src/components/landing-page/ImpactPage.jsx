@@ -194,23 +194,22 @@ export default function ImpactPage() {
           justifyContent: 'center',
           background: '#0a0e1a'
         }}>
-          {/* Video Background Layer */}
+          {/* Background Image Layer — Robot pointing at AI network (Pexels/Tara Winstead) */}
           <div style={{
             position: 'absolute',
             top: '-10px',
             left: '-10px',
             width: 'calc(100% + 20px)',
             height: 'calc(100% + 20px)',
-            background: '#0a0e1a',
             overflow: 'hidden',
             zIndex: 0
           }}>
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              style={{ 
+            {/* Main image */}
+            <img
+              src="https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=1920"
+              alt=""
+              aria-hidden="true"
+              style={{
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
@@ -220,13 +219,16 @@ export default function ImpactPage() {
                 width: 'auto',
                 height: 'auto',
                 objectFit: 'cover',
-                opacity: 0.3
+                opacity: 0.55,
               }}
-            >
-              {/* Replace with your own video: src="/videos/hero-video.mp4" */}
-              <source src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_25fps.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            />
+            {/* Dark gradient overlay for text readability */}
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to bottom, rgba(10,14,26,0.65) 0%, rgba(10,14,26,0.35) 50%, rgba(10,14,26,0.8) 100%)',
+              zIndex: 1
+            }} />
           </div>
 
           {/* Animated Canvas Network Overlay */}

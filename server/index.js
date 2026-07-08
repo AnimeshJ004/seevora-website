@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './config/db.js';
@@ -35,6 +36,8 @@ import sitemapHandler from './routes/sitemap.js';
 import robotsHandler from './routes/robots.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const clientDistPath = path.join(__dirname, '../dist');
+const clientIndexPath = path.join(clientDistPath, 'index.html');
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');
@@ -87,6 +90,13 @@ app.use('/api/sales-agent', salesAgentRoutes);
 app.get('/sitemap.xml', sitemapHandler);
 app.get('/robots.txt', robotsHandler);
 
+if (fs.existsSync(clientIndexPath)) {
+  app.use(express.static(clientDistPath));
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.sendFile(clientIndexPath);
+  });
+}
+
 // Start background email campaign scheduler
 setInterval(async () => {
   try {
@@ -120,7 +130,11 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: 'Something went wrong. Please try again.' });
 });
 
-await initDb();
+initDb().then(() => {
+  console.log('Database initialized successfully.');
+}).catch((err) => {
+  console.error('Failed to initialize database:', err);
+});
 
 const server = app.listen(port, () => {
   console.log(`Seevora API running on http://localhost:${port}`);

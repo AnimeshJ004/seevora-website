@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 /* ── Page header ── */
 export function PageHeader({ title, sub, action, onAction }) {
   return (
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
-      <div>
+    <div className="ds-page-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
+      <div className="ds-page-header__text">
         <h2 style={{ fontFamily:"'Outfit',sans-serif", fontWeight:800, fontSize:'1.4rem', color:'var(--text-primary)', marginBottom:4 }}>{title}</h2>
         {sub && <p style={{ fontSize:'0.82rem', color:'var(--text-muted)' }}>{sub}</p>}
       </div>
       {action && (
-        <button onClick={onAction} style={{ padding:'9px 20px', background:'var(--text-primary)', color:'#fff', border:'none', borderRadius:100, fontWeight:700, fontSize:'0.82rem', cursor:'pointer' }}>
+        <button className="ds-page-header__action" onClick={onAction} style={{ padding:'9px 20px', background:'var(--text-primary)', color:'#fff', border:'none', borderRadius:100, fontWeight:700, fontSize:'0.82rem', cursor:'pointer' }}>
           {action}
         </button>
       )}
@@ -29,7 +29,7 @@ export function StatCard({ label, value, sub, color='cyan' }) {
   };
   const s = colors[color] || colors.cyan;
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--glass-border)', borderRadius:16, padding:'20px 22px', position:'relative', overflow:'hidden', transition:'transform 0.2s, box-shadow 0.2s', cursor:'default' }}
+    <div className="ds-stat-card" style={{ background:'var(--bg-card)', border:'1px solid var(--glass-border)', borderRadius:16, padding:'20px 22px', position:'relative', overflow:'hidden', transition:'transform 0.2s, box-shadow 0.2s', cursor:'default' }}
       onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(0,0,0,0.06)'; }}
       onMouseLeave={e=>{ e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none'; }}>
       <div style={{ position:'absolute', top:0, left:0, width:3, height:'100%', background:s.bar, borderRadius:'0 2px 2px 0' }} />
@@ -43,7 +43,7 @@ export function StatCard({ label, value, sub, color='cyan' }) {
 /* ── Stats grid ── */
 export function StatsGrid({ stats, cols=4 }) {
   return (
-    <div style={{ display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap:16, marginBottom:24 }}>
+    <div className="ds-stats-grid" style={{ display:'grid', gridTemplateColumns:`repeat(${cols},1fr)`, gap:16, marginBottom:24 }}>
       {stats.map((s,i) => <StatCard key={i} {...s} />)}
     </div>
   );
@@ -52,9 +52,9 @@ export function StatsGrid({ stats, cols=4 }) {
 /* ── Panel ── */
 export function Panel({ title, meta, children, style }) {
   return (
-    <div style={{ background:'var(--bg-card)', border:'1px solid var(--glass-border)', borderRadius:16, padding:24, ...style }}>
+    <div className="ds-panel" style={{ background:'var(--bg-card)', border:'1px solid var(--glass-border)', borderRadius:16, padding:24, ...style }}>
       {title && (
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+        <div className="ds-panel__header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
           <span style={{ fontFamily:"'Outfit',sans-serif", fontWeight:700, fontSize:'0.95rem', color:'var(--text-primary)' }}>{title}</span>
           {meta && <span style={{ fontSize:'0.72rem', color:'var(--text-muted)' }}>{meta}</span>}
         </div>
@@ -86,7 +86,7 @@ export function Badge({ label, color='cyan' }) {
 /* ── Table ── */
 export function Table({ cols, rows }) {
   return (
-    <div style={{ overflowX:'auto' }}>
+    <div className="ds-table-wrap" style={{ overflowX:'auto' }}>
       <table style={{ width:'100%', borderCollapse:'collapse' }}>
         <thead>
           <tr>
@@ -127,7 +127,7 @@ export function Avatar({ name, gradient='linear-gradient(135deg,#14c9e1,#9e3cec)
 /* ── Filter bar ── */
 export function FilterBar({ filters=[], onSearch, onExport }) {
   return (
-    <div style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap', alignItems:'center' }}>
+    <div className="ds-filter-bar" style={{ display:'flex', gap:8, marginBottom:18, flexWrap:'wrap', alignItems:'center' }}>
       <input type="search" placeholder="Search…" onChange={e=>onSearch?.(e.target.value)}
         style={{ flex:1, minWidth:160, maxWidth:260, padding:'8px 14px', border:'1px solid var(--glass-border)', borderRadius:100, fontSize:'0.82rem', background:'var(--bg-space)', color:'var(--text-primary)', outline:'none' }} />
       {filters.map((f, idx) => {
@@ -189,7 +189,7 @@ export function Btn({ label, onClick, variant='primary', size='md' }) {
 
 /* ── Row layout ── */
 export function Row({ cols='3fr 2fr', gap=16, children }) {
-  return <div style={{ display:'grid', gridTemplateColumns:cols, gap }}>{children}</div>;
+  return <div className="ds-row-grid" style={{ display:'grid', gridTemplateColumns:cols, gap }}>{children}</div>;
 }
 
 /* ── Progress bar ── */
@@ -222,7 +222,7 @@ export function Field({ label, placeholder, type='text', defaultValue='' }) {
 /* ── Save/Discard buttons ── */
 export function SaveBar() {
   return (
-    <div style={{ display:'flex', gap:10, marginTop:24 }}>
+    <div className="ds-save-bar" style={{ display:'flex', gap:10, marginTop:24 }}>
       <Btn label="Save Changes" variant="primary" />
       <Btn label="Discard" variant="ghost" />
     </div>
@@ -232,7 +232,7 @@ export function SaveBar() {
 /* ── Tabs ── */
 export function Tabs({ tabs, active, onChange }) {
   return (
-    <div style={{ display:'flex', gap:4, borderBottom:'1px solid var(--glass-border)', marginBottom:20 }}>
+    <div className="ds-tabs" style={{ display:'flex', gap:4, borderBottom:'1px solid var(--glass-border)', marginBottom:20 }}>
       {tabs.map(t => (
         <button key={t.id} onClick={()=>onChange(t.id)} style={{ padding:'9px 16px', border:'none', borderRadius:'8px 8px 0 0', fontWeight:600, fontSize:'0.82rem', cursor:'pointer', background: active===t.id ? 'var(--bg-card)' : 'transparent', color: active===t.id ? 'var(--accent-cyan)' : 'var(--text-muted)', borderBottom: active===t.id ? '2px solid var(--accent-cyan)' : '2px solid transparent', transition:'all 0.2s' }}>
           {t.label}

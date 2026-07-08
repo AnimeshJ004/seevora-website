@@ -9,7 +9,7 @@ const pool = new Pool({
   database: process.env.PGDATABASE,
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
-  ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
+  ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : (process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined),
 });
 
 export default pool;

@@ -186,7 +186,7 @@ function getView(id, role, user) {
     'whatsapp-logs': <WhatsAppLogs />, subscribers: <Subscribers />, campaigns: <Campaigns />, 'email-templates': <EmailTemplates />, 'inbound-emails': <InboundEmails />,
     reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
     'security-center': <SecurityCenter user={user} />, analytics: <Analytics />, settings: <Settings user={user} />,
-    employees: <Employees />, attendance: <Attendance />, leave: <Leave />,
+    employees: <Employees user={user} />, attendance: <Attendance />, leave: <Leave />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
     'project-management': <ProjectManagement user={user} />, 'task-management': <TaskManagement user={user} />, 'time-tracking': <TimeTracking user={user} />
   };
@@ -421,6 +421,7 @@ export default function DashboardShell({ user, onLogout }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Document Verification', body: 'Vashu uploaded Aadhaar Card for verification.', time: '10 mins ago', unread: true },
     { id: 2, title: 'Leave Application', body: 'Animesh Jain requested annual leave for 3 days.', time: '2 hours ago', unread: true },
@@ -457,7 +458,10 @@ export default function DashboardShell({ user, onLogout }) {
   const handleNavClick = (id) => {
     /* Restricted employees can only access doc upload and verification status */
     if (restricted && !ALWAYS_ALLOWED_EMPLOYEE.has(id)) return;
-    if (allowed.includes(id)) setActive(id);
+    if (allowed.includes(id)) {
+      setActive(id);
+      setIsMobileNavOpen(false);
+    }
   };
 
   /* Determine what to render in the content area */
@@ -478,9 +482,10 @@ export default function DashboardShell({ user, onLogout }) {
   };
 
   return (
-    <div className="ds-layout">
+    <div className={`ds-layout${isMobileNavOpen ? ' ds-layout--nav-open' : ''}`}>
 
       {/* ── Sidebar ── */}
+      {isMobileNavOpen && <button className="ds-mobile-backdrop" aria-label="Close navigation" onClick={() => setIsMobileNavOpen(false)} />}
       <aside className="ds-sidebar">
         {/* Logo */}
         <div className="ds-sidebar-logo">
@@ -548,6 +553,17 @@ export default function DashboardShell({ user, onLogout }) {
       <main className="ds-main">
         {/* Header */}
         <header className="ds-header">
+          <button
+            className="ds-hamburger"
+            type="button"
+            aria-label="Open navigation"
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen(true)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
           <div className="ds-search-wrap">
             <svg className="ds-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />

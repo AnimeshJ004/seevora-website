@@ -237,41 +237,35 @@ function ViewHRDashboard() {
 }
 
 /* ── Employees ── */
-function ViewEmployees() {
+function ViewEmployees({ refreshKey, onAddAccount }) {
   const [search, setSearch] = useState('');
-  const [accounts, setAccounts] = useState(() => {
-    const m = {};
-    employees.forEach(e => { m[e.id] = e.id === 'EMP001' || e.id === 'EMP002' || e.id === 'EMP004' || e.id === 'EMP008'; });
-    return m;
-  });
-  const [toast, setToast] = useState(null);
+  const [employeesData, setEmployeesData] = useState(employees);
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
-
-  const makeAccount = (emp) => {
-    setAccounts(prev => ({ ...prev, [emp.id]: true }));
-    showToast('Account created for ' + emp.name + ' — credentials sent to ' + emp.email);
+  const fetchEmployees = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/hr/employees', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (data.employees) setEmployeesData(data.employees);
+    } catch (err) {
+      console.error('Failed to fetch employees', err);
+    }
   };
 
-  const filtered = employees.filter(e =>
+  useEffect(() => {
+    fetchEmployees();
+  }, [refreshKey]);
+
+  const filtered = employeesData.filter(e =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.dept.toLowerCase().includes(search.toLowerCase())
+    (e.dept || e.department || '').toLowerCase().includes(search.toLowerCase())
   );
+
   return (
     <div style={{ position: 'relative' }}>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24,
-          background: 'var(--accent-green)', color: '#fff',
-          padding: '12px 20px', borderRadius: 10,
-          fontWeight: 600, fontSize: '0.85rem',
-          zIndex: 9999, boxShadow: '0 8px 24px rgba(16,185,129,0.3)',
-          maxWidth: 380,
-        }}>{toast}</div>
-      )}
-      <PageHeader title="Employees" sub={`${employees.length} total employees`} action="+ Add Account" onAction={() => showToast('Add Account — coming soon!')} />
+      <PageHeader title="Employees" sub={`${employeesData.length} total employees`} action="+ Add Account" onAction={onAddAccount} />
       <div className="hr-stats-grid" style={{ marginBottom: 24 }}>
-        {[{ label: 'Total', value: 47, color: 'green' }, { label: 'Active', value: 44, color: 'cyan' }, { label: 'Inactive', value: 3, color: 'orange' }, { label: 'On Probation', value: 5, color: 'purple' }].map(s => (
+        {[{ label: 'Total', value: employeesData.length, color: 'green' }, { label: 'Active', value: employeesData.filter(e => e.status==='active').length, color: 'cyan' }, { label: 'Inactive', value: employeesData.filter(e => e.status==='inactive').length, color: 'orange' }, { label: 'On Probation', value: employeesData.filter(e => e.status==='probation').length, color: 'purple' }].map(s => (
           <div key={s.label} className={`hr-stat-card ${s.color}`} style={{ padding: '18px 20px' }}>
             <div className="hr-stat-value" style={{ fontSize: '1.8rem' }}>{s.value}</div>
             <div className="hr-stat-label">{s.label}</div>
@@ -286,24 +280,20 @@ function ViewEmployees() {
             {filtered.map((e, i) => (
               <tr key={i}>
                 <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Avatar name={e.name} /><div><div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{e.name}</div><div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{e.email}</div></div></div></td>
-                <td style={{ fontSize: '0.78rem', fontFamily: 'monospace', color: 'var(--accent-teal)' }}>{e.id}</td>
-                <td>{e.dept}</td>
-                <td>{e.role}</td>
+                <td style={{ fontSize: '0.78rem', fontFamily: 'monospace', color: 'var(--accent-teal)' }}>{e.id || e.employee_code}</td>
+                <td>{e.dept || e.department}</td>
+                <td>{e.role || e.job_title}</td>
                 <td style={{ fontWeight: 600 }}>{e.salary}</td>
-                <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{e.joined}</td>
+                <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{e.joined || e.joined_on}</td>
                 <td><span className={`hr-badge ${e.status}`}>{e.status}</span></td>
                 <td>
-                  {accounts[e.id]
+                  {e.hasAccount || e.account_active
                     ? <span className="hr-badge active">Active</span>
                     : <span className="hr-badge" style={{ background: 'rgba(148,163,184,0.12)', color: 'var(--text-muted)' }}>No Account</span>}
                 </td>
                 <td>
                   <button className="hr-action-btn">View</button>
                   <button className="hr-action-btn">Edit</button>
-                  {!accounts[e.id] && (
-                    <button className="hr-btn-primary" style={{ fontSize: '0.72rem', padding: '5px 12px' }} onClick={() => makeAccount(e)}>Make Account</button>
-                  )}
-                  <button className="hr-action-btn danger">Deactivate</button>
                 </td>
               </tr>
             ))}
@@ -681,6 +671,43 @@ function ViewDocuments() {
 export default function HRPage() {
   const [activeNav, setActiveNav] = useState('dashboard');
   const [dateTime, setDateTime] = useState(fmt);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [loading, setLoading] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const [formData, setFormData] = useState({
+    name: '', email: '', phone: '', department: 'Engineering', jobTitle: '', salary: '', status: 'active', accountRole: 'employee'
+  });
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500); };
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/hr/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Error adding account');
+      } else {
+        showToast(`Account created for ${formData.name}.`);
+        setShowAddModal(false);
+        setFormData({ name: '', email: '', phone: '', department: 'Engineering', jobTitle: '', salary: '', status: 'active', accountRole: 'employee' });
+        setRefreshKey(prev => prev + 1);
+      }
+    } catch (err) {
+      showToast('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const id = setInterval(() => setDateTime(fmt()), 60000);
@@ -689,7 +716,7 @@ export default function HRPage() {
 
   const viewMap = {
     dashboard:   <ViewHRDashboard />,
-    employees:   <ViewEmployees />,
+    employees:   <ViewEmployees refreshKey={refreshKey} onAddAccount={() => setShowAddModal(true)} />,
     attendance:  <ViewAttendance />,
     leave:       <ViewLeave />,
     recruitment: <ViewRecruitment />,
@@ -699,6 +726,64 @@ export default function HRPage() {
 
   return (
     <div className="hr-layout">
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 24, right: 24,
+          background: 'var(--accent-green)', color: '#fff',
+          padding: '12px 20px', borderRadius: 10,
+          fontWeight: 600, fontSize: '0.85rem',
+          zIndex: 9999, boxShadow: '0 8px 24px rgba(16,185,129,0.3)',
+          maxWidth: 380,
+        }}>{toast}</div>
+      )}
+
+      {showAddModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#0d0f26', padding: 32, borderRadius: 20, width: '100%', maxWidth: 540, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: 20, fontSize: '1.2rem', color: '#fff' }}>Add Employee Account</h3>
+            <form onSubmit={handleAddSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Full Name *</label>
+                <input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Email *</label>
+                <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Phone</label>
+                <input value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Department *</label>
+                <select value={formData.department} onChange={e => setFormData({...formData, department: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: '#11132f', color: '#fff' }}>
+                  <option>Engineering</option><option>Sales</option><option>Operations</option><option>HR</option><option>Finance</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Job Title *</label>
+                <input required value={formData.jobTitle} onChange={e => setFormData({...formData, jobTitle: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Salary *</label>
+                <input required type="number" value={formData.salary} onChange={e => setFormData({...formData, salary: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', color: '#fff' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: 6, color: '#94a3b8' }}>Role</label>
+                <select value={formData.accountRole} onChange={e => setFormData({...formData, accountRole: e.target.value})} style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: '#11132f', color: '#fff' }}>
+                  <option value="employee">Employee</option><option value="manager">Manager</option><option value="hr">HR</option>
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+                <button type="button" onClick={() => setShowAddModal(false)} style={{ padding: '10px 16px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={loading} style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #10b981, #3b82f6)', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>
+                  {loading ? 'Creating...' : 'Create Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── Sidebar ── */}
       <aside className="hr-sidebar">
@@ -709,6 +794,9 @@ export default function HRPage() {
         </div>
 
         <nav className="hr-nav" aria-label="HR navigation">
+          <div style={{ padding: '0 20px', marginBottom: 20 }}>
+            <button className="hr-btn-primary" style={{ width: '100%', padding: '10px 0' }} onClick={() => setShowAddModal(true)}>+ Add Account</button>
+          </div>
           {navGroups.map(({ label, items }) => (
             <React.Fragment key={label}>
               <span className="hr-nav-section-label">{label}</span>
