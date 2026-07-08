@@ -140,6 +140,16 @@ router.patch('/:id', mockAuth, async (req, res, next) => {
   }
 });
 
+/* ── DELETE /api/leads/all — delete all leads ───────────────────────── */
+router.delete('/all', mockAuth, async (req, res, next) => {
+  try {
+    await pool.query('DELETE FROM leads');
+    res.json({ message: 'All leads deleted.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* ── DELETE /api/leads/:id ───────────────────────────────────────────── */
 router.delete('/:id', mockAuth, async (req, res, next) => {
   try {
@@ -300,6 +310,12 @@ router.post('/bulk-email', mockAuth, async (req, res, next) => {
 
     const sent = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
+
+    if (sent === 0) {
+      const firstError = results.find(r => r.error)?.error || 'SMTP error. Check your SMTP settings in .env';
+      return res.status(500).json({ success: false, sent: 0, failed, total: rows.length, message: `Failed to send any emails. Error: ${firstError}`, results });
+    }
+
     return res.json({ success: true, sent, failed, total: rows.length, results });
   } catch (err) {
     next(err);

@@ -4,7 +4,10 @@ const API = (path, token, opts = {}) =>
   fetch(`/api${path}`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
     ...opts,
-  }).then(r => r.json());
+  })
+    .then(r => r.json())
+    .catch(err => ({ error: err.message || 'Network error' }));
+
 
 const STAGES = [
   { id: 'new',        label: 'New',        color: '#0ea5e9', icon: '' },
@@ -311,6 +314,7 @@ export default function CRMLeads({ user }) {
   const [search, setSearch] = useState('');
   const [bulkSendState, setBulkSendState] = useState('idle'); // 'idle'|'sending'|'done'|'error'
   const [bulkResult, setBulkResult] = useState(null);
+  const [bulkError, setBulkError] = useState('');
 
   const fetchLeads = useCallback(async () => {
     const res = await API(`/leads${search ? `?search=${encodeURIComponent(search)}` : ''}`, token);
@@ -332,25 +336,66 @@ export default function CRMLeads({ user }) {
 
   const handleBulkSend = async () => {
     const withEmail = leads.filter(l => l.email);
-    if (!withEmail.length) { alert('No leads have email addresses in CRM.'); return; }
+    if (!withEmail.length) { setBulkError('No leads have email addresses in CRM.'); return; }
     if (!window.confirm(`Send personalised emails to ${withEmail.length} lead${withEmail.length > 1 ? 's' : ''}?\n\nEach email will say "Hi [Name]" with their details.`)) return;
     setBulkSendState('sending');
     setBulkResult(null);
+    setBulkError('');
     try {
       const leadIds = withEmail.map(l => l.id);
       const res = await API('/leads/bulk-email', token, { method: 'POST', body: JSON.stringify({ leadIds }) });
-      if (res.success) {
+      if (res.error) {
+        setBulkSendState('error');
+        setBulkError(res.error);
+        setTimeout(() => { setBulkSendState('idle'); setBulkError(''); }, 6000);
+      } else if (res.success) {
         setBulkSendState('done');
         setBulkResult({ sent: res.sent, failed: res.failed });
         setTimeout(() => { setBulkSendState('idle'); setBulkResult(null); }, 6000);
       } else {
         setBulkSendState('error');
-        alert(res.message || 'Bulk send failed. Check SMTP settings in .env');
-        setTimeout(() => setBulkSendState('idle'), 4000);
+        setBulkError(res.message || 'Bulk send failed. Check SMTP settings in .env');
+        setTimeout(() => { setBulkSendState('idle'); setBulkError(''); }, 6000);
       }
-    } catch {
+    } catch (err) {
       setBulkSendState('error');
-      setTimeout(() => setBulkSendState('idle'), 4000);
+      setBulkError(err.message || 'Bulk send failed. Check SMTP settings.');
+      setTimeout(() => { setBulkSendState('idle'); setBulkError(''); }, 6000);
+    }
+  };
+
+  const handleDeleteLead = async (e, leadId) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this lead?")) return;
+    try {
+      const res = await API(`/leads/${leadId}`, token, { method: 'DELETE' });
+      if (res.error) {
+        setBulkError(res.error || 'Failed to delete lead.');
+        setTimeout(() => setBulkError(''), 5000);
+      } else {
+        setLeads(prev => prev.filter(l => l.id !== leadId));
+        if (selectedLead?.id === leadId) setSelectedLead(null);
+      }
+    } catch (err) {
+      setBulkError(err.message || 'Failed to delete lead.');
+      setTimeout(() => setBulkError(''), 5000);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm("Are you sure you want to delete ALL leads? This action cannot be undone.")) return;
+    try {
+      const res = await API('/leads/all', token, { method: 'DELETE' });
+      if (res.error) {
+        setBulkError(res.error || 'Failed to delete all leads.');
+        setTimeout(() => setBulkError(''), 5000);
+      } else {
+        setLeads([]);
+        setSelectedLead(null);
+      }
+    } catch (err) {
+      setBulkError(err.message || 'Failed to delete all leads.');
+      setTimeout(() => setBulkError(''), 5000);
     }
   };
 
@@ -393,7 +438,32 @@ export default function CRMLeads({ user }) {
                 ✓ {bulkResult.sent} sent{bulkResult.failed > 0 ? ` · ${bulkResult.failed} failed` : ''}
               </span>
             )}
+            {bulkError && (
+              <span style={{ fontSize: '0.7rem', color: '#f87171', fontWeight: 600, maxWidth: 280, textAlign: 'right', lineHeight: 1.4 }}>
+                ✕ {bulkError}
+              </span>
+            )}
           </div>
+          {leads.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 6,
+                border: 'none',
+                background: 'rgba(239, 68, 68, 0.15)',
+                color: '#ef4444',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                transition: 'all 0.25s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+            >
+              🗑 Delete All
+            </button>
+          )}
           <button onClick={() => setShowAdd(true)} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#14b8a6', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>+ Add Lead</button>
         </div>
       </div>
@@ -435,8 +505,26 @@ export default function CRMLeads({ user }) {
                   <td style={{ padding: '12px 14px', color: 'var(--text-muted,#94a3b8)' }}>{lead.industry || '-'}</td>
                   <td style={{ padding: '12px 14px' }}><StageBadge stage={lead.pipelineStage} /></td>
                   <td style={{ padding: '12px 14px' }}><ScoreBadge score={lead.score} /></td>
-                  <td style={{ padding: '12px 14px' }}>
+                  <td style={{ padding: '12px 14px', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => setQuickEmailLead(lead)} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: 'rgba(20,184,166,0.15)', color: '#14b8a6', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>AI Email</button>
+                    <button
+                      onClick={(e) => handleDeleteLead(e, lead.id)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}

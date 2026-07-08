@@ -3,9 +3,9 @@ import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
 import * as sessionManager from '../services/salesAgent/sessionManager.js';
 import { generateResponse, shouldOfferLeadCapture, extractMentionedServices, invalidatePromptCache } from '../services/salesAgent/responseGenerator.js';
-import { validateLeadData, leadExistsForSession, createLead } from '../services/salesAgent/leadProcessor.js';
-import { trackEvent, getDashboardMetrics } from '../services/salesAgent/analyticsTracker.js';
-import { checkRateLimit } from '../utils/rateLimiter.js';
+import { validateLeadData, leadExistsForSession, createLead, linkLeadToSession } from '../services/salesAgent/leadProcessor.js';
+import { logEvent, trackEvent, calculateMetrics, trackServiceDiscussion, getDashboardMetrics } from '../services/salesAgent/analyticsTracker.js';
+import { checkRateLimit, rateLimitMiddleware } from '../utils/rateLimiter.js';
 
 const router = express.Router();
 
@@ -344,5 +344,18 @@ function formatMessage(row) {
     createdAt: row.created_at,
   };
 }
+
+// ─── Error Handling Middleware ───────────────────────────────────────────────
+// Catches any errors passed via next(err) within this router.
+// eslint-disable-next-line no-unused-vars
+router.use((err, req, res, _next) => {
+  console.error('[SalesAgent] Unhandled error:', err);
+  const status = err.status || err.statusCode || 500;
+  return res.status(status).json({
+    error: 'Internal Server Error',
+    code: 'INTERNAL_ERROR',
+    message: 'An unexpected error occurred. Please try again.',
+  });
+});
 
 export default router;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import logoIcon from '../../assets/logo-icon.png';
+import EmailAgentDashboard from './EmailAgentDashboard.jsx';
 import './AdminPage.css';
 
 /* ─── Inline SVG Icons ─────────────────────────────────────────────────── */
@@ -200,11 +201,19 @@ const IconMenu = () => (
   </svg>
 );
 
+const IconEmail = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+    <polyline points="22,6 12,13 2,6" />
+  </svg>
+);
+
 /* ─── Sidebar Navigation Items Mapping ─────────────────────────────────── */
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', Icon: IconDashboard },
   { id: 'ai-voice-agent', label: 'AI Voice Agent', Icon: IconAIVoice },
+  { id: 'email-ai-agent', label: 'Email AI Agent', Icon: IconEmail },
   { id: 'appointments', label: 'Appointments', Icon: IconAppointments },
   { id: 'leads', label: 'CRM / Leads', Icon: IconLeads },
   { id: 'customers', label: 'Customers', Icon: IconUsers },
@@ -224,6 +233,7 @@ const navItems = [
 const pageTitles = {
   'dashboard': 'Dashboard',
   'ai-voice-agent': 'AI Voice Agent',
+  'email-ai-agent': 'Email AI Agent',
   'appointments': 'Appointments',
   'leads': 'CRM / Leads',
   'customers': 'Customers',
@@ -360,6 +370,7 @@ export default function AdminPage() {
         <div className="admin-content">
           {activeNav === 'dashboard' && <ViewDashboard />}
           {activeNav === 'ai-voice-agent' && <ViewAIVoiceAgent />}
+          {activeNav === 'email-ai-agent' && <EmailAgentDashboard />}
           {activeNav === 'appointments' && <ViewAppointments />}
           {activeNav === 'leads' && <ViewLeads />}
           {activeNav === 'customers' && <ViewCustomers />}

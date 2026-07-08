@@ -50,3 +50,37 @@ export function checkRateLimit(sessionId) {
 export function resetRateLimit(sessionId) {
   requestMap.delete(sessionId);
 }
+
+/**
+ * Express middleware that enforces the session-based rate limit.
+ * Reads sessionId from req.body.sessionId.
+ *
+ * On limit exceeded, responds with 429 and the standard error shape:
+ * {
+ *   "error": "Too Many Requests",
+ *   "message": "Rate limit exceeded. Please slow down.",
+ *   "code": "RATE_LIMIT_EXCEEDED",
+ *   "retryAfter": <seconds>
+ * }
+ */
+export function rateLimitMiddleware(req, res, next) {
+  const sessionId = req.body?.sessionId;
+
+  if (!sessionId) {
+    // No sessionId — let the route handler deal with the missing field
+    return next();
+  }
+
+  const result = checkRateLimit(sessionId);
+
+  if (!result.allowed) {
+    return res.status(429).json({
+      error: 'Too Many Requests',
+      message: 'Rate limit exceeded. Please slow down.',
+      code: 'RATE_LIMIT_EXCEEDED',
+      retryAfter: result.retryAfter,
+    });
+  }
+
+  return next();
+}

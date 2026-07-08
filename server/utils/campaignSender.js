@@ -50,6 +50,43 @@ export async function sendCampaign(campaignId) {
         .replace(/\{\{industry\}\}/g, lead.industry || '')
         .replace(/\{\{sender_name\}\}/g, campaign.sender_persona || 'Seevora Team');
 
+      // AI-personalize each email via Anthropic
+      if (process.env.ANTHROPIC_API_KEY) {
+        try {
+          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+              max_tokens: 400,
+              system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
+              messages: [{
+                role: 'user',
+                content: `Personalize this outbound email for ${lead.name} at ${lead.company || 'their company'} in the ${lead.industry || 'industry'}. Keep it under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
+              }]
+            })
+          });
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            const raw = aiData.content?.[0]?.text || '';
+            const m = raw.match(/\{[\s\S]*?\}/);
+            if (m) {
+              const parsed = JSON.parse(m[0]);
+              if (parsed.subject && parsed.body) {
+                subject = parsed.subject;
+                body = parsed.body;
+              }
+            }
+          }
+        } catch (aiErr) {
+          console.warn(`[CampaignSender] AI personalization failed for ${lead.email}:`, aiErr.message);
+        }
+      }
+
       const logId = crypto.randomUUID();
       const openTracker = `<img src="${process.env.VITE_API_URL || 'http://localhost:4000'}/api/email-bot/track/open/${logId}" width="1" height="1" style="display:none;" />`;
       

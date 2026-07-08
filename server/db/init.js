@@ -1044,4 +1044,195 @@ Keep responses concise (2-3 sentences typical, 4-5 maximum for complex topics).`
     console.error('[SalesAgent] Error details:', error);
     throw new Error(`Sales Agent migration failed: ${error.message}`);
   }
+
+  // ── Email AI Sales Agent Tables ──────────────────────────────────────
+  // Task 1.1: email_threads table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_threads (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      thread_id VARCHAR(255) NOT NULL UNIQUE,
+      from_email VARCHAR(255) NOT NULL,
+      from_name VARCHAR(200),
+      subject TEXT,
+      source VARCHAR(40) NOT NULL DEFAULT 'imap',
+      ai_reply_count INTEGER NOT NULL DEFAULT 0,
+      total_messages INTEGER NOT NULL DEFAULT 0,
+      escalated BOOLEAN NOT NULL DEFAULT false,
+      escalation_reason VARCHAR(80),
+      auto_reply_enabled BOOLEAN NOT NULL DEFAULT true,
+      converted BOOLEAN NOT NULL DEFAULT false,
+      conversion_type VARCHAR(60),
+      converted_at TIMESTAMPTZ,
+      confirmed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_activity_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_threads_from_email ON email_threads(LOWER(from_email));
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_threads_thread_id ON email_threads(thread_id);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_threads_escalated ON email_threads(escalated);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_threads_last_activity ON email_threads(last_activity_at DESC);
+  `).catch(e => console.log(e.message));
+
+  // Task 1.2: email_agent_reply_logs table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_agent_reply_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      thread_id VARCHAR(255) NOT NULL,
+      inbound_email_id UUID REFERENCES inbound_emails(id) ON DELETE SET NULL,
+      to_email VARCHAR(255) NOT NULL,
+      subject TEXT NOT NULL,
+      reply_body_html TEXT NOT NULL,
+      reply_body_text TEXT NOT NULL,
+      ai_model_used VARCHAR(120),
+      source VARCHAR(40) NOT NULL DEFAULT 'ai',
+      status VARCHAR(40) NOT NULL DEFAULT 'sent',
+      error_message TEXT,
+      escalation_reason VARCHAR(80),
+      processing_duration_ms INTEGER,
+      sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reply_logs_thread_id ON email_agent_reply_logs(thread_id);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reply_logs_to_email ON email_agent_reply_logs(LOWER(to_email));
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reply_logs_sent_at ON email_agent_reply_logs(sent_at DESC);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reply_logs_status ON email_agent_reply_logs(status);
+  `).catch(e => console.log(e.message));
+
+  // Task 1.3: ALTER TABLE inbound_emails - add new columns
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS from_name VARCHAR(200);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS source VARCHAR(40) NOT NULL DEFAULT 'imap';
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS thread_id VARCHAR(255);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS message_id VARCHAR(500);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS in_reply_to VARCHAR(500);
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+  `).catch(e => console.log(e.message));
+
+  await pool.query(`
+    ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS processing_duration_ms INTEGER;
+  `).catch(e => console.log(e.message));
+
+  // Task 1.3: Add indexes for inbound_emails
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_inbound_emails_thread_id ON inbound_emails(thread_id);
+  `).catch(() => {});
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_inbound_emails_status ON inbound_emails(status);
+  `).catch(() => {});
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_inbound_emails_from_email ON inbound_emails(LOWER(from_email));
+  `).catch(() => {});
+
+  // Task 1.3: Insert default system prompt for Email AI Agent
+  await pool.query(`
+    INSERT INTO system_settings (key, value)
+    VALUES ('email_agent_system_prompt', $1)
+    ON CONFLICT (key) DO NOTHING;
+  `, [`You are Seevora's AI Sales Representative handling inbound email enquiries. Your job is to engage prospective clients with helpful, conversion-focused responses that reflect Seevora's brand voice: warm, knowledgeable, and confident.
+
+## Company Overview
+
+Seevora Private Limited is an AI automation company based in Indore, Madhya Pradesh, India. We help SMBs and growing enterprises eliminate repetitive workflows and scale their customer communication using custom AI solutions.
+
+Contact: info@seevora.in | +91 82692 97967 | https://seevora.in
+
+## Our Services
+
+1. **AI Voice Receptionist**
+   - Handles missed calls 24/7 automatically
+   - Books appointments and captures customer intent
+   - Routes urgent queries to human staff
+   - Supports Hindi, English, and Hinglish
+
+2. **WhatsApp Business Automation**
+   - Automated booking confirmations and reminders
+   - Follow-up sequences and payment link distribution
+   - Document collection and customer status updates
+   - Multi-language support
+
+3. **Custom Integrations**
+   - Calendar and scheduling systems
+   - Billing and accounting software (Tally, Zoho Books)
+   - EMR/LIS systems for healthcare
+   - CRM pipelines and UPI payment workflows
+
+4. **Multi-language Support**
+   - Hindi-first conversational AI
+   - English and Hinglish supported natively
+   - Natural regional language handling
+
+## Target Industries
+
+Healthcare & Clinics, Education & Coaching, Personal Care & Wellness, Diagnostics & Pathology, Fitness & Gyms, Legal / CA / Financial Advisory, Real Estate & Property
+
+## Implementation
+
+- Typical setup: 5 business days after workflow audit
+- Includes discovery call, rule mapping, and testing phase
+- Custom pricing based on modules, volume, and integrations required
+
+## Your Instructions
+
+**DO:**
+- Greet the sender warmly by name if provided
+- Identify their business challenge or question and address it directly
+- Highlight the Seevora service most relevant to their enquiry
+- Share brief, specific use-case examples when helpful
+- Always include a clear call-to-action: book a discovery call at https://seevora.in/book-a-call
+- Keep replies concise (150–250 words maximum)
+- Sign off as "The Seevora Team"
+
+**DO NOT:**
+- Reveal that you are an AI unless directly and explicitly asked
+- Provide specific pricing; instead invite them to book a call for a custom quote
+- Make guarantees about outcomes or ROI
+- Answer questions unrelated to business automation or Seevora
+- Continue responding after 5 email exchanges; escalate instead
+
+## Tone
+
+Professional yet approachable. Think: helpful expert colleague, not corporate brochure.
+Use short sentences. Avoid jargon. Be direct and confident.`]).catch(e => console.log(e.message));
 }

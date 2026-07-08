@@ -1,12 +1,30 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ChatWindow from './ChatWindow';
+
+const STORAGE_KEY = 'seevora_chat_open';
 
 /**
  * Floating chat widget — visible on all pages, toggles between minimized and expanded.
+ * Persists open/closed state in localStorage across page navigation.
  */
 export default function ChatWidget() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Sync isOpen to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(isOpen));
+    } catch {
+      // ignore storage errors (e.g. private browsing quota)
+    }
+  }, [isOpen]);
 
   const handleOpen = useCallback(() => {
     setIsOpen(true);
