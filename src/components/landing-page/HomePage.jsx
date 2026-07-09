@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Chatbot from './Chatbot';
 import img1 from '../../assets/services/img1.jpg';
 import imgVoice from '../../assets/services/img-voice.jpg';
 import imgHandshake from '../../assets/services/img-handshake.jpg';
@@ -165,10 +164,15 @@ const stats = [
 
 const heroCapabilities = [
   'B2B Sales Automation',
-  'Fusion',
+  'AI Sales Agents',
   'Deep Business Research',
   'Massive Time Saving',
   'Sales Scaling',
+  'Lead Qualification',
+  '24/7 Prospecting',
+  'Custom AI Ecosystems',
+  'CRM Integration',
+  'Intelligent Outbound',
 ];
 
 const HERO_ROTATING_PHRASES = [
@@ -308,6 +312,8 @@ function WhyChooseSeevora() {
   };
 
   const handleMouseMove = (e) => {
+    // Skip on mobile — shapes are hidden on mobile and touch events cause repaints
+    if (window.matchMedia('(max-width: 768px)').matches) return;
     const { currentTarget, clientX, clientY } = e;
     const { left, top, width, height } = currentTarget.getBoundingClientRect();
     const x = (clientX - left) / width;
@@ -509,7 +515,6 @@ export default function HomePage() {
       <WhyChooseSeevora />
       <Workflow />
       <Stats />
-      <Chatbot />
     </main>
   );
 }

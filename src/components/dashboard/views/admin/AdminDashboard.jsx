@@ -34,6 +34,21 @@ function CardTitle({ title, right }) {
   );
 }
 
+/* Responsive style injected once */
+const MOBILE_STYLES = `
+  .admin-kpi-grid   { display:grid; grid-template-columns: repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  .admin-half-grid  { display:grid; grid-template-columns: 1fr 1fr;       gap:14px; margin-bottom:20px; }
+  .admin-bottom-grid{ display:grid; grid-template-columns: 1fr 1fr;       gap:14px; }
+  @media (max-width: 768px) {
+    .admin-kpi-grid   { grid-template-columns: repeat(2,1fr); }
+    .admin-half-grid  { grid-template-columns: 1fr; }
+    .admin-bottom-grid{ grid-template-columns: 1fr; }
+  }
+  @media (max-width: 400px) {
+    .admin-kpi-grid   { grid-template-columns: 1fr; }
+  }
+`;
+
 export default function AdminDashboard({ user }) {
   const h = new Date().getHours();
   const greet = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
@@ -102,7 +117,8 @@ export default function AdminDashboard({ user }) {
   const latestAuditRequest = stats.recentAuditRequests?.[0];
 
   return (
-    <div style={{ fontFamily:"Inter,sans-serif", color: C.text, height: '100%', overflowY: 'auto', paddingRight: 10 }}>
+    <div style={{ fontFamily:"Inter,sans-serif", color: C.text, height: '100%', overflowY: 'auto' }}>
+      <style>{MOBILE_STYLES}</style>
 
       {/* Greeting bar */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
@@ -115,7 +131,7 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* KPI row */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:20 }}>
+      <div className="admin-kpi-grid">
         {kpis.map((k,i) => (
           <Card key={i} style={{ padding:"20px" }}>
             <div style={{ fontFamily:"Outfit,sans-serif", fontWeight:800, fontSize:"2.5rem", color: "#111", lineHeight:1 }}>
@@ -127,7 +143,7 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* Middle Sections */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}>
+      <div className="admin-half-grid">
         
         {/* Messages */}
         <Card>
@@ -192,7 +208,7 @@ export default function AdminDashboard({ user }) {
       </div>
 
       {/* Bottom Sections */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+      <div className="admin-bottom-grid">
         
         {/* Task Overview */}
         <Card>

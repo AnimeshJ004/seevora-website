@@ -58,7 +58,7 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="jitter-nav-wrapper">
+      <div className={`jitter-nav-wrapper${mobileOpen ? ' mobile-menu-open' : ''}`}>
         <nav className={`jitter-nav-full${hidden ? ' hidden' : ''}`}>
           <a href="#" className="jnav-logo" onClick={scrollTop}>
             <img src={logoIcon} alt="Seevora Logo" className="logo-icon-img" decoding="async" />
@@ -95,10 +95,17 @@ export default function Navbar() {
  
       <div className={`mobile-overlay${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)} />
       <div className={`mobile-nav${mobileOpen ? ' open' : ''}`}>
-        <a href="#" className="jnav-logo mobile-logo" onClick={(e) => { scrollTop(e); setMobileOpen(false); }}>
-          <img src={logoIcon} alt="" className="logo-icon-img" />
-          <span className="logo-text">Seevora</span>
-        </a>
+        <div className="mobile-nav-header">
+          <a href="#" className="jnav-logo mobile-logo" onClick={(e) => { scrollTop(e); setMobileOpen(false); }}>
+            <img src={logoIcon} alt="" className="logo-icon-img" />
+            <span className="logo-text">Seevora</span>
+          </a>
+          <button className="mobile-nav-close" onClick={() => setMobileOpen(false)} aria-label="Close menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6L6 18M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
         {links.map((l) => (
           <a key={l.id || l.path} href={l.path || `#${l.id}`} onClick={(e) => handleNav(e, l)}>
             {l.label}

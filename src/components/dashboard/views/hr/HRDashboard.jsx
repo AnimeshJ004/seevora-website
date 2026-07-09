@@ -25,6 +25,21 @@ function card(s = {}) {
   return { background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", ...s };
 }
 
+const MOBILE_STYLES = `
+  .hr-kpi-grid    { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+  .hr-mid-grid    { display:grid; grid-template-columns:2fr 1fr;       gap:16px; margin-bottom:16px; }
+  .hr-dept-grid   { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; }
+  @media (max-width: 768px) {
+    .hr-kpi-grid  { grid-template-columns: repeat(2,1fr); gap:10px; }
+    .hr-mid-grid  { grid-template-columns: 1fr; }
+    .hr-dept-grid { grid-template-columns: repeat(2,1fr); gap:10px; }
+  }
+  @media (max-width: 400px) {
+    .hr-kpi-grid  { grid-template-columns: 1fr; }
+    .hr-dept-grid { grid-template-columns: 1fr; }
+  }
+`;
+
 export default function HRDashboard({ user }) {
   const name = user?.name?.split(" ")[0] || "HR";
   const [toast, setToast] = useState(null);
@@ -161,6 +176,7 @@ export default function HRDashboard({ user }) {
 
   return (
     <div style={{ color: C.muted, fontFamily: "'Inter',sans-serif", position: "relative" }}>
+      <style>{MOBILE_STYLES}</style>
 
       {toast && (
         <div style={{ position: "fixed", top: 24, right: 24, background: C.green, color: "#fff", padding: "12px 20px", borderRadius: 10, fontWeight: 600, fontSize: "0.85rem", zIndex: 9999, boxShadow: "0 8px 24px rgba(16,185,129,0.3)" }}>
@@ -177,7 +193,7 @@ export default function HRDashboard({ user }) {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 12, marginBottom: 20 }}>
+      <div className="hr-kpi-grid">
         {kpis.map((k, i) => (
           <div key={i} style={card({ padding: "20px 20px 18px", textAlign: "left" })}>
             <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: "2.35rem", color: C.text, lineHeight: 0.95 }}>{k.value}</div>
@@ -188,7 +204,7 @@ export default function HRDashboard({ user }) {
       </div>
 
       {/* Middle row */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 16 }}>
+      <div className="hr-mid-grid">
 
         {/* Attendance table */}
         <div style={card()}>
@@ -248,7 +264,7 @@ export default function HRDashboard({ user }) {
         {/* Headcount by dept */}
         <div style={card()}>
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Headcount by Department</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16 }}>
+          <div className="hr-dept-grid">
             {departments.map(d => (
               <div key={d.dept} style={{ marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: C.muted, marginBottom: 4 }}>

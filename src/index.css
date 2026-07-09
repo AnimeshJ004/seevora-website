@@ -168,6 +168,7 @@ body {
   line-height: 1.7;
   overflow-x: hidden;
   min-height: 100vh;
+  touch-action: pan-y;
 }
 
 img,
@@ -1044,8 +1045,8 @@ select {
 }
 
 .mobile-nav a:hover {
-  color: var(--accent-cyan);
-  padding-left: 10px;
+  color: var(--text-primary);
+  background: rgba(15, 23, 42, 0.04);
 }
 
 .mobile-overlay {
@@ -9427,7 +9428,7 @@ textarea.form-input {
   align-items: center;
   width: max-content;
   gap: 40px;
-  padding-left: 20px;
+  padding-right: 40px;
   animation: slide-marquee 25s linear infinite;
 }
 
@@ -9441,7 +9442,7 @@ textarea.form-input {
   }
 
   100% {
-    transform: translateX(calc(-50% - 20px));
+    transform: translateX(-50%);
   }
 }
 
@@ -10168,17 +10169,17 @@ textarea.form-input {
   }
 
   .jitter-nav-wrapper {
-    top: 12px;
-    width: min(100% - 24px, 420px);
-    max-width: calc(100vw - 24px);
+    top: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .jitter-nav-full {
     width: 100%;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 12px 10px 14px;
-    border-radius: 22px;
+    padding: 20px 22px;
+    border-radius: 0;
   }
 
   .jitter-nav-full.hidden {
@@ -10286,6 +10287,13 @@ textarea.form-input {
     border-color: #080b12;
     font-weight: 800;
     text-align: center;
+  }
+
+  .mobile-nav .btn-primary:hover {
+    background: #111827 !important;
+    background-image: none !important;
+    animation: none !important;
+    color: #ffffff !important;
   }
 
   .home-landing .centered-hero {
@@ -10560,12 +10568,13 @@ textarea.form-input {
   justify-content: flex-end;
   align-items: flex-start;
   text-align: left;
-  transition: all 0.6s cubic-bezier(0.25, 1, 0.35, 1);
+  transition: opacity 0.6s cubic-bezier(0.25, 1, 0.35, 1), transform 0.6s cubic-bezier(0.25, 1, 0.35, 1);
   transform-origin: center center;
   cursor: pointer;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+  will-change: transform, opacity;
 }
 
 .why-carousel-bg {
@@ -10752,20 +10761,40 @@ textarea.form-input {
 @media (max-width: 768px) {
   .why-carousel-container {
     height: 500px;
+    /* Flatten 3D context on mobile — removes GPU compositing cost */
+    perspective: none;
+  }
+
+  .why-carousel-track {
+    /* Disable 3D stacking on mobile */
+    transform-style: flat;
   }
 
   .why-carousel-card {
-    width: 320px;
+    width: 300px;
     min-height: 400px;
     padding: 50px 24px 30px;
+    /* Only use cheap 2D transforms on mobile */
+    will-change: opacity, transform;
   }
 
+  /* Replace expensive 3D transforms with flat 2D equivalents */
   .why-carousel-card.prev {
-    transform: translateX(-25%) scale(0.85) translateZ(-100px) rotateY(15deg);
+    transform: translateX(-30%) scale(0.88);
+    filter: none;
+    opacity: 0.45;
   }
 
   .why-carousel-card.next {
-    transform: translateX(25%) scale(0.85) translateZ(-100px) rotateY(-15deg);
+    transform: translateX(30%) scale(0.88);
+    filter: none;
+    opacity: 0.45;
+  }
+
+  .why-carousel-card.hidden {
+    transform: scale(0.75);
+    opacity: 0;
+    pointer-events: none;
   }
 
   .carousel-nav-btn {
@@ -10779,6 +10808,37 @@ textarea.form-input {
 
   .carousel-nav-btn.next {
     right: -5px;
+  }
+
+  /* Disable expensive filter animation on mobile header */
+  [data-animate="motion-header"] {
+    filter: none !important;
+    transform: translateY(28px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  [data-animate="motion-header"].visible {
+    filter: none !important;
+    transform: translateY(0);
+  }
+
+  /* Disable heavy blur blobs and their float animation on mobile */
+  .why-bg-glow .shape-3d,
+  .shape-1,
+  .shape-2,
+  .shape-3 {
+    display: none !important;
+  }
+
+  /* Kill backdrop-filter on carousel badge */
+  .why-carousel-badge {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* Disable the ::after filter:blur on section background */
+  .why-choose-seevora::after {
+    filter: none;
   }
 }
 
@@ -10982,12 +11042,12 @@ textarea.form-input {
   .jitter-nav-wrapper {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 0 10px !important;
+    padding: 0 !important;
   }
 
   .jitter-nav-full {
     width: 100% !important;
-    border-radius: 22px !important;
+    border-radius: 0 !important;
   }
 
   .mobile-overlay {
@@ -11201,75 +11261,7 @@ textarea.form-input {
 
 @media (max-width: 768px) {
 
-  /* Dashboard Responsive Fixes */
-  .ds-layout {
-    flex-direction: column !important;
-  }
 
-  .ds-sidebar {
-    width: 100% !important;
-    height: auto !important;
-    position: relative !important;
-    border-right: none !important;
-    border-bottom: 1px solid var(--glass-border) !important;
-  }
-
-  .ds-main {
-    width: 100% !important;
-  }
-
-  .ds-header {
-    flex-wrap: wrap !important;
-    gap: 10px;
-  }
-
-  .ds-content {
-    width: 100% !important;
-    padding: 1rem !important;
-  }
-
-  /* Cards/Grids collapse to 1 column below 768px in dashboard view */
-  .ds-content .grid,
-  .ds-content .cards-container,
-  .ds-content .stats-grid,
-  .ds-content .grid-cols-2,
-  .ds-content .grid-cols-3,
-  .ds-content .grid-cols-4 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Tables horizontally scrollable inside their own containers */
-  .ds-content .table-container,
-  .ds-content table {
-    display: block !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-  }
-
-  /* Inline fixed-width forms use full-width controls */
-  .ds-content form {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .ds-content input,
-  .ds-content select,
-  .ds-content button,
-  .ds-content textarea {
-    width: 100% !important;
-  }
-
-  /* Modals respect safe viewport padding */
-  .modal-panel,
-  .ds-modal,
-  .modal,
-  .modal-content {
-    width: min(100% - 32px, 500px) !important;
-    max-height: calc(100dvh - 32px) !important;
-    overflow-y: auto !important;
-    margin: 16px auto !important;
-  }
 
   /* Auth / Login Page */
   .auth-page .container {
@@ -11421,34 +11413,34 @@ textarea.form-input {
 
 /* Chat Window */
 .sa-window {
-  position: absolute;
-  bottom: 76px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
   right: 0;
-  width: 380px;
-  height: 580px;
-  background: #0f0f1a;
-  border: 1px solid rgba(124, 58, 237, 0.25);
-  border-radius: 20px;
+  width: 400px;
+  height: 100vh;
+  max-width: 100vw;
+  background: #ffffff;
+  border-left: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow:
-    0 32px 80px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    -20px 0 80px rgba(0, 0, 0, 0.1),
+    -1px 0 0 rgba(0, 0, 0, 0.04);
   animation: sa-window-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  transform-origin: bottom right;
+  z-index: 999999;
 }
 
 @keyframes sa-window-in {
   from {
     opacity: 0;
-    transform: scale(0.88) translateY(12px);
+    transform: translateX(100%);
   }
 
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateX(0);
   }
 }
 
@@ -11458,8 +11450,8 @@ textarea.form-input {
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18) 0%, rgba(79, 70, 229, 0.14) 100%);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.18);
+  background: #ffffff;
+  border-bottom: 1px solid var(--glass-border);
   flex-shrink: 0;
 }
 
@@ -11473,7 +11465,7 @@ textarea.form-input {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11484,14 +11476,14 @@ textarea.form-input {
 .sa-window__name {
   font-weight: 700;
   font-size: 15px;
-  color: #f1f5f9;
+  color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
 }
 
 .sa-window__status {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-secondary);
   margin: 0;
   display: flex;
   align-items: center;
@@ -11503,8 +11495,8 @@ textarea.form-input {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #9CA3AF;
-  box-shadow: 0 0 6px #9CA3AF;
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
   animation: sa-pulse 2s ease-in-out infinite;
 }
 
@@ -11524,20 +11516,20 @@ textarea.form-input {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--text-secondary);
   transition: all 0.2s;
   outline: none;
 }
 
 .sa-window__close:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f1f5f9;
+  background: #e5e7eb;
+  color: var(--text-primary);
 }
 
 /* Window Body (Messages) */
@@ -11594,7 +11586,7 @@ textarea.form-input {
 /* Message Row */
 .sa-message-row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8px;
   animation: sa-msg-in 0.25s ease;
 }
@@ -11619,11 +11611,11 @@ textarea.form-input {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: #fff;
   flex-shrink: 0;
 }
 
@@ -11647,17 +11639,16 @@ textarea.form-input {
 }
 
 .sa-bubble--agent {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #e2e8f0;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: var(--text-primary);
   border-bottom-left-radius: 4px;
 }
 
 .sa-bubble--user {
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: var(--text-primary);
   color: #fff;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.3);
 }
 
 .sa-message-time {
@@ -11713,18 +11704,17 @@ textarea.form-input {
 
 .sa-input-wrap {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f9fafb;
+  border: 1px solid var(--glass-border);
   border-radius: 14px;
   padding: 8px 10px;
   transition: border-color 0.2s;
 }
 
 .sa-input-wrap:focus-within {
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  border-color: var(--text-primary);
 }
 
 .sa-input {
@@ -11732,7 +11722,7 @@ textarea.form-input {
   background: transparent;
   border: none;
   outline: none;
-  color: #e2e8f0;
+  color: var(--text-primary);
   font-size: 13.5px;
   line-height: 1.5;
   resize: none;
@@ -11753,13 +11743,13 @@ textarea.form-input {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: #e5e7eb;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #000;
   transition: all 0.2s;
   flex-shrink: 0;
   outline: none;
@@ -11767,7 +11757,6 @@ textarea.form-input {
 
 .sa-send-btn:hover:not(:disabled) {
   transform: scale(1.06);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4);
 }
 
 .sa-send-btn:disabled {
@@ -13751,50 +13740,52 @@ textarea.form-input {
 
 
 /* Button Entrance & Hover Animations */
-.btn-primary,
-.btn-glass,
-.btn-secondary,
-.accenture-btn {
-  animation: revealUp 1s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
-  opacity: 0;
-  animation-fill-mode: forwards;
-}
-
-@keyframes buttonShine {
-  0% {
-    background-position: -200% center;
-  }
-
-  100% {
-    background-position: 200% center;
-  }
-}
-
-.btn-primary:hover,
-.accenture-btn:hover {
-  background-image: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.2) 50%, transparent 80%) !important;
-  background-size: 200% auto !important;
-  animation: buttonShine 1.5s linear infinite !important;
-}
-
-
-@keyframes buttonReveal {
-  0% {
-    transform: translateY(30px);
+@media (min-width: 769px) {
+  .btn-primary,
+  .btn-glass,
+  .btn-secondary,
+  .accenture-btn {
+    animation: revealUp 1s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
     opacity: 0;
+    animation-fill-mode: forwards;
   }
 
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+  @keyframes buttonShine {
+    0% {
+      background-position: -200% center;
+    }
 
-.btn-primary,
-.btn-glass,
-.btn-secondary,
-.accenture-btn {
-  animation: buttonReveal 0.8s cubic-bezier(0.215, 0.61, 0.355, 1) forwards !important;
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  .btn-primary:hover,
+  .accenture-btn:hover {
+    background-image: linear-gradient(120deg, transparent 20%, rgba(255, 255, 255, 0.2) 50%, transparent 80%) !important;
+    background-size: 200% auto !important;
+    animation: buttonShine 1.5s linear infinite !important;
+  }
+
+
+  @keyframes buttonReveal {
+    0% {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .btn-primary,
+  .btn-glass,
+  .btn-secondary,
+  .accenture-btn {
+    animation: buttonReveal 0.8s cubic-bezier(0.215, 0.61, 0.355, 1) forwards !important;
+  }
 }
 
 /* ==========================================================================
@@ -14261,6 +14252,19 @@ textarea.form-input {
   color: #ffffff !important;
 }
 
+/* Decrease margin gap for non-Chrome browsers (Firefox & Safari) */
+@-moz-document url-prefix() {
+  .home-landing .bk-capability-strip {
+    margin-top: -2px !important;
+  }
+}
+
+@supports (background: -webkit-named-image(i)) {
+  .home-landing .bk-capability-strip {
+    margin-top: -2px !important;
+  }
+}
+
 
 @media (max-width: 768px) {
   .bk-hero-section {
@@ -14324,16 +14328,50 @@ textarea.form-input {
   }
 
   .jitter-nav-full {
-    padding: 0 16px;
+    padding: 10px 16px;
+    border-radius: 0 !important;
   }
 
   .mobile-nav {
     padding: 24px 20px 32px;
   }
 
+  .jitter-nav-wrapper.mobile-menu-open {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+
+  .mobile-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding-bottom: 0;
+  }
+
+  .mobile-nav-close {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-nav-header .jnav-logo {
+    padding: 0;
+    margin: 0;
+  }
+
   .mobile-nav a {
+    display: block;
     font-size: 1.05rem;
-    padding: 14px 0;
+    padding: 14px 20px;
+    margin-left: -20px;
+    margin-right: -20px;
   }
 }
 
@@ -14394,30 +14432,19 @@ textarea.form-input {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
-    -ms-overflow-style: none;
-    overscroll-behavior-x: contain;
-    touch-action: pan-x;
+    overflow: hidden !important;
     flex-wrap: nowrap !important;
     justify-content: flex-start !important;
     padding: 10px 0 !important;
     gap: 0 !important;
-    scrollbar-width: none;
-  }
-
-  .home-landing .bk-capability-strip::-webkit-scrollbar {
-    display: none;
   }
 
   .home-landing .bk-capability-strip .hero-capability-track {
     width: max-content !important;
     min-width: max-content !important;
     gap: 20px !important;
-    padding: 0 16px !important;
-    animation: none !important;
-    transform: none !important;
+    padding-right: 20px !important;
+    animation: slide-marquee 25s linear infinite !important;
   }
 
   .home-landing .bk-capability-strip .hero-capability-item {
@@ -14831,15 +14858,15 @@ textarea.form-input {
 
   .sa-window {
     position: fixed !important;
+    top: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
     right: 0 !important;
     width: 100vw !important;
-    height: 80vh !important;
-    border-radius: 20px 20px 0 0 !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
+    height: 100dvh !important; /* Full height */
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
   }
 
   .sa-fab {
@@ -14929,4 +14956,4 @@ textarea.form-input {
   .not-found-page h2 {
     font-size: 1.3rem !important;
   }
-}
+}

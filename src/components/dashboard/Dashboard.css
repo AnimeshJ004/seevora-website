@@ -1,10 +1,10 @@
-
 /* SEEVORA DASHBOARD - Light Theme */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 
+/* ── Layout ──────────────────────────────────────────────────────────────── */
 .ds-layout {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: #f1f5f9;
   font-family: 'Inter', sans-serif;
@@ -15,7 +15,7 @@
 .ds-layout h1, .ds-layout h2, .ds-layout h3,
 .ds-layout h4, .ds-layout h5, .ds-layout h6 { color: #0f172a; }
 
-/* Sidebar */
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
 .ds-sidebar {
   width: 220px;
   flex-shrink: 0;
@@ -225,17 +225,18 @@
 
 .ds-logout-btn:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
 
-/* Main */
+/* ── Main ────────────────────────────────────────────────────────────────── */
 .ds-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  min-height: 0; /* Critical: prevents flex overflow on mobile */
   background: #f1f5f9;
 }
 
-/* Header */
+/* ── Header ──────────────────────────────────────────────────────────────── */
 .ds-header {
   height: 60px;
   background: #ffffff;
@@ -345,15 +346,16 @@
 .ds-header-profile-name { font-size: 0.8rem; font-weight: 600; color: #1e293b; }
 .ds-header-profile-role { font-size: 0.65rem; color: #64748b; }
 
-/* Content */
+/* ── Content ─────────────────────────────────────────────────────────────── */
 .ds-content {
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Needed for scroll to work inside flex column */
   padding: 20px 24px;
   background: #f1f5f9;
 }
 
-/* Footer */
+/* ── Footer ──────────────────────────────────────────────────────────────── */
 .ds-footer {
   background: #ffffff;
   border-top: 1px solid #e2e8f0;
@@ -371,7 +373,7 @@
   text-decoration: none;
 }
 
-/* Access denied */
+/* ── Access Denied ───────────────────────────────────────────────────────── */
 .ds-access-denied {
   display: flex;
   flex-direction: column;
@@ -391,10 +393,11 @@
 
 .ds-access-denied p { font-size: 0.88rem; color: #64748b; max-width: 320px; }
 
+/* ── Mobile Responsive ───────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .ds-layout {
     width: 100%;
-    min-height: 100dvh;
+    height: 100dvh;
   }
 
   .ds-hamburger {
@@ -462,7 +465,8 @@
   .ds-content {
     width: 100%;
     padding: 14px;
-    overflow-x: hidden;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
   }
 
   .ds-footer,
