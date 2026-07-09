@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
+import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
 const ANALYTICS_ROLES = ['super_admin', 'admin', 'manager'];
@@ -20,6 +21,11 @@ async function count(query, params = []) {
 
 router.get('/manager', requireRole(ANALYTICS_ROLES), async (_req, res, next) => {
   try {
+    const cachedData = getCache('analytics_manager');
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
     const [
       totals,
       leadStages,
@@ -136,7 +142,7 @@ router.get('/manager', requireRole(ANALYTICS_ROLES), async (_req, res, next) => 
       ? Math.round((toInt(email.replied) / toInt(email.sent)) * 100)
       : 0;
 
-    res.json({
+    const payload = {
       summary: {
         leadsTotal,
         leadsClosed,
@@ -185,7 +191,10 @@ router.get('/manager', requireRole(ANALYTICS_ROLES), async (_req, res, next) => 
         duration: row.duration,
         status: row.status,
       })),
-    });
+    };
+
+    setCache('analytics_manager', payload, 60); // Cache for 60 seconds
+    res.json(payload);
   } catch (err) {
     next(err);
   }

@@ -1,3 +1,6 @@
+import crypto from 'crypto';
+import { getCache, setCache } from './cache.js';
+
 /**
  * Generate a reply using Anthropic based on configured environment variables.
  * @param {object} params
@@ -7,6 +10,13 @@
  * @returns {Promise<string>} Generated text reply.
  */
 export async function generateAIReply({ prompt, systemPrompt = '', thread = [], maxTokens = 500 }) {
+  const payloadStr = JSON.stringify({ prompt, systemPrompt, thread, maxTokens });
+  const hash = crypto.createHash('sha256').update(payloadStr).digest('hex');
+  const cacheKey = `ai_reply_${hash}`;
+  
+  const cached = getCache(cacheKey);
+  if (cached) return cached;
+
   // 1. ANTHROPIC CLAUDE SUPPORT
   if (process.env.ANTHROPIC_API_KEY) {
     try {
@@ -39,7 +49,9 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [], 
 
       if (response.ok) {
         const payload = await response.json();
-        return payload.content?.[0]?.text || '';
+        const resultText = payload.content?.[0]?.text || '';
+        if (resultText) setCache(cacheKey, resultText, 3600 * 24); // Cache for 24 hours
+        return resultText;
       } else {
         console.warn('[AI Util] Anthropic request failed:', await response.text());
       }

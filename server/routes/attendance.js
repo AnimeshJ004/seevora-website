@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getCache, setCache } from '../utils/cache.js';
 import {
   computeDayStatus,
   computeWorkedMinutes,
@@ -255,6 +256,12 @@ router.get('/today', requireAuth, async (req, res, next) => {
       return res.status(403).json({ message: 'HR access is required.' });
     }
 
+    // Cache attendance for 30 seconds — short TTL since clock-ins happen frequently
+    const today = new Date().toISOString().slice(0, 10);
+    const cacheKey = `attendance_today_${today}`;
+    const cached = getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const result = await pool.query(`
       SELECT
         e.id,
@@ -300,7 +307,7 @@ router.get('/today', requireAuth, async (req, res, next) => {
       return acc;
     }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0 });
 
-    return res.json({
+    const payload = {
       officeHours: {
         start: OFFICE_START_TIME,
         end: OFFICE_END_TIME,
@@ -309,7 +316,9 @@ router.get('/today', requireAuth, async (req, res, next) => {
       },
       summary,
       attendance,
-    });
+    };
+    setCache(cacheKey, payload, 30); // 30-second TTL
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }

@@ -3,8 +3,19 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
+
+// Cache key constants
+const CACHE_EMPLOYEES_LIST = 'hr_employees_list';
+const CACHE_EMPLOYEES_SUMMARY = 'hr_employees_summary';
+const EMPLOYEES_TTL = 60; // 60 seconds
+
+function bustEmployeeCache() {
+  clearCache(CACHE_EMPLOYEES_LIST);
+  clearCache(CACHE_EMPLOYEES_SUMMARY);
+}
 
 const DEFAULT_PASSWORD = 'Seevora@123';
 
@@ -126,6 +137,9 @@ router.use(requireAuth);
 
 router.get('/', async (_req, res, next) => {
   try {
+    const cached = getCache(CACHE_EMPLOYEES_LIST);
+    if (cached) return res.json(cached);
+
     const result = await pool.query(`
       SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
              e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
@@ -136,7 +150,9 @@ router.get('/', async (_req, res, next) => {
       ORDER BY e.created_at DESC
     `);
 
-    return res.json({ employees: result.rows.map(toEmployee) });
+    const payload = { employees: result.rows.map(toEmployee) };
+    setCache(CACHE_EMPLOYEES_LIST, payload, EMPLOYEES_TTL);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -144,6 +160,9 @@ router.get('/', async (_req, res, next) => {
 
 router.get('/summary', async (_req, res, next) => {
   try {
+    const cached = getCache(CACHE_EMPLOYEES_SUMMARY);
+    if (cached) return res.json(cached);
+
     const [countsResult, departmentResult] = await Promise.all([
       pool.query(`
         SELECT
@@ -164,7 +183,7 @@ router.get('/summary', async (_req, res, next) => {
     const counts = countsResult.rows[0] || { total: 0, active: 0, inactive: 0, probation: 0 };
     const total = Number(counts.total || 0);
 
-    return res.json({
+    const payload = {
       total,
       active: Number(counts.active || 0),
       inactive: Number(counts.inactive || 0),
@@ -174,7 +193,9 @@ router.get('/summary', async (_req, res, next) => {
         count: Number(row.count || 0),
         pct: total ? Math.round((Number(row.count || 0) / total) * 100) : 0,
       })),
-    });
+    };
+    setCache(CACHE_EMPLOYEES_SUMMARY, payload, EMPLOYEES_TTL);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -257,6 +278,7 @@ router.post('/', requireEmployeeManagement, async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+    bustEmployeeCache();
 
     return res.status(201).json({
       message: 'Employee account created successfully.',
@@ -403,6 +425,7 @@ router.put('/:employeeCode', requireEmployeeManagement, async (req, res, next) =
     );
 
     await client.query('COMMIT');
+    bustEmployeeCache();
 
     return res.json({
       message: 'Employee updated successfully.',
@@ -444,6 +467,7 @@ router.delete('/:employeeCode', requireEmployeeManagement, async (req, res, next
     }
 
     await client.query('COMMIT');
+    bustEmployeeCache();
 
     return res.json({ message: 'Employee removed successfully.', removedId: req.params.employeeCode });
   } catch (error) {

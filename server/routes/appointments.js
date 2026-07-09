@@ -2,18 +2,31 @@ import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
+
+const CACHE_APPOINTMENTS_LIST = 'admin_appointments_list';
+const APPOINTMENTS_TTL = 60;
+
+function bustAppointmentsCache() {
+  clearCache(CACHE_APPOINTMENTS_LIST);
+}
 
 router.use(requireAuth);
 
 router.get('/', async (req, res) => {
   try {
+    const cached = getCache(CACHE_APPOINTMENTS_LIST);
+    if (cached) return res.json(cached);
+
     const { rows } = await pool.query(`
       SELECT *
       FROM appointments
       ORDER BY scheduled_at ASC
     `);
+
+    setCache(CACHE_APPOINTMENTS_LIST, rows, APPOINTMENTS_TTL);
     res.json(rows);
   } catch (error) {
     console.error('Error fetching appointments:', error);
@@ -61,6 +74,7 @@ router.post('/', async (req, res) => {
     ]);
 
     res.status(201).json(rows[0]);
+    bustAppointmentsCache();
   } catch (error) {
     console.error('Error creating appointment:', error);
     res.status(500).json({ error: 'Server error' });
@@ -90,6 +104,7 @@ router.put('/:id', async (req, res) => {
     
     if (rows.length === 0) return res.status(404).json({ error: 'Appointment not found' });
     res.json(rows[0]);
+    bustAppointmentsCache();
   } catch (error) {
     console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Server error' });
@@ -102,6 +117,7 @@ router.delete('/:id', async (req, res) => {
     const { rowCount } = await pool.query('DELETE FROM appointments WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Appointment not found' });
     res.json({ message: 'Appointment deleted successfully' });
+    bustAppointmentsCache();
   } catch (error) {
     console.error('Error deleting appointment:', error);
     res.status(500).json({ error: 'Server error' });

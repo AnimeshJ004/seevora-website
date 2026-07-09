@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
+import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
 
@@ -87,6 +88,12 @@ router.get('/', async (req, res, next) => {
 router.get('/summary', async (req, res, next) => {
   try {
     const month = req.query.month || new Date().toISOString().slice(0, 7);
+
+    // Cache payroll summary per-month for 60 seconds
+    const cacheKey = `hr_payroll_summary_${month}`;
+    const cached = getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     await resetAutomaticDeductions(pool, month);
 
     const result = await pool.query(`
@@ -112,7 +119,7 @@ router.get('/summary', async (req, res, next) => {
       return `₹${num.toLocaleString('en-IN')}`;
     };
 
-    return res.json({
+    const payload = {
       month,
       totalRecords: Number(row.total_records || 0),
       paid: Number(row.paid || 0),
@@ -122,7 +129,9 @@ router.get('/summary', async (req, res, next) => {
       totalPayrollRaw: totalPayroll,
       avgSalary: formatIndian(avgSalary),
       avgSalaryRaw: avgSalary,
-    });
+    };
+    setCache(cacheKey, payload, 60);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }

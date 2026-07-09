@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, Badge, StatsGrid } from '../shared';
 import EmployeeAttendancePanel from '../EmployeeAttendancePanel';
 import { hrApiFetch } from './hrApi';
@@ -42,10 +42,13 @@ export default function Attendance() {
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  
+  const lastFetchedRef = useRef(0);
 
   const loadAttendance = async () => {
     setIsLoading(true);
     setError('');
+    lastFetchedRef.current = Date.now();
 
     try {
       const response = await hrApiFetch('/api/hr/attendance/today');
@@ -72,10 +75,16 @@ export default function Attendance() {
     loadAttendance();
 
     const refresh = () => loadAttendance();
-    window.addEventListener('focus', refresh);
+    const handleFocus = () => {
+      if (Date.now() - lastFetchedRef.current > 60_000) {
+        loadAttendance();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
     window.addEventListener('seevora:hr-attendance-changed', refresh);
     return () => {
-      window.removeEventListener('focus', refresh);
+      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('seevora:hr-attendance-changed', refresh);
     };
   }, []);

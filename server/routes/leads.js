@@ -2,8 +2,16 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
+import { getCache, setCache, clearCachePrefix } from '../utils/cache.js';
 
 const router = express.Router();
+
+const CACHE_LEADS_PREFIX = 'admin_leads_list_';
+const LEADS_TTL = 60;
+
+function bustLeadsCache() {
+  clearCachePrefix(CACHE_LEADS_PREFIX);
+}
 
 // Temporarily bypass auth for testing from frontend demo login
 const mockAuth = (req, res, next) => {
@@ -39,6 +47,12 @@ function normalizeLead(row) {
 router.get('/', mockAuth, async (req, res, next) => {
   try {
     const { stage, source, search } = req.query;
+
+    // Cache key includes query parameters to isolate filtered views
+    const cacheKey = `${CACHE_LEADS_PREFIX}${JSON.stringify(req.query)}`;
+    const cached = getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const conditions = [];
     const values = [];
 
@@ -62,7 +76,9 @@ router.get('/', mockAuth, async (req, res, next) => {
       `SELECT * FROM leads ${where} ORDER BY created_at DESC`,
       values
     );
-    res.json({ leads: result.rows.map(normalizeLead) });
+    const payload = { leads: result.rows.map(normalizeLead) };
+    setCache(cacheKey, payload, LEADS_TTL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -74,6 +90,7 @@ router.get('/:id', mockAuth, async (req, res, next) => {
     const result = await pool.query('SELECT * FROM leads WHERE id = $1', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Lead not found.' });
     res.json({ lead: normalizeLead(result.rows[0]) });
+    bustLeadsCache();
   } catch (err) {
     next(err);
   }
@@ -100,7 +117,8 @@ router.post('/', mockAuth, async (req, res, next) => {
         source, pipelineStage, score, notes || null, nextFollowUpAt || null, auditRequestId || null, req.user.id,
       ]
     );
-    res.status(201).json({ message: 'Lead created.', lead: normalizeLead(result.rows[0]) });
+    res.status(201).json({ lead: normalizeLead(result.rows[0]) });
+    bustLeadsCache();
   } catch (err) {
     next(err);
   }
@@ -135,6 +153,7 @@ router.patch('/:id', mockAuth, async (req, res, next) => {
       [req.params.id, name, email, phone, company, industry, designation, source, pipelineStage, score, notes, nextFollowUpAt || null]
     );
     res.json({ message: 'Lead updated.', lead: normalizeLead(updated.rows[0]) });
+    bustLeadsCache();
   } catch (err) {
     next(err);
   }
@@ -145,6 +164,7 @@ router.delete('/all', mockAuth, async (req, res, next) => {
   try {
     await pool.query('DELETE FROM leads');
     res.json({ message: 'All leads deleted.' });
+    bustLeadsCache();
   } catch (err) {
     next(err);
   }
@@ -155,7 +175,8 @@ router.delete('/:id', mockAuth, async (req, res, next) => {
   try {
     const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Lead not found.' });
-    res.json({ message: 'Lead deleted.' });
+    res.json({ message: 'Lead deleted successfully.' });
+    bustLeadsCache();
   } catch (err) {
     next(err);
   }

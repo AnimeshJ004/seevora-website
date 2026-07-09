@@ -3,8 +3,18 @@ import express from 'express';
 import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
 import { sendCampaign } from '../utils/campaignSender.js';
+import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
+
+const CACHE_EMAIL_TEMPLATES = 'email_templates_list';
+const CACHE_EMAIL_SUBSCRIBERS = 'email_subscribers_list';
+const CACHE_EMAIL_CAMPAIGNS = 'email_campaigns_list';
+const EMAIL_BOT_TTL = 60;
+
+function bustTemplatesCache() { clearCache(CACHE_EMAIL_TEMPLATES); }
+function bustSubscribersCache() { clearCache(CACHE_EMAIL_SUBSCRIBERS); }
+function bustCampaignsCache() { clearCache(CACHE_EMAIL_CAMPAIGNS); }
 
 // Helper to check auth (similar to mockAuth in leads.js or requireAuth if token exists)
 const getUserId = (req) => {
@@ -16,8 +26,13 @@ const getUserId = (req) => {
    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 router.get('/templates', async (req, res, next) => {
   try {
+    const cached = getCache(CACHE_EMAIL_TEMPLATES);
+    if (cached) return res.json(cached);
+
     const result = await pool.query('SELECT * FROM email_templates ORDER BY created_at DESC');
-    res.json({ templates: result.rows });
+    const payload = { templates: result.rows };
+    setCache(CACHE_EMAIL_TEMPLATES, payload, EMAIL_BOT_TTL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -35,6 +50,7 @@ router.post('/templates', async (req, res, next) => {
       [crypto.randomUUID(), name, category || 'outbound', subject, body, JSON.stringify(variables), tone, getUserId(req)]
     );
     res.status(201).json({ template: result.rows[0] });
+    bustTemplatesCache();
   } catch (err) {
     next(err);
   }
@@ -63,6 +79,7 @@ router.put('/templates/:id', async (req, res, next) => {
       ]
     );
     res.json({ template: result.rows[0] });
+    bustTemplatesCache();
   } catch (err) {
     next(err);
   }
@@ -73,6 +90,7 @@ router.delete('/templates/:id', async (req, res, next) => {
     const result = await pool.query('DELETE FROM email_templates WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Template not found.' });
     res.json({ message: 'Template deleted.' });
+    bustTemplatesCache();
   } catch (err) {
     next(err);
   }
@@ -84,8 +102,13 @@ router.delete('/templates/:id', async (req, res, next) => {
    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 router.get('/subscribers', async (req, res, next) => {
   try {
+    const cached = getCache(CACHE_EMAIL_SUBSCRIBERS);
+    if (cached) return res.json(cached);
+
     const result = await pool.query('SELECT * FROM subscribers ORDER BY created_at DESC');
-    res.json({ subscribers: result.rows });
+    const payload = { subscribers: result.rows };
+    setCache(CACHE_EMAIL_SUBSCRIBERS, payload, EMAIL_BOT_TTL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -104,6 +127,7 @@ router.post('/subscribers', async (req, res, next) => {
       [crypto.randomUUID(), email.trim().toLowerCase(), name || null, status]
     );
     res.status(201).json({ subscriber: result.rows[0] });
+    bustSubscribersCache();
   } catch (err) {
     next(err);
   }
@@ -128,6 +152,7 @@ router.post('/subscribers/bulk', async (req, res, next) => {
       inserted.push(r.rows[0]);
     }
     res.status(201).json({ message: `${inserted.length} subscribers imported.`, subscribers: inserted });
+    bustSubscribersCache();
   } catch (err) {
     next(err);
   }
@@ -149,6 +174,7 @@ router.put('/subscribers/:id', async (req, res, next) => {
       [req.params.id, name !== undefined ? name : row.name, status !== undefined ? status : row.status, unsubscribedAt]
     );
     res.json({ subscriber: result.rows[0] });
+    bustSubscribersCache();
   } catch (err) {
     next(err);
   }
@@ -159,6 +185,7 @@ router.delete('/subscribers/:id', async (req, res, next) => {
     const result = await pool.query('DELETE FROM subscribers WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Subscriber not found.' });
     res.json({ message: 'Subscriber deleted.' });
+    bustSubscribersCache();
   } catch (err) {
     next(err);
   }
@@ -248,13 +275,18 @@ router.post('/subscribers/:id/send-email', async (req, res, next) => {
    ────────────────────────────────────────────────────────────────────────── */
 router.get('/campaigns', async (req, res, next) => {
   try {
+    const cached = getCache(CACHE_EMAIL_CAMPAIGNS);
+    if (cached) return res.json(cached);
+
     const result = await pool.query(`
       SELECT ec.*, et.name as template_name
       FROM email_campaigns ec
       LEFT JOIN email_templates et ON ec.template_id = et.id
       ORDER BY ec.created_at DESC
     `);
-    res.json({ campaigns: result.rows });
+    const payload = { campaigns: result.rows };
+    setCache(CACHE_EMAIL_CAMPAIGNS, payload, EMAIL_BOT_TTL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -284,6 +316,7 @@ router.post('/campaigns', async (req, res, next) => {
     }
 
     res.status(201).json({ campaign: result.rows[0] });
+    bustCampaignsCache();
   } catch (err) {
     next(err);
   }
@@ -328,6 +361,7 @@ router.put('/campaigns/:id', async (req, res, next) => {
     }
 
     res.json({ campaign: result.rows[0] });
+    bustCampaignsCache();
   } catch (err) {
     next(err);
   }
@@ -338,6 +372,7 @@ router.delete('/campaigns/:id', async (req, res, next) => {
     const result = await pool.query('DELETE FROM email_campaigns WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Campaign not found.' });
     res.json({ message: 'Campaign deleted.' });
+    bustCampaignsCache();
   } catch (err) {
     next(err);
   }
@@ -354,10 +389,12 @@ router.post('/campaigns/:id/publish', async (req, res, next) => {
         `UPDATE email_campaigns SET status = 'scheduled', updated_at = NOW() WHERE id = $1 RETURNING *`,
         [campaign.id]
       );
+      bustCampaignsCache();
       return res.json({ message: 'Campaign scheduled for delivery.', campaign: updated.rows[0] });
     }
 
     const result = await sendCampaign(campaign.id);
+    bustCampaignsCache();
     if (!result.success) return res.status(500).json({ message: result.error || 'Failed to publish campaign.' });
     return res.json({ message: `Campaign published and sent. ${result.sent} sent, ${result.failed} failed.`, sent: result.sent, failed: result.failed });
   } catch (err) {
@@ -373,6 +410,7 @@ router.post('/campaigns/:id/send', async (req, res, next) => {
     if (!result.success) {
       return res.status(500).json({ message: result.error || 'Failed to send campaign' });
     }
+    bustCampaignsCache();
     res.json({ message: `Campaign sent. ${result.sent} successfully, ${result.failed} failed.`, sent: result.sent, failed: result.failed });
   } catch (err) {
     next(err);

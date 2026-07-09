@@ -1,8 +1,12 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
+import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
+
+const CACHE_LEAVE_SUMMARY = 'hr_leave_summary';
+const LEAVE_SUMMARY_TTL = 60;
 
 const LEAVE_TYPES = ['casual', 'sick', 'annual', 'comp_off'];
 const LEAVE_TYPE_COLUMN = {
@@ -74,6 +78,9 @@ router.get('/', async (req, res, next) => {
 /* ── GET /summary  —  Leave stats ── */
 router.get('/summary', async (_req, res, next) => {
   try {
+    const cached = getCache(CACHE_LEAVE_SUMMARY);
+    if (cached) return res.json(cached);
+
     const result = await pool.query(`
       SELECT
         COUNT(*)::int AS total,
@@ -98,13 +105,15 @@ router.get('/summary', async (_req, res, next) => {
     `);
     const onLeaveToday = Number(todayResult.rows[0]?.on_leave_today || 0);
 
-    return res.json({
+    const payload = {
       total: Number(counts.total),
       pending: Number(counts.pending),
       approved: Number(counts.approved),
       rejected: Number(counts.rejected),
       onLeaveToday,
-    });
+    };
+    setCache(CACHE_LEAVE_SUMMARY, payload, LEAVE_SUMMARY_TTL);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -236,6 +245,7 @@ router.put('/:id/approve', async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+    clearCache(CACHE_LEAVE_SUMMARY);
     return res.json({ message: 'Leave approved.' });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -271,6 +281,7 @@ router.put('/:id/reject', async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+    clearCache(CACHE_LEAVE_SUMMARY);
     return res.json({ message: 'Leave rejected and balance refunded.' });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}

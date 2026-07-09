@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
+import { getCache, setCache } from '../utils/cache.js';
 
 export async function requireAuth(req, res, next) {
   const header = req.get('authorization') || '';
@@ -23,11 +24,26 @@ export async function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [payload.id]);
-    if (rows.length === 0) {
-      return res.status(401).json({ message: 'User not found.' });
+
+    // Check in-memory cache first to avoid a DB round-trip on every request.
+    // JWT is already cryptographically verified — DB lookup only guards against
+    // deleted accounts. Cache for 5 minutes for a large performance gain.
+    const cacheKey = `auth_user_${payload.id}`;
+    let user = getCache(cacheKey);
+
+    if (!user) {
+      const { rows } = await pool.query(
+        'SELECT id, username, email, phone, role, verification_status FROM users WHERE id = $1',
+        [payload.id]
+      );
+      if (rows.length === 0) {
+        return res.status(401).json({ message: 'User not found.' });
+      }
+      user = rows[0];
+      setCache(cacheKey, user, 300); // Cache for 5 minutes
     }
-    req.user = rows[0];
+
+    req.user = user;
     return next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired authentication token.' });
@@ -40,7 +56,6 @@ export function requireRole(...roles) {
     requireAuth,
     (req, res, next) => {
       const flatRoles = roles.flat();
-      console.log('requireRole check - user:', req.user, 'allowed:', flatRoles);
       if (!flatRoles.includes(req.user?.role)) {
         return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
       }

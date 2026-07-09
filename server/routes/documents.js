@@ -2,8 +2,12 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
+
+const CACHE_DOC_SUMMARY = 'hr_documents_summary';
+const DOC_SUMMARY_TTL = 60;
 
 const DOC_TYPES = ['aadhaar', 'pan', 'offer_letter', 'payslip', 'resume', 'experience_letter', 'bank_details', 'qualification_certificate', 'other'];
 
@@ -46,6 +50,9 @@ router.get('/', requireAuth, async (_req, res, next) => {
 /* ── GET /summary  —  Document stats ── */
 router.get('/summary', requireAuth, async (_req, res, next) => {
   try {
+    const cached = getCache(CACHE_DOC_SUMMARY);
+    if (cached) return res.json(cached);
+
     const result = await pool.query(`
       SELECT
         COUNT(*)::int AS total,
@@ -55,12 +62,14 @@ router.get('/summary', requireAuth, async (_req, res, next) => {
       FROM employee_documents
     `);
     const row = result.rows[0] || {};
-    return res.json({
+    const payload = {
       total: Number(row.total || 0),
       verified: Number(row.verified || 0),
       pending: Number(row.pending || 0),
       employeesWithDocs: Number(row.employees_with_docs || 0),
-    });
+    };
+    setCache(CACHE_DOC_SUMMARY, payload, DOC_SUMMARY_TTL);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }

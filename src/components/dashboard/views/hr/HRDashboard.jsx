@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { hrApiFetch } from './hrApi';
 
 const C = {
@@ -63,7 +63,10 @@ export default function HRDashboard({ user }) {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
+  const lastFetchedRef = useRef(0);
+
   const loadAll = useCallback(async () => {
+    lastFetchedRef.current = Date.now();
     try {
       const results = await Promise.allSettled([
         hrApiFetch('/api/hr/employees/summary'),
@@ -123,12 +126,21 @@ export default function HRDashboard({ user }) {
 
   useEffect(() => {
     loadAll();
+
     const refreshAll = () => loadAll();
+
+    // Throttle focus-triggered refreshes — only reload if 60+ seconds have passed
+    const handleFocus = () => {
+      if (Date.now() - lastFetchedRef.current > 60_000) {
+        loadAll();
+      }
+    };
+
     window.addEventListener('seevora:hr-employees-changed', refreshAll);
-    window.addEventListener('focus', refreshAll);
+    window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('seevora:hr-employees-changed', refreshAll);
-      window.removeEventListener('focus', refreshAll);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [loadAll]);
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, Badge, StatsGrid } from '../shared';
 import EmployeeAttendancePanel from '../EmployeeAttendancePanel';
 import { hrApiFetch } from '../hr/hrApi';
@@ -43,9 +43,12 @@ export default function TeamAttendance({ user }) {
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
+  const lastFetchedRef = useRef(0);
+
   const loadAttendance = async () => {
     setIsLoading(true);
     setError('');
+    lastFetchedRef.current = Date.now();
 
     try {
       const response = await hrApiFetch('/api/attendance/team');
@@ -72,8 +75,13 @@ export default function TeamAttendance({ user }) {
     loadAttendance();
 
     const refresh = () => loadAttendance();
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
+    const handleFocus = () => {
+      if (Date.now() - lastFetchedRef.current > 60_000) {
+        loadAttendance();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const stats = useMemo(() => ([

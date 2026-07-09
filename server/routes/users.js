@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
 
@@ -11,11 +12,16 @@ router.use(requireRole(['super_admin', 'admin']));
 
 router.get('/', async (req, res) => {
   try {
+    const cachedUsers = getCache('users_list');
+    if (cachedUsers) return res.json(cachedUsers);
+
     const { rows } = await pool.query(`
       SELECT id, username, email, phone, role, created_at, updated_at 
       FROM users 
       ORDER BY created_at DESC
     `);
+    
+    setCache('users_list', rows, 120); // Cache for 2 minutes
     res.json(rows);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -42,6 +48,7 @@ router.post('/', async (req, res) => {
       RETURNING id, username, email, phone, role, created_at
     `, [id, username, email, phone, role || 'employee', password_hash]);
 
+    clearCache('users_list');
     res.status(201).json(rows[0]);
   } catch (error) {
     console.error('Error creating user:', error);
@@ -90,6 +97,8 @@ router.put('/:id', async (req, res) => {
     const { rows } = await pool.query(query, values);
     
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    
+    clearCache('users_list');
     res.json(rows[0]);
   } catch (error) {
     console.error('Error updating user:', error);
@@ -114,6 +123,8 @@ router.delete('/:id', async (req, res) => {
 
     const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'User not found' });
+    
+    clearCache('users_list');
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);

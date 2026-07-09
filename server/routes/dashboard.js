@@ -1,18 +1,16 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
 
-let cachedStats = null;
-let cacheTimestamp = null;
 let fetchPromise = null;
-const CACHE_TTL = 60 * 1000; // 60 seconds
 
 router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'manager'), async (req, res) => {
   try {
-    const now = Date.now();
-    if (cachedStats && cacheTimestamp && (now - cacheTimestamp < CACHE_TTL)) {
+    const cachedStats = getCache('dashboard_stats');
+    if (cachedStats) {
       return res.json(cachedStats);
     }
 
@@ -101,8 +99,7 @@ router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'man
       // 8. Recent System Activity
       data.recentAuditLogs = auditRes.rows;
 
-      cachedStats = data;
-      cacheTimestamp = Date.now();
+      setCache('dashboard_stats', data, 60); // 60 seconds TTL
       return data;
     })();
 

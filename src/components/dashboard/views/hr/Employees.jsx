@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Btn } from '../shared';
 import { hrApiFetch } from './hrApi';
 
@@ -39,8 +39,11 @@ export default function Employees({ user }) {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const lastFetchedRef = useRef(0);
+
   const loadEmployees = async () => {
     setIsLoading(true);
+    lastFetchedRef.current = Date.now();
     try {
       const response = await hrApiFetch('/api/hr/employees');
       const data = await response.json().catch(() => ({}));
@@ -63,12 +66,20 @@ export default function Employees({ user }) {
     loadEmployees();
 
     const refreshEmployees = () => loadEmployees();
+
+    // Throttle focus-triggered refreshes — only reload if 60+ seconds have passed
+    const handleFocus = () => {
+      if (Date.now() - lastFetchedRef.current > 60_000) {
+        loadEmployees();
+      }
+    };
+
     window.addEventListener('seevora:hr-employees-changed', refreshEmployees);
-    window.addEventListener('focus', refreshEmployees);
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       window.removeEventListener('seevora:hr-employees-changed', refreshEmployees);
-      window.removeEventListener('focus', refreshEmployees);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

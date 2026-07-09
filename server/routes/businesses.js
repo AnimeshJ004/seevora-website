@@ -2,8 +2,16 @@ import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
+
+const CACHE_BUSINESSES_LIST = 'admin_businesses_list';
+const BUSINESSES_TTL = 60;
+
+function bustBusinessesCache() {
+  clearCache(CACHE_BUSINESSES_LIST);
+}
 
 // Temporarily disabled auth for testing Add Business form
 // router.use(requireAuth);
@@ -11,10 +19,15 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
+    const cached = getCache(CACHE_BUSINESSES_LIST);
+    if (cached) return res.json(cached);
+
     const { rows } = await pool.query(`
       SELECT * FROM businesses 
       ORDER BY created_at DESC
     `);
+    
+    setCache(CACHE_BUSINESSES_LIST, rows, BUSINESSES_TTL);
     res.json(rows);
   } catch (error) {
     console.error('Error fetching businesses:', error);
@@ -35,6 +48,7 @@ router.post('/', async (req, res) => {
     `, [id, name, industry, website, contact_email, contact_phone, status || 'active']);
 
     res.status(201).json(rows[0]);
+    bustBusinessesCache();
   } catch (error) {
     console.error('Error creating business:', error);
     res.status(500).json({ error: 'Server error' });
@@ -61,6 +75,7 @@ router.put('/:id', async (req, res) => {
     
     if (rows.length === 0) return res.status(404).json({ error: 'Business not found' });
     res.json(rows[0]);
+    bustBusinessesCache();
   } catch (error) {
     console.error('Error updating business:', error);
     res.status(500).json({ error: 'Server error' });
@@ -73,6 +88,7 @@ router.delete('/:id', async (req, res) => {
     const { rowCount } = await pool.query('DELETE FROM businesses WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Business not found' });
     res.json({ message: 'Business deleted successfully' });
+    bustBusinessesCache();
   } catch (error) {
     console.error('Error deleting business:', error);
     res.status(500).json({ error: 'Server error' });
