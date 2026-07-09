@@ -31,6 +31,12 @@ export default function InboundEmails() {
   const [replyText, setReplyText] = useState('');
   const [generatingAI, setGeneratingAI] = useState(false);
   const [sending, setSending] = useState(false);
+  const [toast, setToast] = useState(null); // { msg, type: 'success'|'error' }
+
+  const showToast = (msg, type = 'error') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   const fetchEmails = useCallback(async () => {
     setLoading(true);
@@ -73,7 +79,7 @@ export default function InboundEmails() {
         setEmails(prev => prev.map(e => e.id === selectedEmail.id ? { ...e, ai_reply: res.aiResponse } : e));
       }
     } catch (err) {
-      alert(err.message || 'Failed to generate AI suggestion.');
+      showToast(err.message || 'Failed to generate AI suggestion.');
     } finally {
       setGeneratingAI(false);
     }
@@ -87,12 +93,12 @@ export default function InboundEmails() {
         method: 'POST',
         body: JSON.stringify({ body: replyText })
       });
-      alert(res.message || 'Reply sent successfully!');
+      showToast(res.message || 'Reply sent successfully!', 'success');
       // Update email status locally
       setEmails(prev => prev.map(e => e.id === selectedEmail.id ? { ...e, status: 'replied', ai_reply: replyText } : e));
       setSelectedEmail(prev => ({ ...prev, status: 'replied', ai_reply: replyText }));
     } catch (err) {
-      alert(err.message || 'Failed to send reply.');
+      showToast(err.message || 'Failed to send reply.');
     } finally {
       setSending(false);
     }
@@ -215,6 +221,18 @@ export default function InboundEmails() {
                     {generatingAI ? 'Generating Suggestion...' : '✨ Auto-Generate AI Reply'}
                   </button>
                 </div>
+
+                {/* Toast notification */}
+                {toast && (
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
+                    background: toast.type === 'success' ? '#d1fae5' : '#fee2e2',
+                    color: toast.type === 'success' ? '#065f46' : '#b91c1c',
+                    border: `1px solid ${toast.type === 'success' ? '#6ee7b7' : '#fca5a5'}`,
+                  }}>
+                    {toast.type === 'success' ? '✓ ' : '✕ '}{toast.msg}
+                  </div>
+                )}
 
                 <textarea
                   placeholder="Type your response here... Use the Auto-Generate button to let the AI draft a reply first."

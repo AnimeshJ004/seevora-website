@@ -30,8 +30,11 @@ import systemRoutes from './routes/system.js';
 import dashboardRoutes from './routes/dashboard.js';
 import analyticsRoutes from './routes/analytics.js';
 import emailBotRoutes from './routes/emailBot.js';
+import emailAgentRoutes from './routes/emailAgent.js';
 import salesAgentRoutes from './routes/salesAgent.js';
 import { runSessionCleanup } from './utils/sessionCleanup.js';
+import { startImapPoller } from './services/emailAgent/imapPoller.js';
+import { startContactFormProcessor } from './services/emailAgent/contactFormProcessor.js';
 import sitemapHandler from './routes/sitemap.js';
 import robotsHandler from './routes/robots.js';
 
@@ -76,6 +79,7 @@ app.use('/api/email-outreach', emailOutreachRoutes);
 app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/email-bot', emailBotRoutes);
+app.use('/api/email-agent', emailAgentRoutes);
 app.use('/api/productivity', productivityRoutes);
 app.use('/api/businesses', businessesRoutes);
 app.use('/api/users', usersRoutes);
@@ -135,6 +139,10 @@ initDb().then(() => {
 }).catch((err) => {
   console.error('Failed to initialize database:', err);
 });
+
+// Start Email AI Sales Agent background workers (after DB init)
+startImapPoller();
+startContactFormProcessor();
 
 const server = app.listen(port, () => {
   console.log(`Seevora API running on http://localhost:${port}`);

@@ -4,11 +4,8 @@
 ============================================================ */
 import nodemailer from 'nodemailer';
 
-let transporter = null;
-
-function getTransporter() {
-  if (transporter) return transporter;
-  transporter = nodemailer.createTransport({
+function createTransporter() {
+  return nodemailer.createTransport({
     host:   process.env.SMTP_HOST,
     port:   Number(process.env.SMTP_PORT || 465),
     secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
@@ -18,7 +15,6 @@ function getTransporter() {
     },
     tls: { rejectUnauthorized: false },
   });
-  return transporter;
 }
 
 /**
@@ -32,7 +28,7 @@ export async function sendMail({ to, subject, html, text }) {
     return { success: false, error: 'SMTP not configured' };
   }
   try {
-    const t = getTransporter();
+    const t = createTransporter();
     await t.sendMail({
       from: `"Seevora" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to,

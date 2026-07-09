@@ -433,50 +433,45 @@ router.post('/preview', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName);
 
-    // Call AI if configured, otherwise fallback to template output
+    // Call Anthropic AI directly
     let aiUsed = false;
-    if (process.env.OPENAI_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY) {
       try {
-        const systemPrompt = `You are a high-converting B2B Sales outreach assistant for Seevora.
-Your task is to take the following email draft and refine it to match a "${tone}" tone and be written in "${language}" (could be English, Hindi, or Hinglish).
-Ensure you maintain the placeholder values or already resolved values. Keep it crisp, personalized, and under 150 words.
-Subject: ${subject}
-Body: ${body}
-
-Return JSON format:
-{
-  "subject": "refined subject",
-  "body": "refined body text"
-}`;
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-            messages: [{ role: 'user', content: systemPrompt }],
-            max_tokens: 300,
-            response_format: { type: "json_object" }
-          }),
-          signal: controller.signal,
+            model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+            max_tokens: 400,
+            system: 'You are a high-converting B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
+            messages: [{
+              role: 'user',
+              content: `Refine this email to a "${tone}" tone in "${language}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
+            }]
+          })
         });
-
-        clearTimeout(timeout);
-        const data = await response.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
-        if (parsed.subject && parsed.body) {
-          subject = parsed.subject;
-          body = parsed.body;
-          aiUsed = true;
+        if (anthropicRes.ok) {
+          const anthropicData = await anthropicRes.json();
+          const raw = anthropicData.content?.[0]?.text || '';
+          const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.subject && parsed.body) {
+              subject = parsed.subject;
+              body = parsed.body;
+              aiUsed = true;
+            }
+          }
+        } else {
+          const errText = await anthropicRes.text();
+          console.warn('[Preview] Anthropic error:', anthropicRes.status, errText);
         }
       } catch (e) {
-        console.warn('AI Preview personalization failed, using standard template rendering:', e.message);
+        console.warn('[Preview] Anthropic call failed:', e.message);
       }
     }
 
@@ -485,6 +480,7 @@ Return JSON format:
     next(err);
   }
 });
+
 
 router.post('/send-single', async (req, res, next) => {
   try {
@@ -515,42 +511,45 @@ router.post('/send-single', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName || 'Seevora Team');
 
+    // Call Anthropic AI directly
     let aiUsed = false;
-    if (process.env.OPENAI_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY) {
       try {
-        const systemPrompt = `You are a B2B Sales outreach assistant for Seevora.
-Refine the following email to match a "${tone || 'professional'}" tone in "${language || 'english'}".
-Keep it under 150 words.
-Subject: ${subject}
-Body: ${body}
-
-Return JSON:
-{
-  "subject": "refined subject",
-  "body": "refined body"
-}`;
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-            messages: [{ role: 'user', content: systemPrompt }],
-            max_tokens: 300,
-            response_format: { type: "json_object" }
-          }),
+            model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+            max_tokens: 400,
+            system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
+            messages: [{
+              role: 'user',
+              content: `Refine this email to a "${tone || 'professional'}" tone in "${language || 'english'}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
+            }]
+          })
         });
-        const data = await response.json();
-        const parsed = JSON.parse(data.choices[0].message.content);
-        if (parsed.subject && parsed.body) {
-          subject = parsed.subject;
-          body = parsed.body;
-          aiUsed = true;
+        if (anthropicRes.ok) {
+          const anthropicData = await anthropicRes.json();
+          const raw = anthropicData.content?.[0]?.text || '';
+          const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.subject && parsed.body) {
+              subject = parsed.subject;
+              body = parsed.body;
+              aiUsed = true;
+            }
+          }
+        } else {
+          const errText = await anthropicRes.text();
+          console.warn('[SendSingle] Anthropic error:', anthropicRes.status, errText);
         }
       } catch (e) {
-        console.warn('AI single outreach personalization failed:', e.message);
+        console.warn('[SendSingle] Anthropic call failed:', e.message);
       }
     }
 
@@ -687,19 +686,40 @@ router.post('/inbound/:id/ai-suggest', async (req, res, next) => {
       return res.status(404).json({ error: 'Inbound email not found.' });
     }
 
-    const prompt = `
-You are an AI support agent for Seevora.
-Please read the following email from a user and generate a polite, helpful reply.
-Keep the reply concise and professional.
-Subject: ${email.subject}
-Message: ${email.body}
-    `;
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: 'ANTHROPIC_API_KEY is not set in .env' });
+    }
 
-    const { generateAIReply } = await import('../utils/ai.js');
-    const aiResponse = await generateAIReply({
-      prompt,
-      systemPrompt: 'You are an AI support agent for Seevora. Please read the email from a user and generate a polite, helpful, concise, and professional reply.'
+    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+        max_tokens: 600,
+        system: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.',
+        messages: [{
+          role: 'user',
+          content: `Please write a professional reply to this email:\n\nSubject: ${email.subject}\n\nMessage:\n${email.body}`
+        }]
+      })
     });
+
+    if (!anthropicRes.ok) {
+      const errText = await anthropicRes.text();
+      console.error('[ai-suggest] Anthropic error:', anthropicRes.status, errText);
+      return res.status(503).json({ error: `AI API error (${anthropicRes.status}): ${errText.slice(0, 200)}` });
+    }
+
+    const anthropicData = await anthropicRes.json();
+    const aiResponse = anthropicData.content?.[0]?.text || '';
+
+    if (!aiResponse.trim()) {
+      return res.status(503).json({ error: 'AI returned an empty response. Please try again.' });
+    }
 
     res.json({ aiResponse });
   } catch (err) {
