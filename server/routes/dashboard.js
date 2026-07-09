@@ -4,11 +4,27 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
+let cachedStats = null;
+let cacheTimestamp = null;
+let fetchPromise = null;
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
 router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'manager'), async (req, res) => {
   try {
-    const data = {};
+    const now = Date.now();
+    if (cachedStats && cacheTimestamp && (now - cacheTimestamp < CACHE_TTL)) {
+      return res.json(cachedStats);
+    }
 
-    // Run all queries concurrently for better performance
+    if (fetchPromise) {
+      const data = await fetchPromise;
+      return res.json(data);
+    }
+
+    fetchPromise = (async () => {
+      const data = {};
+
+      // Run all queries concurrently for better performance
     const [
       empRes,
       leadsCountRes,
@@ -82,11 +98,19 @@ router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'man
     data.auditRequestsCount = auditRequestRes.rows.length;
     data.recentAuditRequests = auditRequestRes.rows;
 
-    // 8. Recent System Activity
-    data.recentAuditLogs = auditRes.rows;
+      // 8. Recent System Activity
+      data.recentAuditLogs = auditRes.rows;
 
+      cachedStats = data;
+      cacheTimestamp = Date.now();
+      return data;
+    })();
+
+    const data = await fetchPromise;
+    fetchPromise = null;
     res.json(data);
   } catch (error) {
+    fetchPromise = null;
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ error: 'Server error fetching dashboard stats' });
   }

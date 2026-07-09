@@ -1235,4 +1235,16 @@ Healthcare & Clinics, Education & Coaching, Personal Care & Wellness, Diagnostic
 
 Professional yet approachable. Think: helpful expert colleague, not corporate brochure.
 Use short sentences. Avoid jargon. Be direct and confident.`]).catch(e => console.log(e.message));
+
+  // Dashboard Optimization Indexes
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS hr_employees_status_idx ON hr_employees (status);
+    CREATE INDEX IF NOT EXISTS leads_created_at_idx ON leads (created_at DESC);
+    CREATE INDEX IF NOT EXISTS projects_status_idx ON projects (status);
+    CREATE INDEX IF NOT EXISTS tasks_status_idx ON tasks (status);
+    CREATE INDEX IF NOT EXISTS appointments_scheduled_at_idx ON appointments (scheduled_at);
+    CREATE INDEX IF NOT EXISTS attendance_records_work_date_status_idx ON attendance_records (work_date, status);
+    CREATE INDEX IF NOT EXISTS audit_requests_status_created_at_idx ON audit_requests (status, created_at);
+    CREATE INDEX IF NOT EXISTS system_audit_logs_created_at_idx ON system_audit_logs (created_at DESC);
+  `).catch(e => console.error('Failed to create dashboard indexes:', e.message));
 }
