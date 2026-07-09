@@ -66,8 +66,8 @@ const SEEVORA_KNOWLEDGE = [
     response: "Artificial Intelligence (AI) refers to systems that can perform tasks that normally require human intelligence — like understanding language, making decisions, and recognizing patterns. Modern AI is powered by large language models (LLMs) and neural networks trained on massive datasets."
   },
   {
-    keywords: ['llm', 'large language model', 'gpt', 'claude', 'gemini', 'chatgpt', 'generative ai'],
-    response: "LLMs (Large Language Models) like Claude, GPT-4, and Gemini are AI models trained on huge amounts of text. They can understand and generate human-like language, making them ideal for chatbots, voice agents, and content generation. Seevora uses these models to power our AI receptionists and sales agents."
+    keywords: ['llm', 'large language model', 'gpt', 'claude', 'chatgpt', 'generative ai'],
+    response: "LLMs (Large Language Models) like Claude and GPT-4 are AI models trained on huge amounts of text. They can understand and generate human-like language, making them ideal for chatbots, voice agents, and content generation. Seevora uses these models to power our AI receptionists and sales agents."
   },
   {
     keywords: ['ai agent', 'agent', 'autonomous', 'multi-agent', 'agentic'],
@@ -197,7 +197,7 @@ function getLocalBotResponse(text) {
   if (matched) return matched.response;
 
   // ── AI & Technology general fallbacks ──
-  if (/\b(ai|artificial intelligence|machine learning|deep learning|neural|llm|gpt|claude|gemini)\b/.test(query)) {
+  if (/\b(ai|artificial intelligence|machine learning|deep learning|neural|llm|gpt|claude)\b/.test(query)) {
     return "AI (Artificial Intelligence) enables machines to understand language, make decisions, and automate complex tasks. Seevora uses AI to power voice receptionists, WhatsApp automation, and multi-agent sales pipelines — purpose-built for Indian SMBs.";
   }
 

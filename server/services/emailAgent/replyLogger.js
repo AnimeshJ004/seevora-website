@@ -2,13 +2,11 @@ import pool from '../../config/db.js';
 
 /**
  * Detect which AI model is configured based on env var priority.
- * Priority: ANTHROPIC_API_KEY → OPENAI_API_KEY → GEMINI_API_KEY → null
+ * Priority: ANTHROPIC_API_KEY → null
  * @returns {string|null}
  */
 export function detectModelUsed() {
   if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
-  if (process.env.OPENAI_API_KEY) return 'gpt-4o-mini';
-  if (process.env.GEMINI_API_KEY) return 'gemini-1.5-flash';
   return null;
 }
 

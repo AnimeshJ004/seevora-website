@@ -172,7 +172,6 @@ export default function Users({ user }) {
                     <option value="hr">HR</option>
                     <option value="manager">Manager</option>
                     <option value="support">Support</option>
-                    <option value="admin">Admin</option>
                     {user?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
                   </select>
                 </div>

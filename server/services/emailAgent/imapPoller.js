@@ -160,7 +160,7 @@ async function pollOnce() {
                   result.saved++;
 
                   // Emit structured log event
-                  console.log(
+                  /* console.log(
                     JSON.stringify({
                       event: 'email_received',
                       source: 'imap',
@@ -169,7 +169,7 @@ async function pollOnce() {
                       thread_id: threadId,
                       timestamp: new Date().toISOString(),
                     })
-                  );
+                  ); */
 
                   // 🔑 Trigger AI auto-reply pipeline
                   try {

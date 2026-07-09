@@ -18,7 +18,7 @@ export const PERMISSIONS = {
   super_admin: [
     'dashboard',
     // Platform
-    'businesses', 'users',
+    'businesses', 'users', 'create-account',
     // Operations & CRM / Marketing
     'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config', 'inbound-emails', 'email-ai-agent',
@@ -32,7 +32,7 @@ export const PERMISSIONS = {
   ],
   admin: [
     'dashboard',
-    'businesses', 'users',
+    'businesses', 'users', 'create-account',
     'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config', 'inbound-emails', 'email-ai-agent',
     'task-management', 'project-management', 'time-tracking',

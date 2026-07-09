@@ -96,7 +96,7 @@ async function processNewContactForms() {
 
       await processInboundEmail(updatedRow);
 
-      console.log(
+      /* console.log(
         JSON.stringify({
           event: 'email_received',
           source: 'contact_form',
@@ -105,7 +105,7 @@ async function processNewContactForms() {
           inbound_email_id: row.id,
           timestamp: new Date().toISOString(),
         })
-      );
+      ); */
 
       processed += 1;
     } catch (err) {

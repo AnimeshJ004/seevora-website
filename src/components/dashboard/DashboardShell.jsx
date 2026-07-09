@@ -22,6 +22,7 @@ import SecurityCenter from './views/system/SecurityCenter';
 import Analytics from './views/admin/Analytics';
 import Settings from './views/system/Settings';
 import EmailAgentDashboard from '../admin/EmailAgentDashboard';
+import CreateAccount from './views/admin/CreateAccount';
 
 // HR views
 import HRDashboard from './views/hr/HRDashboard';
@@ -58,6 +59,7 @@ const NAVICONS = {
   dashboard: <Ic d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" />,
   businesses: <Ic d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" />,
   users: <Ic d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" />,
+  'create-account': <Ic d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M20 8v6 M17 11h6" />,
   'support-tickets': <Ic d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   leads: <Ic d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" />,
   appointments: <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18" />,
@@ -96,7 +98,7 @@ const NAVICONS = {
 /* ── Nav structure ── */
 const NAV = {
   super_admin: [
-    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }] },
+    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }, { id: 'create-account', label: 'Create Account' }] },
     { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }] },
     { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
@@ -104,7 +106,7 @@ const NAV = {
     { label: 'HR Module', items: [{ id: 'employees', label: 'Employees' }, { id: 'attendance', label: 'Attendance' }, { id: 'payroll', label: 'Payroll' }, { id: 'documents', label: 'Documents' }, { id: 'document-verifications', label: 'Verifications' }] },
   ],
   admin: [
-    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }] },
+    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }, { id: 'create-account', label: 'Create Account' }] },
     { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }, { id: 'settings', label: 'Settings' }] },
     { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
@@ -130,7 +132,7 @@ const NAV = {
 };
 
 const TITLES = {
-  dashboard: 'Dashboard', businesses: 'Businesses', users: 'Users & Roles',
+  dashboard: 'Dashboard', businesses: 'Businesses', users: 'Users & Roles', 'create-account': 'Create Account',
   'support-tickets': 'Support Tickets', leads: 'CRM / Leads', appointments: 'Appointments',
   'ai-voice-logs': 'AI Voice Agent', 'whatsapp-logs': 'WhatsApp Marketing', reviews: 'Reputation', 'audit-logs': 'Audit Requests', 'security-center': 'Security Center', analytics: 'Analytics', settings: 'Settings',
   subscribers: 'Subscribers', campaigns: 'Email Campaigns', 'email-templates': 'Email Templates', 'inbound-emails': 'Email Inbox', 'email-ai-agent': 'Email AI Agent',
@@ -183,7 +185,7 @@ function getView(id, role, user) {
   if (id === 'document-verifications') return <DocumentVerifications />;
 
   const map = {
-    businesses: <Businesses user={user} />, users: <Users user={user} />, 'support-tickets': <SupportTickets />,
+    businesses: <Businesses user={user} />, users: <Users user={user} />, 'create-account': <CreateAccount user={user} />, 'support-tickets': <SupportTickets />,
     leads: <CRMLeads user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
     'whatsapp-logs': <WhatsAppLogs />, subscribers: <Subscribers />, campaigns: <Campaigns />, 'email-templates': <EmailTemplates />, 'inbound-emails': <InboundEmails />,
     'email-ai-agent': <EmailAgentDashboard />,
@@ -732,13 +734,10 @@ export default function DashboardShell({ user, onLogout }) {
           <span style={{ fontSize: '0.72rem', color: '#334155' }}>
             2026 Seevora Pvt Ltd. All rights reserved.
           </span>
-          <span style={{ fontSize: '0.72rem', color: '#334155' }}>
-            Made with love in Indore, India
-          </span>
           <div style={{ display: 'flex', gap: 16 }}>
-            {['Privacy Policy', 'Terms of Service', 'Support'].map(l => (
-              <span key={l} style={{ fontSize: '0.72rem', color: '#475569', cursor: 'pointer' }}>{l}</span>
-            ))}
+            <a href="/privacy-policy" style={{ fontSize: '0.72rem', color: '#475569', textDecoration: 'none', cursor: 'pointer' }}>Privacy Policy</a>
+            <a href="/terms-and-conditions" style={{ fontSize: '0.72rem', color: '#475569', textDecoration: 'none', cursor: 'pointer' }}>Terms of Service</a>
+            <a href="/faqs" style={{ fontSize: '0.72rem', color: '#475569', textDecoration: 'none', cursor: 'pointer' }}>Support</a>
           </div>
         </div>
       </main>

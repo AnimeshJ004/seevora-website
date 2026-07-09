@@ -14,44 +14,68 @@ const faqs = [
     a: 'For complex business operations, we deploy multiple specialized AI agents and seamlessly merge them with your existing software stack (CRMs, ERPs) so they function as a unified, modernized ecosystem.',
   },
   {
-    q: 'Does Seevora replace my staff?',
-    a: 'No. Seevora acts as a 24/7 assistant. It handles missed phone calls, answers repetitive WhatsApp questions, and books appointments automatically so your physical staff can focus on the in-person clients inside your clinic, salon, or studio.',
+    q: 'Does Seevora replace my sales team?',
+    a: 'No. Seevora acts as a 24/7 intelligent extension of your team. It handles massive amounts of data entry, routine follow-ups, and lead qualification so your sales professionals can focus purely on closing deals and building relationships.',
   },
   {
-    q: 'Can the AI work in Hindi and local languages?',
-    a: 'Yes! Our voice receptionist and WhatsApp chat agents are fully bilingual. They communicate fluently in Hindi, English, and regional dialect variations (Hinglish), ensuring your local customers get natural replies.',
+    q: 'Can the AI handle outbound prospecting and lead qualification?',
+    a: 'Yes! Our custom AI Sales Agents are designed to handle 24/7 intelligent outbound prospecting, engage leads across channels, and qualify them before passing them to your human sales reps.',
   },
   {
     q: 'How quickly can it launch?',
-    a: 'We map your specific business rules, train the AI model, set up your WhatsApp automation, and launch the system live on your domain within 5 business days.',
+    a: 'We audit your operations, map your specific business rules, build the custom AI solution architecture, and deploy it into your environment seamlessly.',
   },
   {
-    q: 'Is our customer data secure?',
-    a: 'Absolutely. We follow strict data privacy standards. All customer contact details, reservation history, and conversation transcripts are fully encrypted and belong exclusively to your business.',
+    q: 'Is our corporate and customer data secure?',
+    a: 'Absolutely. We follow strict data privacy standards. All customer data, CRM interactions, and proprietary business rules are fully encrypted and belong exclusively to your business.',
   },
   {
     q: 'What kind of support do you provide?',
-    a: 'We do not use ticketing systems. You get direct WhatsApp access to our Indore-based engineering team for any adjustments, workflow updates, or integrations, with same-day resolution guaranteed.',
+    a: 'We provide ongoing support and continuous optimization. You get direct access to our engineering team for adjustments, workflow updates, or new CRM integrations to ensure maximum ROI.',
   },
   {
     q: 'What communication channels does the AI support?',
-    a: 'Our systems deploy across standard customer touchpoints. This includes automated inbound/outbound phone receptionists, WhatsApp Business API chat, Instagram DMs, SMS, and website booking widgets, all synced together to the same dashboard.',
+    a: 'Our systems deploy across standard B2B touchpoints. This includes voice calls, WhatsApp Business API, SMS, and email, all synced together to your centralized CRM dashboard.',
   },
   {
     q: 'Do I need a developer or technical skills to get started?',
-    a: 'No coding is required on your part. Our team of Indore-based developers handles 100% of the technical setup, database configuration, CRM integrations, and voice training as part of our onboarding workflow.',
+    a: 'No coding is required on your part. Our engineers handle 100% of the technical setup, database configuration, CRM integrations, and AI training as part of our comprehensive onboarding workflow.',
   },
   {
-    q: 'How does the AI handle payment verification and alerts?',
-    a: 'Seevora integrates with UPI payment gateways and bank text notifications. The moment a booking deposit or customer transfer is received, the AI matches it against the ledger, updates the calendar, and texts a confirmation alert.',
+    q: 'How does the AI integrate with our existing CRM?',
+    a: 'Seevora seamlessly integrates with your existing tech stack. The AI automatically updates records, logs interactions, and triggers workflows within your CRM, eliminating manual data entry.',
   },
   {
-    q: 'Can we customize the AI voice agent\'s tone and script?',
-    a: 'Absolutely. During onboarding, we translate your existing business script and preferences into the AI model. You can select standard voice styles (e.g., friendly, professional, or formal) and tweak replies via WhatsApp support.',
+    q: 'Can we customize the AI agent\'s tone and sales script?',
+    a: 'Absolutely. During the build phase, we translate your existing sales playbooks and preferences into the AI model. You have full control over the tone, ensuring it aligns perfectly with your brand voice.',
   },
   {
-    q: 'Is there a free trial or audit available?',
-    a: 'Yes! We offer a free, comprehensive AI Workflow Audit. Our engineers will audit your current manual bottlenecks and draft a tailored automation blueprint mapping out potential cost reductions for your business.',
+    q: 'Is there an initial audit available?',
+    a: 'Yes! We offer a free Discovery & Process Mapping audit. Our engineers will review your current operations and draft a tailored automation blueprint mapping out potential cost reductions and efficiency gains.',
+  },
+  {
+    q: 'Can your AI Sales Agents handle complex B2B negotiations?',
+    a: 'While the AI excels at lead qualification, initial outreach, and answering detailed product questions, we typically design the workflow to seamlessly hand off warm, highly-qualified leads to your senior human sales executives for final negotiations and closing.',
+  },
+  {
+    q: 'Which CRMs do your AI solutions integrate with?',
+    a: 'We build custom API connectors, meaning we can integrate with virtually any modern CRM—including Salesforce, HubSpot, Zoho, Pipedrive, and Monday.com—as well as proprietary legacy systems, ensuring a flawless bidirectional sync of all your data.',
+  },
+  {
+    q: 'How do you ensure the AI doesn\'t hallucinate or give wrong information?',
+    a: 'We use advanced Retrieval-Augmented Generation (RAG) combined with strict guardrails. The AI is explicitly restricted to only use your approved knowledge base, sales playbooks, and corporate data, preventing it from making up false claims.',
+  },
+  {
+    q: 'Can Seevora automate our entire outbound email and outreach process?',
+    a: 'Yes. We can design multi-channel AI agents that research prospects, draft hyper-personalized outreach messages based on company data, and automatically trigger intelligent follow-up sequences, feeding all positive responses directly into your CRM.',
+  },
+  {
+    q: 'What makes Seevora different from standard chatbot builders?',
+    a: 'We don\'t provide a DIY drag-and-drop tool. We are a full-service technology partner. We analyze your unique B2B sales pipeline, custom-engineer the AI agents, build the complex CRM integrations, and provide continuous optimization to guarantee your ROI.',
+  },
+  {
+    q: 'Can you generate custom AI agents and merge them with our existing software?',
+    a: 'Yes, we specialize in building custom AI agents and seamlessly merging them with your existing software stack to create a unified, intelligent ecosystem tailored to your business workflows.',
   },
 ];
 
