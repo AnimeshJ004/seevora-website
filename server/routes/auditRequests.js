@@ -148,7 +148,11 @@ router.post('/', async (req, res, next) => {
       request: normalizeRequest(updatedRequest),
     });
   } catch (error) {
-    return next(error);
+    console.error('[Audit Request] Error:', error);
+    if (error.code === '42P01') {
+      return res.status(500).json({ message: 'Database schema is not initialized. Please ensure migrations are run.' });
+    }
+    return res.status(500).json({ message: 'Internal server error while processing request.', error: error.message });
   }
 });
 
