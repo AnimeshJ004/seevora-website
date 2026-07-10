@@ -591,7 +591,7 @@ Seevora — AI-Powered Growth`,
   for (const tmpl of templates) {
     await pool.query(
       `INSERT INTO email_templates (id, name, category, subject, body, variables, tone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
        ON CONFLICT DO NOTHING`,
       [
         crypto.randomUUID(),

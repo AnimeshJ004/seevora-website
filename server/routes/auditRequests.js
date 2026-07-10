@@ -121,7 +121,7 @@ router.post('/', async (req, res, next) => {
 
     const result = await pool.query(
       `INSERT INTO audit_requests (id, name, email, company, phone, message, thread)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
        RETURNING *`,
       [crypto.randomUUID(), data.name, data.email, data.company || null, data.phone || null, data.message, JSON.stringify(initialThread)]
     );
@@ -276,7 +276,7 @@ router.post('/:id/respond', async (req, res, next) => {
            response_body = $3,
            email_status = $4,
            email_error = $5,
-           thread = $6,
+           thread = $6::jsonb,
            responded_at = NOW(),
            updated_at = NOW()
        WHERE id = $1

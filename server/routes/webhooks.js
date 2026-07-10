@@ -97,7 +97,7 @@ router.post('/audit-reply', async (req, res) => {
     // Save the user's reply first
     await pool.query(
       `UPDATE audit_requests
-       SET thread = $2,
+       SET thread = $2::jsonb,
            updated_at = NOW(),
            status = 'user_replied'
        WHERE id = $1`,
@@ -134,7 +134,7 @@ router.post('/audit-reply', async (req, res) => {
 
         await pool.query(
           `UPDATE audit_requests
-           SET thread = $2,
+           SET thread = $2::jsonb,
                response_body = $3,
                status = 'responded',
                updated_at = NOW()

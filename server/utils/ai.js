@@ -53,7 +53,8 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [], 
         if (resultText) setCache(cacheKey, resultText, 3600 * 24); // Cache for 24 hours
         return resultText;
       } else {
-        console.warn('[AI Util] Anthropic request failed:', await response.text());
+        // Disabled spammy log when out of credits
+        // console.warn('[AI Util] Anthropic request failed:', await response.text());
       }
     } catch (err) {
       console.error('[AI Util] Error calling Anthropic:', err.message);

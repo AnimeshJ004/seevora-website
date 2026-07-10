@@ -22,50 +22,37 @@ router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'man
     fetchPromise = (async () => {
       const data = {};
 
-      // Run all queries concurrently for better performance
-    const [
-      empRes,
-      leadsCountRes,
-      recentLeadsRes,
-      projectsRes,
-      tasksRes,
-      apptCountRes,
-      upcomingApptRes,
-      attendanceRes,
-      auditRequestRes,
-      auditRes
-    ] = await Promise.all([
-      pool.query('SELECT COUNT(*) as count FROM hr_employees WHERE status = $1', ['active']),
-      pool.query('SELECT COUNT(*) as count FROM leads'),
-      pool.query('SELECT * FROM leads ORDER BY created_at DESC LIMIT 5'),
-      pool.query('SELECT COUNT(*) as count FROM projects WHERE status = $1', ['active']),
-      pool.query('SELECT status, COUNT(*) as count FROM tasks GROUP BY status'),
-      pool.query('SELECT COUNT(*) as count FROM appointments'),
-      pool.query(`
+      // Run queries sequentially to prevent exhausting the database connection pool
+      const empRes = await pool.query('SELECT COUNT(*) as count FROM hr_employees WHERE status = $1', ['active']);
+      const leadsCountRes = await pool.query('SELECT COUNT(*) as count FROM leads');
+      const recentLeadsRes = await pool.query('SELECT * FROM leads ORDER BY created_at DESC LIMIT 5');
+      const projectsRes = await pool.query('SELECT COUNT(*) as count FROM projects WHERE status = $1', ['active']);
+      const tasksRes = await pool.query('SELECT status, COUNT(*) as count FROM tasks GROUP BY status');
+      const apptCountRes = await pool.query('SELECT COUNT(*) as count FROM appointments');
+      const upcomingApptRes = await pool.query(`
         SELECT * FROM appointments 
         WHERE scheduled_at >= CURRENT_DATE 
         ORDER BY scheduled_at ASC 
         LIMIT 5
-      `),
-      pool.query(`
+      `);
+      const attendanceRes = await pool.query(`
         SELECT COUNT(*) as count FROM attendance_records 
         WHERE work_date = CURRENT_DATE AND status = 'present'
-      `),
-      pool.query(`
+      `);
+      const auditRequestRes = await pool.query(`
         SELECT id, name, email, company, phone, message, status, created_at
         FROM audit_requests
         WHERE status IN ('new', 'user_replied')
         ORDER BY created_at DESC
         LIMIT 5
-      `),
-      pool.query(`
+      `);
+      const auditRes = await pool.query(`
         SELECT a.*, u.username as user_name 
         FROM system_audit_logs a
         LEFT JOIN users u ON a.user_id = u.id
         ORDER BY a.created_at DESC 
         LIMIT 5
-      `)
-    ]);
+      `);
 
     // 1. Employees count
     data.employeesCount = parseInt(empRes.rows[0].count);

@@ -501,7 +501,7 @@ export async function processInboundEmail(inboundEmail) {
   }
 
   if (!replyText) {
-    console.warn(`[aiResponder] AI returned empty response for inbound_email ${inboundEmail.id}`);
+    // console.warn(`[aiResponder] AI returned empty response for inbound_email ${inboundEmail.id}`);
     try {
       await pool.query(
         `UPDATE inbound_emails SET status = 'needs_review' WHERE id = $1`,

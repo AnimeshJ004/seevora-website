@@ -46,7 +46,7 @@ router.post('/templates', async (req, res, next) => {
     }
     const result = await pool.query(
       `INSERT INTO email_templates (id, name, category, subject, body, variables, tone, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8) RETURNING *`,
       [crypto.randomUUID(), name, category || 'outbound', subject, body, JSON.stringify(variables), tone, getUserId(req)]
     );
     res.status(201).json({ template: result.rows[0] });
@@ -65,7 +65,7 @@ router.put('/templates/:id', async (req, res, next) => {
     const row = existing.rows[0];
     const result = await pool.query(
       `UPDATE email_templates
-       SET name = $2, category = $3, subject = $4, body = $5, variables = $6, tone = $7, is_active = $8, updated_at = NOW()
+       SET name = $2, category = $3, subject = $4, body = $5, variables = $6::jsonb, tone = $7, is_active = $8, updated_at = NOW()
        WHERE id = $1 RETURNING *`,
       [
         req.params.id,
