@@ -42,6 +42,30 @@ export function invalidatePromptCache() {
 }
 
 /**
+ * Basic offline fallback for common queries (saves API calls & acts as safety net).
+ * @param {string} message
+ * @returns {string|null}
+ */
+function getOfflineFallback(message) {
+  const lower = message.toLowerCase();
+  
+  if (lower.includes('what is seevora') || (lower.includes('seevora') && lower.includes('about'))) {
+    return "Seevora is an Indian enterprise AI automation company. We build 24/7 AI Voice Receptionists, WhatsApp Automation, and Multi-Agent AI systems for SMBs across healthcare, real estate, education, and more.";
+  }
+  if (lower.includes('price') || lower.includes('cost') || lower.includes('pricing')) {
+    return "Our pricing is highly customized based on your business volume and which modules (Voice AI, WhatsApp, Dashboards) you need. We'd love to schedule a quick discovery call to give you an exact quote!";
+  }
+  if (lower.includes('voice receptionist') || lower.includes('call')) {
+    return "Our 24/7 AI Voice Receptionist answers every missed call, captures customer intent, books appointments directly into your calendar, and routes urgent queries. It speaks fluent English, Hindi, and Hinglish.";
+  }
+  if (lower.match(/^(hi|hello|hey|greetings)/)) {
+    return "Hi there! I'm Seevora AI. How can I help you automate your business today?";
+  }
+  
+  return null;
+}
+
+/**
  * Generate an AI response for the given user message and conversation context.
  * @param {object} opts
  * @param {string} opts.userMessage - The current user message
@@ -50,6 +74,12 @@ export function invalidatePromptCache() {
  * @returns {Promise<string>} The AI-generated response
  */
 export async function generateResponse({ userMessage, history = [], timeoutMs = 5000 }) {
+  // 1. Check offline fallback first (saves API calls!)
+  const fallbackResponse = getOfflineFallback(userMessage);
+  if (fallbackResponse) {
+    return fallbackResponse;
+  }
+
   const systemPrompt = await getSystemPrompt();
 
   // Build thread in the format expected by generateAIReply
@@ -88,7 +118,7 @@ export async function generateResponse({ userMessage, history = [], timeoutMs = 
     }
   }
 
-  return response || "I'm having trouble responding right now. Please try again in a moment, or contact us directly at contact@seevora.in.";
+  return response || "I'm having trouble responding right now. Please try again in a moment, or contact us directly at info@seevora.in.";
 }
 
 /**

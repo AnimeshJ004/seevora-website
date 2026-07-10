@@ -2,11 +2,11 @@ import pool from '../../config/db.js';
 
 /**
  * Detect which AI model is configured based on env var priority.
- * Priority: ANTHROPIC_API_KEY → null
+ * Priority: ANTHROPIC_EMAIL_API_KEY → null
  * @returns {string|null}
  */
 export function detectModelUsed() {
-  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5';
+  if (process.env.ANTHROPIC_EMAIL_API_KEY) return process.env.ANTHROPIC_EMAIL_MODEL || 'claude-haiku-4-5';
   return null;
 }
 

@@ -3,31 +3,27 @@ import assert from 'node:assert/strict';
 import { detectModelUsed } from './replyLogger.js';
 
 describe('replyLogger — detectModelUsed precedence', () => {
-  let originalAnthropic;
-  let originalOpenai;
-  let originalGemini;
+  let originalEmailApiKey;
 
   before(() => {
-    originalAnthropic = process.env.ANTHROPIC_API_KEY;
-    originalOpenai = process.env.OPENAI_API_KEY;
-    originalGemini = process.env.GEMINI_API_KEY;
+    originalEmailApiKey = process.env.ANTHROPIC_EMAIL_API_KEY;
   });
 
   after(() => {
-    process.env.ANTHROPIC_API_KEY = originalAnthropic;
-    process.env.OPENAI_API_KEY = originalOpenai;
-    process.env.GEMINI_API_KEY = originalGemini;
+    process.env.ANTHROPIC_EMAIL_API_KEY = originalEmailApiKey;
   });
 
-  it("returns 'claude-3-5-sonnet-20241022' when ANTHROPIC_API_KEY is set", () => {
-    process.env.ANTHROPIC_API_KEY = 'sk-ant-123';
-    process.env.OPENAI_API_KEY = 'sk-proj-123';
-    process.env.GEMINI_API_KEY = 'AIzaSy123';
+  it("returns configured model when ANTHROPIC_EMAIL_API_KEY is set", () => {
+    process.env.ANTHROPIC_EMAIL_API_KEY = 'sk-ant-123';
 
     const model = detectModelUsed();
-    assert.equal(model, 'claude-3-5-sonnet-20241022');
+    assert.equal(model, process.env.ANTHROPIC_EMAIL_MODEL || 'claude-haiku-4-5');
   });
 
+  it("returns null when ANTHROPIC_EMAIL_API_KEY is not set", () => {
+    delete process.env.ANTHROPIC_EMAIL_API_KEY;
 
-
+    const model = detectModelUsed();
+    assert.equal(model, null);
+  });
 });

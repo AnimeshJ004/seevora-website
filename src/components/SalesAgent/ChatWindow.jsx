@@ -260,6 +260,13 @@ export default function ChatWindow({ isOpen, onClose, onUnread }) {
       {/* Input */}
       {!showLeadForm && (
         <div className="sa-window__footer">
+          {messages.length < 3 && (
+            <div className="sa-suggestion-strip">
+              <button type="button" onClick={() => sendMessage("What is Seevora?")} className="sa-suggestion-chip">What is Seevora?</button>
+              <button type="button" onClick={() => sendMessage("How much does it cost?")} className="sa-suggestion-chip">Pricing plans?</button>
+              <button type="button" onClick={() => sendMessage("How does the AI voice receptionist work?")} className="sa-suggestion-chip">AI Voice Receptionist?</button>
+            </div>
+          )}
           <ChatInput onSend={sendMessage} disabled={isTyping || isLoading} />
           <p className="sa-powered-by">Powered by Seevora AI</p>
         </div>

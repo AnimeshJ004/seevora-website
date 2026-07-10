@@ -95,9 +95,13 @@ router.post('/message', async (req, res) => {
 
     const userMsg = message.trim();
 
-    // Save user message
-    await sessionManager.saveMessage(session.id, 'user', userMsg);
-    await trackEvent(session.id, 'message_sent', { messageLength: userMsg.length });
+    // Save user message (catch DB full errors so chat still works)
+    try {
+      await sessionManager.saveMessage(session.id, 'user', userMsg);
+      await trackEvent(session.id, 'message_sent', { messageLength: userMsg.length });
+    } catch (dbErr) {
+      console.warn('[DB] Could not save user message:', dbErr.message);
+    }
 
     // Get last 10 messages for context
     const history = await sessionManager.getRecentMessages(session.id, 10);
@@ -123,8 +127,12 @@ router.post('/message', async (req, res) => {
     }
 
     // Save agent response
-    const agentMsg = await sessionManager.saveMessage(session.id, 'agent', agentText);
-    await trackEvent(session.id, 'agent_response', { responseLength: agentText.length });
+    try {
+      const agentMsg = await sessionManager.saveMessage(session.id, 'agent', agentText);
+      await trackEvent(session.id, 'agent_response', { responseLength: agentText.length });
+    } catch (dbErr) {
+      console.warn('[DB] Could not save agent message:', dbErr.message);
+    }
 
     // Track mentioned services
     const services = extractMentionedServices(`${userMsg} ${agentText}`);

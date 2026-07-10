@@ -471,19 +471,19 @@ router.post('/preview', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName);
 
-    // Call Anthropic AI directly
+    // Call Anthropic AI directly (email key)
     let aiUsed = false;
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (process.env.ANTHROPIC_EMAIL_API_KEY) {
       try {
         const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
             'anthropic-version': '2023-06-01',
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
             max_tokens: 400,
             system: 'You are a high-converting B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
             messages: [{
@@ -549,19 +549,19 @@ router.post('/send-single', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName || 'Seevora Team');
 
-    // Call Anthropic AI directly
+    // Call Anthropic AI directly (email key)
     let aiUsed = false;
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (process.env.ANTHROPIC_EMAIL_API_KEY) {
       try {
         const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
             'anthropic-version': '2023-06-01',
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
             max_tokens: 400,
             system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
             messages: [{
@@ -724,19 +724,19 @@ router.post('/inbound/:id/ai-suggest', async (req, res, next) => {
       return res.status(404).json({ error: 'Inbound email not found.' });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(503).json({ error: 'ANTHROPIC_API_KEY is not set in .env' });
+    if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
+      return res.status(503).json({ error: 'ANTHROPIC_EMAIL_API_KEY is not set in .env' });
     }
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
+        model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
         max_tokens: 600,
         system: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.',
         messages: [{

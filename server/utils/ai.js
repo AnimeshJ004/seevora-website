@@ -17,8 +17,8 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [], 
   const cached = getCache(cacheKey);
   if (cached) return cached;
 
-  // 1. ANTHROPIC CLAUDE SUPPORT
-  if (process.env.ANTHROPIC_API_KEY) {
+  // 1. ANTHROPIC CLAUDE SUPPORT (Chatbot)
+  if (process.env.ANTHROPIC_CHATBOT_API_KEY) {
     try {
       const messages = [];
       const historySlice = thread.slice(-10);
@@ -35,12 +35,12 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [], 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'x-api-key': process.env.ANTHROPIC_CHATBOT_API_KEY,
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5',
+          model: process.env.ANTHROPIC_CHATBOT_MODEL || 'claude-haiku-4-5',
           max_tokens: maxTokens,
           system: systemPrompt,
           messages

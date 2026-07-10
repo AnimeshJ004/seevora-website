@@ -11554,6 +11554,39 @@ textarea.form-input {
   letter-spacing: 0.3px;
 }
 
+/* Suggestion Strip */
+.sa-suggestion-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 14px 4px 14px;
+  scrollbar-width: none;
+}
+
+.sa-suggestion-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.sa-suggestion-chip {
+  flex-shrink: 0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.sa-suggestion-chip:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
 /* Lead form in window */
 .sa-window__lead {
   border-top: 1px solid rgba(124, 58, 237, 0.2);
@@ -11836,106 +11869,127 @@ textarea.form-input {
 
 /* Lead Capture Form */
 .sa-lead-form {
-  padding: 16px;
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.08) 0%, rgba(15, 15, 26, 0.95) 100%);
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  margin: 12px 0;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .sa-lead-form__header {
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .sa-lead-form__icon {
-  font-size: 20px;
-  margin-bottom: 4px;
+  font-size: 24px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #f59e0b, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
 }
 
 .sa-lead-form__title {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
-  color: #f1f5f9;
-  margin: 0 0 2px;
+  color: #1e293b;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
 }
 
 .sa-lead-form__subtitle {
-  font-size: 11px;
+  font-size: 12px;
   color: #64748b;
   margin: 0;
+  font-weight: 500;
 }
 
 .sa-field {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .sa-label {
   display: block;
   font-size: 11px;
   font-weight: 600;
-  color: #94a3b8;
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .sa-field-input {
   width: 100%;
   box-sizing: border-box;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 8px 10px;
-  color: #e2e8f0;
-  font-size: 13px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #0f172a;
+  font-size: 14px;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s ease;
+}
+
+.sa-field-input::placeholder {
+  color: #94a3b8;
 }
 
 .sa-field-input:focus {
-  border-color: rgba(124, 58, 237, 0.5);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  background: #ffffff;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
 }
 
 .sa-field-input--error {
-  border-color: rgba(239, 68, 68, 0.5) !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 
 .sa-field-input option {
-  background: #1e1e2e;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 .sa-field-error {
   display: block;
-  font-size: 11px;
-  color: #f87171;
-  margin-top: 3px;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+  font-weight: 500;
 }
 
 .sa-lead-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .sa-lead-submit {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
   border: none;
   color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
   font-family: inherit;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
 .sa-lead-submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
 }
 
 .sa-lead-submit:disabled {
@@ -11948,9 +12002,10 @@ textarea.form-input {
   padding: 8px;
   border-radius: 10px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #e2e8f0;
   color: #64748b;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
@@ -11958,8 +12013,9 @@ textarea.form-input {
 }
 
 .sa-lead-cancel:hover {
-  color: #94a3b8;
-  border-color: rgba(255, 255, 255, 0.2);
+  color: #334155;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 /* ================================================

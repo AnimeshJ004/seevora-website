@@ -46,6 +46,15 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');
 }
 
+// ── API Key validation ────────────────────────────────────────────────────────
+if (!process.env.ANTHROPIC_CHATBOT_API_KEY) {
+  console.warn('[Config] ⚠️  ANTHROPIC_CHATBOT_API_KEY not set — website chatbot will return empty replies');
+}
+if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
+  console.warn('[Config] ⚠️  ANTHROPIC_EMAIL_API_KEY not set — email AI agent is disabled');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const app = express();
 const port = Number(process.env.PORT || 4000);
 

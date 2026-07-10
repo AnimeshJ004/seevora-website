@@ -50,13 +50,13 @@ export async function sendCampaign(campaignId) {
         .replace(/\{\{industry\}\}/g, lead.industry || '')
         .replace(/\{\{sender_name\}\}/g, campaign.sender_persona || 'Seevora Team');
 
-      // AI-personalize each email via Anthropic
-      if (process.env.ANTHROPIC_API_KEY) {
+      // AI-personalize each email via Anthropic (email key)
+      if (process.env.ANTHROPIC_EMAIL_API_KEY) {
         try {
           const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: {
-              'x-api-key': process.env.ANTHROPIC_API_KEY,
+              'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
               'anthropic-version': '2023-06-01',
               'content-type': 'application/json',
             },

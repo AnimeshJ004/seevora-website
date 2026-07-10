@@ -57,7 +57,6 @@ export default function LeadCaptureForm({ onSubmit, onCancel }) {
   return (
     <div className="sa-lead-form" role="form" aria-label="Contact information form">
       <div className="sa-lead-form__header">
-        <div className="sa-lead-form__icon" aria-hidden="true">✨</div>
         <p className="sa-lead-form__title">Get a Free Consultation</p>
         <p className="sa-lead-form__subtitle">Our team will reach out within 24 hours</p>
       </div>
