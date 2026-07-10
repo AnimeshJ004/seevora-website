@@ -127,8 +127,9 @@ router.post('/message', async (req, res) => {
     }
 
     // Save agent response
+    let agentMsg = null;
     try {
-      const agentMsg = await sessionManager.saveMessage(session.id, 'agent', agentText);
+      agentMsg = await sessionManager.saveMessage(session.id, 'agent', agentText);
       await trackEvent(session.id, 'agent_response', { responseLength: agentText.length });
     } catch (dbErr) {
       console.warn('[DB] Could not save agent message:', dbErr.message);
@@ -147,9 +148,9 @@ router.post('/message', async (req, res) => {
     }
 
     return res.json({
-      messageId: agentMsg.id,
+      messageId: agentMsg ? agentMsg.id : `fallback-${Date.now()}`,
       agentResponse: agentText,
-      timestamp: agentMsg.created_at,
+      timestamp: agentMsg ? agentMsg.created_at : new Date().toISOString(),
       conversationEnded: false,
       leadCapturePrompt: offerLead,
     });
