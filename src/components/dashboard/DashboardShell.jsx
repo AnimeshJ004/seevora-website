@@ -161,7 +161,7 @@ import ProjectManagement from './views/productivity/ProjectManagement';
 import TaskManagement from './views/productivity/TaskManagement';
 import TimeTracking from './views/productivity/TimeTracking';
 
-function isEmployeeRestricted(role, verificationStatus) {
+function employeeNeedsVerification(role, verificationStatus) {
   if (role !== 'employee') return false;
   return verificationStatus !== 'VERIFIED';
 }
@@ -173,7 +173,7 @@ function getView(id, role, user) {
 
   if (id === 'dashboard' && role === 'employee') return <EmployeeDashboard user={user} />;
   if (id === 'dashboard' && role === 'manager') return <ManagerDashboard user={user} />;
-  if (role === 'employee' && id === 'my-attendance') return <EmployeeSelfService user={user} type="attendance" />;
+  if (role === 'employee' && id === 'my-attendance') return <MyAttendance user={user} />;
   if (role === 'employee' && id === 'my-leave') return <EmployeeSelfService user={user} type="leave" />;
   if (role === 'employee' && id === 'my-documents') return <EmployeeSelfService user={user} type="documents" />;
   if (role === 'employee' && id === 'my-tasks') return <MyTasks user={user} />;
@@ -416,10 +416,9 @@ export default function DashboardShell({ user, onLogout }) {
   const allowed = PERMISSIONS[role] || [];
   const navGroups = NAV[role] || NAV.admin;
   const verificationStatus = user?.verificationStatus || 'PENDING_VERIFICATION';
-  const restricted = isEmployeeRestricted(role, verificationStatus);
+  const needsVerification = employeeNeedsVerification(role, verificationStatus);
 
-  /* If employee is restricted, start on document-upload page */
-  const defaultView = restricted ? 'document-upload' : (allowed[0] || 'dashboard');
+  const defaultView = allowed[0] || 'dashboard';
   const [active, setActive] = useState(defaultView);
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -461,8 +460,6 @@ export default function DashboardShell({ user, onLogout }) {
   }, []);
 
   const handleNavClick = (id) => {
-    /* Restricted employees can only access doc upload and verification status */
-    if (restricted && !ALWAYS_ALLOWED_EMPLOYEE.has(id)) return;
     if (allowed.includes(id)) {
       setActive(id);
       setIsMobileNavOpen(false);
@@ -472,16 +469,6 @@ export default function DashboardShell({ user, onLogout }) {
   /* Determine what to render in the content area */
   const renderContent = () => {
     if (!allowed.includes(active)) return <AccessDenied id={active} />;
-
-    /* Restricted employee trying to see non-allowed views */
-    if (restricted && !ALWAYS_ALLOWED_EMPLOYEE.has(active) && active !== 'dashboard') {
-      return (
-        <div>
-          <VerificationBanner status={verificationStatus} onNavigate={(id) => setActive(id)} />
-          <AccessDenied id={active} />
-        </div>
-      );
-    }
 
     return getView(active, role, user);
   };
@@ -508,13 +495,12 @@ export default function DashboardShell({ user, onLogout }) {
               {items.map(({ id, label: lbl, badge }) => {
                 const isAllowed = allowed.includes(id);
                 const isActive = active === id;
-                /* For restricted employees: lock non-verification nav items */
-                const isLocked = !isAllowed || (restricted && !ALWAYS_ALLOWED_EMPLOYEE.has(id) && id !== 'dashboard');
+                const isLocked = !isAllowed;
                 return (
                   <button key={id}
                     className={`ds-nav-item${isActive ? ' active' : ''}${isLocked ? ' locked' : ''}`}
                     onClick={() => handleNavClick(id)}
-                    title={isLocked ? (restricted ? 'Complete verification to unlock' : `No access for ${meta.label}`) : lbl}
+                    title={isLocked ? `No access for ${meta.label}` : lbl}
                     style={{ background: isActive ? '#1e3a5f' : 'none', color: isActive ? accent.c : undefined }}
                   >
                     {NAVICONS[id] || <span style={{ width: 16 }} />}
@@ -723,7 +709,7 @@ export default function DashboardShell({ user, onLogout }) {
           )}
 
           {/* Restricted employee banner on every page */}
-          {restricted && active !== 'document-upload' && active !== 'verification-status' && (
+          {needsVerification && active !== 'document-upload' && active !== 'verification-status' && (
             <VerificationBanner status={verificationStatus} onNavigate={(id) => setActive(id)} />
           )}
           {renderContent()}

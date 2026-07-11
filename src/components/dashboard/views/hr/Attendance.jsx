@@ -31,6 +31,8 @@ function statusMeta(status) {
       return { label: 'Present', color: 'cyan' };
     case 'leave':
       return { label: 'Leave', color: 'purple' };
+    case 'pending':
+      return { label: 'Not Marked', color: 'gray' };
     default:
       return { label: 'Absent', color: 'gray' };
   }
@@ -93,7 +95,7 @@ export default function Attendance() {
     { label: 'Total Employees', value: data.summary?.total || 0, color: 'blue' },
     { label: 'Present', value: data.summary?.present || 0, color: 'green' },
     { label: 'Full Day', value: data.summary?.fullDay || 0, color: 'purple' },
-    { label: 'Half Day / Absent', value: (data.summary?.halfDay || 0) + (data.summary?.absent || 0), color: 'orange' },
+    { label: 'Absent / Not Marked', value: (data.summary?.absent || 0) + (data.summary?.pending || 0) + (data.summary?.halfDay || 0), color: 'orange' },
   ]), [data.summary]);
 
   const filteredAttendance = useMemo(() => {
@@ -133,6 +135,7 @@ export default function Attendance() {
               <option value="present">Present (In Progress)</option>
               <option value="full_day">Full Day</option>
               <option value="half_day">Half Day</option>
+              <option value="pending">Not Marked</option>
               <option value="absent">Absent</option>
             </select>
             <button
@@ -210,13 +213,16 @@ export default function Attendance() {
                       {entry.department}
                     </td>
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      {formatTime(entry.checkInAt)}
+                      <div>{formatTime(entry.checkInAt)}</div>
+                      {entry.lastLoginAt && entry.checkInAt !== entry.lastLoginAt && (
+                        <div style={{ color: 'var(--accent-cyan)', fontSize: '0.72rem', marginTop: 2 }}>Re: {formatTime(entry.lastLoginAt)}</div>
+                      )}
                     </td>
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       {formatTime(entry.checkOutAt)}
                     </td>
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      {entry.status === 'present' ? 'In progress' : `${entry.workedHours} hrs`}
+                      {entry.status === 'present' ? `${entry.workedHours} hrs (In progress)` : `${entry.workedHours} hrs`}
                     </td>
                     <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                       <Badge label={meta.label} color={meta.color} />

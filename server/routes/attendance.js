@@ -20,18 +20,17 @@ export async function recordLoginAttendance(client, user) {
 
   const result = await client.query(
     `INSERT INTO attendance_records (
-      id, user_id, work_date, check_in_at, office_start_time, office_end_time, status, updated_at
+      id, user_id, work_date, check_in_at, last_login_at, office_start_time, office_end_time, status, updated_at
     )
-     VALUES ($1, $2, ${getKolkataDateSql()}, NOW(), $3, $4, 'present', NOW())
+     VALUES ($1, $2, ${getKolkataDateSql()}, NOW(), NOW(), $3, $4, 'present', NOW())
      ON CONFLICT (user_id, work_date)
      DO UPDATE SET
        check_in_at = COALESCE(attendance_records.check_in_at, EXCLUDED.check_in_at),
+       last_login_at = NOW(),
+       check_out_at = NULL,
        office_start_time = EXCLUDED.office_start_time,
        office_end_time = EXCLUDED.office_end_time,
-       status = CASE
-         WHEN attendance_records.check_out_at IS NULL THEN 'present'
-         ELSE attendance_records.status
-       END,
+       status = 'present',
        updated_at = NOW()
      RETURNING *`,
     [generateAttendanceId(), user.id, OFFICE_START_TIME, OFFICE_END_TIME]
@@ -76,15 +75,10 @@ router.post('/clock-out', requireAuth, async (req, res, next) => {
       return res.status(404).json({ message: 'No attendance entry was found for today.' });
     }
 
-    if (current.check_out_at) {
-      return res.json({
-        message: 'Attendance already finalized for today.',
-        attendance: normalizeAttendanceRow(current),
-      });
-    }
-
-    const status = computeDayStatus(new Date());
-    const workedMinutes = computeWorkedMinutes(current.check_in_at, new Date());
+    const lastLoginAt = current.last_login_at || current.check_in_at;
+    const sessionMinutes = computeWorkedMinutes(lastLoginAt, new Date());
+    const totalMinutes = (current.worked_minutes || 0) + sessionMinutes;
+    const status = computeDayStatus(new Date(), totalMinutes);
 
     const updated = await pool.query(
       `UPDATE attendance_records
@@ -94,7 +88,7 @@ router.post('/clock-out', requireAuth, async (req, res, next) => {
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [current.id, status, workedMinutes]
+      [current.id, status, totalMinutes]
     );
 
     return res.json({
@@ -195,6 +189,7 @@ router.get('/team', requireAuth, async (req, res, next) => {
         a.id AS attendance_id,
         a.work_date,
         a.check_in_at,
+        a.last_login_at,
         a.check_out_at,
         a.status,
         a.worked_minutes,
@@ -218,12 +213,27 @@ router.get('/team', requireAuth, async (req, res, next) => {
       ORDER BY (e.id = $1) DESC, e.name ASC
     `, [managerEmployeeId, directReportsExist]);
 
-    const isSunday = new Date().getDay() === 0;
-    const attendance = result.rows.map((row) => normalizeAttendanceRow({
-      ...row,
-      status: row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent'),
-      worked_minutes: row.worked_minutes || 0,
-    }));
+    const now = new Date();
+    const isPast6PM = now.getHours() >= 18;
+    const isSunday = now.getDay() === 0;
+
+    const attendance = result.rows.map((row) => {
+      let finalStatus = row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent');
+      
+      if (!isPast6PM && finalStatus !== 'leave') {
+        if (!row.attendance_id) {
+          finalStatus = 'pending';
+        } else {
+          finalStatus = 'present';
+        }
+      }
+
+      return normalizeAttendanceRow({
+        ...row,
+        status: finalStatus,
+        worked_minutes: row.worked_minutes || 0,
+      });
+    });
 
     const summary = attendance.reduce((acc, item) => {
       acc.total += 1;
@@ -232,8 +242,9 @@ router.get('/team', requireAuth, async (req, res, next) => {
       if (item.status === 'half_day') acc.halfDay += 1;
       if (item.status === 'absent') acc.absent += 1;
       if (item.status === 'leave') acc.leave += 1;
+      if (item.status === 'pending') acc.pending += 1;
       return acc;
-    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0 });
+    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0, pending: 0 });
 
     return res.json({
       officeHours: {
@@ -275,6 +286,7 @@ router.get('/today', requireAuth, async (req, res, next) => {
         a.id AS attendance_id,
         a.work_date,
         a.check_in_at,
+        a.last_login_at,
         a.check_out_at,
         a.status,
         a.worked_minutes,
@@ -290,12 +302,27 @@ router.get('/today', requireAuth, async (req, res, next) => {
       ORDER BY e.created_at DESC
     `);
 
-    const isSunday = new Date().getDay() === 0;
-    const attendance = result.rows.map((row) => normalizeAttendanceRow({
-      ...row,
-      status: row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent'),
-      worked_minutes: row.worked_minutes || 0,
-    }));
+    const now = new Date();
+    const isPast6PM = now.getHours() >= 18;
+    const isSunday = now.getDay() === 0;
+
+    const attendance = result.rows.map((row) => {
+      let finalStatus = row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent');
+      
+      if (!isPast6PM && finalStatus !== 'leave') {
+        if (!row.attendance_id) {
+          finalStatus = 'pending';
+        } else {
+          finalStatus = 'present';
+        }
+      }
+
+      return normalizeAttendanceRow({
+        ...row,
+        status: finalStatus,
+        worked_minutes: row.worked_minutes || 0,
+      });
+    });
 
     const summary = attendance.reduce((acc, item) => {
       acc.total += 1;
@@ -304,8 +331,9 @@ router.get('/today', requireAuth, async (req, res, next) => {
       if (item.status === 'half_day') acc.halfDay += 1;
       if (item.status === 'absent') acc.absent += 1;
       if (item.status === 'leave') acc.leave += 1;
+      if (item.status === 'pending') acc.pending += 1;
       return acc;
-    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0 });
+    }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0, pending: 0 });
 
     const payload = {
       officeHours: {

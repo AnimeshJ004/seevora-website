@@ -37,6 +37,7 @@ function statusMeta(status) {
     case 'half_day': return { label: 'Half Day', color: 'orange' };
     case 'present': return { label: 'Present', color: 'cyan' };
     case 'leave': return { label: 'Leave', color: 'purple' };
+    case 'pending': return { label: 'Not Marked', color: 'gray' };
     default: return { label: 'Absent', color: 'gray' };
   }
 }
@@ -142,13 +143,16 @@ export default function EmployeeAttendancePanel({ employee, onClose }) {
                             {formatDate(entry.workDate)}
                           </td>
                           <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                            {formatTime(entry.checkInAt)}
+                            <div>{formatTime(entry.checkInAt)}</div>
+                            {entry.lastLoginAt && entry.checkInAt !== entry.lastLoginAt && (
+                              <div style={{ color: 'var(--accent-cyan)', fontSize: '0.72rem', marginTop: 2 }}>Re: {formatTime(entry.lastLoginAt)}</div>
+                            )}
                           </td>
                           <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                             {formatTime(entry.checkOutAt)}
                           </td>
                           <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                            {entry.status === 'present' ? 'In progress' : `${entry.workedHours} hrs`}
+                            {entry.status === 'present' ? `${entry.workedHours} hrs (In progress)` : `${entry.workedHours} hrs`}
                           </td>
                           <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                             <Badge label={meta.label} color={meta.color} />

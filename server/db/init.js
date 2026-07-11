@@ -127,6 +127,7 @@ export async function initDb() {
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       work_date DATE NOT NULL,
       check_in_at TIMESTAMPTZ,
+      last_login_at TIMESTAMPTZ,
       check_out_at TIMESTAMPTZ,
       office_start_time TIME NOT NULL DEFAULT '10:00:00',
       office_end_time TIME NOT NULL DEFAULT '18:00:00',
@@ -141,6 +142,11 @@ export async function initDb() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS attendance_records_work_date_idx ON attendance_records (work_date DESC);
   `);
+
+  await pool.query(`
+    ALTER TABLE attendance_records
+    ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+  `).catch(e => console.log(e.message));
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS attendance_records_user_idx ON attendance_records (user_id, work_date DESC);

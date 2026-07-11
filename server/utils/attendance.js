@@ -41,18 +41,11 @@ export function formatKolkataTime(value) {
   }).format(new Date(value));
 }
 
-export function computeDayStatus(checkOutAt) {
+export function computeDayStatus(checkOutAt, totalMinutes = 0) {
   if (!checkOutAt) return 'present';
-
-  const localTime = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }).format(new Date(checkOutAt));
-
-  return localTime >= OFFICE_END_TIME ? 'full_day' : 'half_day';
+  if (totalMinutes >= 480) return 'full_day';
+  if (totalMinutes >= 240) return 'half_day';
+  return 'absent';
 }
 
 export function computeWorkedMinutes(checkInAt, checkOutAt) {
@@ -63,8 +56,13 @@ export function computeWorkedMinutes(checkInAt, checkOutAt) {
 
 export function normalizeAttendanceRow(row) {
   if (!row) return null;
+  let liveMinutes = Number(row.worked_minutes || 0);
+  if (row.status === 'present' && row.last_login_at) {
+    liveMinutes += computeWorkedMinutes(row.last_login_at, new Date());
+  }
+
   return {
-    id: row.id,
+    id: row.attendance_id || row.id,
     employeeCode: row.employee_code,
     userId: row.user_id,
     name: row.name,
@@ -74,16 +72,17 @@ export function normalizeAttendanceRow(row) {
     accountRole: row.account_role || 'employee',
     workDate: row.work_date,
     checkInAt: row.check_in_at,
+    lastLoginAt: row.last_login_at,
     checkOutAt: row.check_out_at,
     loginTime: formatKolkataTime(row.check_in_at),
+    lastLoginTime: formatKolkataTime(row.last_login_at),
     logoutTime: formatKolkataTime(row.check_out_at),
     status: row.status || 'absent',
-    workedMinutes: Number(row.worked_minutes || 0),
-    workedHours: Number(row.worked_minutes || 0) ? (Number(row.worked_minutes || 0) / 60).toFixed(1) : '0.0',
+    workedMinutes: liveMinutes,
+    workedHours: (liveMinutes / 60).toFixed(1),
     officeStartTime: row.office_start_time || OFFICE_START_TIME,
     officeEndTime: row.office_end_time || OFFICE_END_TIME,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
-

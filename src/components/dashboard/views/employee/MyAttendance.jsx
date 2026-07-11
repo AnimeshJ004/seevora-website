@@ -97,12 +97,17 @@ export default function MyAttendance({ user }) {
 
   const stats = useMemo(() => {
     const meta = today ? statusMeta(today.status) : statusMeta('absent');
-    return [
+    const items = [
       { label: 'Today\'s Status', value: today ? meta.label : 'Not marked yet', color: today ? meta.color : 'gray' },
-      { label: 'Login Time', value: formatTime(today?.checkInAt), color: 'blue' },
-      { label: 'Logout Time', value: formatTime(today?.checkOutAt), color: 'purple' },
-      { label: 'Hours Worked', value: today ? `${today.workedHours} hrs` : '0.0 hrs', color: 'orange' },
+      { label: 'Login Time', value: formatTime(today?.checkInAt), color: 'blue' }
     ];
+    if (today && today.lastLoginAt && today.checkInAt !== today.lastLoginAt) {
+      items.push({ label: 'Re-login Time', value: formatTime(today.lastLoginAt), color: 'cyan' });
+    }
+    items.push({ label: 'Logout Time', value: formatTime(today?.checkOutAt), color: 'purple' });
+    items.push({ label: 'Hours Worked', value: today ? `${today.workedHours} hrs` : '0.0 hrs', color: 'orange' });
+    
+    return items;
   }, [today]);
 
   return (

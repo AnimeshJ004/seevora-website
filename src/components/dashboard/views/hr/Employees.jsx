@@ -32,7 +32,7 @@ export default function Employees({ user }) {
   const [selectedDept, setSelectedDept] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const employeesSectionRef = React.useRef(null);
-  const canManageEmployees = user?.role === 'hr';
+  const canManageEmployees = ['hr', 'super_admin', 'admin'].includes(user?.role);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -129,7 +129,7 @@ export default function Employees({ user }) {
   const handleSaveEmployee = async (event) => {
     event.preventDefault();
     if (!canManageEmployees) {
-      showToast('Only HR can create, edit, or delete employee accounts.');
+      showToast('Only HR or Admins can create, edit, or delete employee accounts.');
       return;
     }
     setIsSaving(true);
@@ -178,7 +178,7 @@ export default function Employees({ user }) {
 
   const handleRemoveEmployee = async () => {
     if (!canManageEmployees) {
-      showToast('Only HR can create, edit, or delete employee accounts.');
+      showToast('Only HR or Admins can create, edit, or delete employee accounts.');
       return;
     }
     if (!editingEmployee || isSaving) return;

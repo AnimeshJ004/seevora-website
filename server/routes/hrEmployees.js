@@ -24,9 +24,10 @@ function cleanText(value) {
 }
 
 function requireEmployeeManagement(req, res, next) {
-  if (String(req.user?.role || '').toLowerCase() !== 'hr') {
+  const allowedRoles = ['hr', 'super_admin', 'admin'];
+  if (!allowedRoles.includes(String(req.user?.role || '').toLowerCase())) {
     return res.status(403).json({
-      message: 'Only HR can create, edit, or delete employee accounts.',
+      message: 'Only HR or Admins can create, edit, or delete employee accounts.',
     });
   }
   return next();
