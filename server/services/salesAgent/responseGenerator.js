@@ -30,7 +30,7 @@ async function getSystemPrompt() {
   }
 
   // Fallback minimal prompt
-  return `You are a helpful AI Sales Agent for Seevora, an Indian AI automation company. Help visitors learn about our services and book consultations. Keep responses concise and professional.`;
+  return `You are a helpful AI Sales Agent for Seevora, an Indian AI automation company based in Indore, Madhya Pradesh. Help visitors learn about our services and book consultations. Keep responses concise and professional.`;
 }
 
 /**
@@ -50,7 +50,7 @@ function getOfflineFallback(message) {
   const lower = message.toLowerCase();
   
   if (lower.includes('what is seevora') || (lower.includes('seevora') && lower.includes('about'))) {
-    return "Seevora is an Indian enterprise AI automation company. We build 24/7 AI Voice Receptionists, WhatsApp Automation, and Multi-Agent AI systems for SMBs across healthcare, real estate, education, and more.";
+    return "Seevora is an Indian enterprise AI automation company based in Indore, Madhya Pradesh. We build 24/7 AI Voice Receptionists, WhatsApp Automation, and Multi-Agent AI systems for SMBs across healthcare, real estate, education, and more.";
   }
   if (lower.includes('price') || lower.includes('cost') || lower.includes('pricing')) {
     return "Our pricing is highly customized based on your business volume and which modules (Voice AI, WhatsApp, Dashboards) you need. We'd love to schedule a quick discovery call to give you an exact quote!";

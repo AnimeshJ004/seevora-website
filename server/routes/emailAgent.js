@@ -19,7 +19,7 @@ function bustEmailAgentCache() {
 }
 
 // All routes require admin or super_admin role
-const guard = requireRole('admin', 'super_admin');
+const guard = requireRole('admin', 'super_admin', 'manager');
 
 // ─── GET /api/email-agent/threads ────────────────────────────────────────────
 // Paginated thread list with optional filters

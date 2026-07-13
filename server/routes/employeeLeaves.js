@@ -5,6 +5,8 @@ import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
+const MONTHLY_LEAVE_ALLOWANCE = 2;
+const YEARLY_LEAVE_ALLOWANCE = MONTHLY_LEAVE_ALLOWANCE * 12;
 const LEAVE_TYPES = ['casual', 'sick', 'annual', 'comp_off'];
 const LEAVE_TYPE_COLUMN = {
   casual: 'casual',
@@ -35,6 +37,53 @@ async function ensureBalanceRow(client, employeeId, year) {
   );
 }
 
+function getDateParts(dateValue) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    date,
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+}
+
+async function getPolicyUsage(client, employeeId, year, month) {
+  const [monthlyResult, yearlyResult] = await Promise.all([
+    client.query(
+      `SELECT COALESCE(SUM(days), 0)::int AS used
+       FROM leave_requests
+       WHERE employee_id = $1
+         AND status <> 'rejected'
+         AND EXTRACT(YEAR FROM from_date) = $2
+         AND EXTRACT(MONTH FROM from_date) = $3`,
+      [employeeId, year, month]
+    ),
+    client.query(
+      `SELECT COALESCE(SUM(days), 0)::int AS used
+       FROM leave_requests
+       WHERE employee_id = $1
+         AND status <> 'rejected'
+         AND EXTRACT(YEAR FROM from_date) = $2`,
+      [employeeId, year]
+    ),
+  ]);
+
+  const monthlyUsed = Number(monthlyResult.rows[0]?.used || 0);
+  const yearlyUsed = Number(yearlyResult.rows[0]?.used || 0);
+  return {
+    monthly: {
+      entitlement: MONTHLY_LEAVE_ALLOWANCE,
+      used: monthlyUsed,
+      remaining: Math.max(MONTHLY_LEAVE_ALLOWANCE - monthlyUsed, 0),
+    },
+    yearly: {
+      entitlement: YEARLY_LEAVE_ALLOWANCE,
+      used: yearlyUsed,
+      remaining: Math.max(YEARLY_LEAVE_ALLOWANCE - yearlyUsed, 0),
+    },
+  };
+}
+
 /* ── GET /api/employee/leaves  —  Get employee leaves and balances ── */
 router.get('/', requireAuth, async (req, res, next) => {
   try {
@@ -43,10 +92,14 @@ router.get('/', requireAuth, async (req, res, next) => {
       return res.json({ leaves: [], balances: null, message: 'No employee profile linked to this account.' });
     }
 
-    const year = new Date().getFullYear();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1;
     const client = await pool.connect();
+    let policy;
     try {
       await ensureBalanceRow(client, emp.id, year);
+      policy = await getPolicyUsage(client, emp.id, year, month);
     } finally {
       client.release();
     }
@@ -86,7 +139,7 @@ router.get('/', requireAuth, async (req, res, next) => {
       applied: l.applied_at,
     }));
 
-    return res.json({ leaves, balances });
+    return res.json({ leaves, balances, policy });
   } catch (error) {
     return next(error);
   }
@@ -106,25 +159,28 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (!leaveType || !LEAVE_TYPES.includes(leaveType)) return res.status(400).json({ message: 'Invalid leave type.' });
     if (!fromDate || !toDate) return res.status(400).json({ message: 'From and To dates are required.' });
     
-    const dayCount = Math.ceil((new Date(toDate) - new Date(fromDate)) / 86400000) + 1;
+    const fromParts = getDateParts(fromDate);
+    const toParts = getDateParts(toDate);
+    if (!fromParts || !toParts) return res.status(400).json({ message: 'Invalid date range.' });
+    if (fromParts.year !== toParts.year || fromParts.month !== toParts.month) {
+      return res.status(400).json({ message: 'Please apply leave within a single month.' });
+    }
+
+    const dayCount = Math.ceil((toParts.date - fromParts.date) / 86400000) + 1;
     if (dayCount < 1) return res.status(400).json({ message: 'Invalid date range.' });
 
     await client.query('BEGIN');
 
-    const year = new Date(fromDate).getFullYear();
+    const year = fromParts.year;
+    const month = fromParts.month;
     await ensureBalanceRow(client, emp.id, year);
+    const policy = await getPolicyUsage(client, emp.id, year, month);
+    if (policy.yearly.remaining < dayCount) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: `Yearly leave limit exceeded. Available this year: ${policy.yearly.remaining} day(s).` });
+    }
     
     const col = LEAVE_TYPE_COLUMN[leaveType];
-    const balResult = await client.query(
-      `SELECT ${col}_total AS total, ${col}_used AS used FROM leave_balances WHERE employee_id = $1 AND year = $2`,
-      [emp.id, year]
-    );
-    
-    const bal = balResult.rows[0];
-    if (bal && (bal.total - bal.used) < dayCount) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ message: `Insufficient ${leaveType.replace('_', ' ')} leave balance. Available: ${bal.total - bal.used} days.` });
-    }
 
     const leaveId = crypto.randomUUID();
     await client.query(

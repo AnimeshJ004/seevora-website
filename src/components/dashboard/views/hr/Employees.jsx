@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Btn } from '../shared';
+import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Btn, Avatar } from '../shared';
 import { hrApiFetch } from './hrApi';
 
 const EMPTY_FORM = {
@@ -33,6 +33,10 @@ export default function Employees({ user }) {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const employeesSectionRef = React.useRef(null);
   const canManageEmployees = ['hr', 'super_admin', 'admin'].includes(user?.role);
+
+  const [viewingProfile, setViewingProfile] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -174,6 +178,32 @@ export default function Employees({ user }) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const openProfile = async (employee) => {
+    setViewingProfile(employee);
+    setIsProfileLoading(true);
+    setProfileData(null);
+    try {
+      const response = await hrApiFetch(`/api/hr/employees/${encodeURIComponent(employee.id)}/profile`);
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setProfileData(data);
+      } else {
+        showToast(data.message || 'Unable to load profile.');
+        setViewingProfile(null);
+      }
+    } catch {
+      showToast('Unable to reach the HR server.');
+      setViewingProfile(null);
+    } finally {
+      setIsProfileLoading(false);
+    }
+  };
+
+  const closeProfile = () => {
+    setViewingProfile(null);
+    setProfileData(null);
   };
 
   const handleRemoveEmployee = async () => {
@@ -332,7 +362,7 @@ export default function Employees({ user }) {
               <tr>
                 {[
                   '#', 'Employee', 'ID', 'Department', 'Role', 'Salary', 'Joined', 'Status', 'Login Role', 'Account',
-                  ...(canManageEmployees ? ['Actions'] : []),
+                  'Actions',
                 ].map(h => (
                   <th key={h} style={{
                     textAlign: 'left', fontSize: '0.72rem', fontWeight: 600,
@@ -346,7 +376,7 @@ export default function Employees({ user }) {
             <tbody>
               {!isLoading && f.length === 0 && (
                 <tr>
-                  <td colSpan={canManageEmployees ? 11 : 10} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  <td colSpan={11} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
                     No employees found.
                   </td>
                 </tr>
@@ -386,19 +416,132 @@ export default function Employees({ user }) {
                       ? <Badge label="Active" color="green" />
                       : <Badge label="No Account" color="gray" />}
                   </td>
-                  {canManageEmployees && (
-                    <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <Btn label="Edit" variant="ghost" size="sm" onClick={() => openEditModal(u)} />
-                      </div>
-                    </td>
-                  )}
+                  <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Btn label="View" variant="ghost" size="sm" onClick={() => openProfile(u)} />
+                      {canManageEmployees && <Btn label="Edit" variant="ghost" size="sm" onClick={() => openEditModal(u)} />}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Panel>
+
+      {viewingProfile && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          background: 'rgba(15,23,42,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}>
+          <div style={{
+            width: 'min(900px, 100%)',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: 18,
+            padding: 24,
+            boxShadow: '0 24px 80px rgba(15,23,42,0.22)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <Avatar name={viewingProfile.name} size={64} />
+                <div>
+                  <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>
+                    {viewingProfile.name}
+                  </h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 6 }}>
+                    {viewingProfile.role} • {viewingProfile.dept}
+                  </p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                     <Badge label={viewingProfile.status} color={viewingProfile.status === 'active' ? 'green' : 'gray'} />
+                     <Badge label={viewingProfile.id} color="cyan" />
+                  </div>
+                </div>
+              </div>
+              <button type="button" onClick={closeProfile} style={{
+                width: 34, height: 34, borderRadius: '50%', border: '1px solid var(--glass-border)',
+                background: 'var(--bg-space)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '1rem',
+              }}>
+                x
+              </button>
+            </div>
+            
+            {isProfileLoading ? (
+               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Loading details...</div>
+            ) : profileData ? (
+               <div>
+                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24, background: 'var(--bg-space)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                   <div>
+                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Email</div>
+                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.email}</div>
+                   </div>
+                   <div>
+                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phone</div>
+                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.phone || '-'}</div>
+                   </div>
+                   <div>
+                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Manager</div>
+                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.managerName || '-'}</div>
+                   </div>
+                   <div>
+                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Joined</div>
+                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.joined}</div>
+                   </div>
+                 </div>
+                 
+                 <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Leave Allowances</h4>
+                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
+                   {['monthly', 'yearly'].map(type => {
+                     const bal = profileData.policy[type];
+                     return (
+                       <div key={type} style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 12 }}>
+                         <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>{type} Leave</div>
+                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                           <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{bal.remaining}</span>
+                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ {bal.total} remaining</span>
+                         </div>
+                       </div>
+                     );
+                   })}
+                 </div>
+                 
+                 <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Leave History</h4>
+                 <div style={{ overflowX: 'auto', background: 'var(--bg-space)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                     <thead>
+                       <tr>
+                         {['Type', 'From', 'To', 'Days', 'Reason', 'Status'].map(h => (
+                           <th key={h} style={{ textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', padding: '12px', borderBottom: '1px solid var(--glass-border)' }}>{h}</th>
+                         ))}
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {profileData.leaves.length === 0 ? (
+                         <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No leave requests found.</td></tr>
+                       ) : profileData.leaves.map(l => (
+                         <tr key={l.id}>
+                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><Badge label={l.type} color="blue" /></td>
+                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.from}</td>
+                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.to}</td>
+                           <td style={{ padding: '12px', fontSize: '0.82rem', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.days}</td>
+                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)', maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.reason || '-'}</td>
+                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><Badge label={l.status} color={l.status === 'approved' ? 'green' : l.status === 'rejected' ? 'pink' : 'orange'} /></td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+            ) : (
+               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Could not load profile.</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {canManageEmployees && isModalOpen && (
         <div style={{

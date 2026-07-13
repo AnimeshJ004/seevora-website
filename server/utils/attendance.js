@@ -69,6 +69,7 @@ export function normalizeAttendanceRow(row) {
     email: row.email,
     department: row.department,
     jobTitle: row.job_title,
+    employeeStatus: row.employee_status,
     accountRole: row.account_role || 'employee',
     workDate: row.work_date,
     checkInAt: row.check_in_at,

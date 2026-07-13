@@ -51,7 +51,8 @@ export const PERMISSIONS = {
   ],
   manager: [
     'dashboard',
-    'team-tasks', 'team-attendance', 'leads', 'email-bot', 'appointments', 'analytics',
+    'team-tasks', 'team-attendance', 'team-leave', 'leads', 'appointments', 'analytics',
+    'email-templates', 'campaigns', 'inbound-emails', 'email-ai-agent'
   ],
   support: [
     'dashboard',

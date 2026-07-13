@@ -100,6 +100,7 @@ async function pollOnce() {
 
           const fetch = imap.fetch(uids, { bodies: '' });
           const processedUids = [];
+          const messagePromises = [];
 
           fetch.on('message', (msg, seqno) => {
             let buffer = '';
@@ -110,70 +111,56 @@ async function pollOnce() {
               });
             });
 
-            msg.once('end', async () => {
-              try {
-                const parsed = await simpleParser(buffer);
+            const p = new Promise((resolveMsg) => {
+              msg.once('end', async () => {
+                try {
+                  const parsed = await simpleParser(buffer);
 
-                // Extract email data
-                const fromEmail = parsed.from?.value?.[0]?.address || parsed.from?.text || '';
-                const fromName = parsed.from?.value?.[0]?.name || '';
-                const subject = parsed.subject || '';
-                const body = parsed.text || '';
-                const messageId = parsed.messageId || '';
-                const inReplyTo = parsed.inReplyTo || '';
-                const references = parsed.references || [];
+                  // Extract email data
+                  const fromEmail = parsed.from?.value?.[0]?.address || parsed.from?.text || '';
+                  const fromName = parsed.from?.value?.[0]?.name || '';
+                  const subject = parsed.subject || '';
+                  const body = parsed.text || '';
+                  const messageId = parsed.messageId || '';
+                  const inReplyTo = parsed.inReplyTo || '';
+                  const references = parsed.references || [];
 
-                // Derive thread ID
-                const threadId = deriveThreadId(parsed);
+                  // Derive thread ID
+                  const threadId = deriveThreadId(parsed);
 
-                // Save to DB with retry
-                const savedId = await retryDbSave({
-                  fromEmail,
-                  fromName,
-                  toEmail: process.env.IMAP_USER,
-                  subject,
-                  body,
-                  source: 'imap',
-                  threadId,
-                  messageId,
-                  inReplyTo,
-                });
+                  // Save to DB with retry
+                  const savedId = await retryDbSave({
+                    fromEmail,
+                    fromName,
+                    toEmail: process.env.IMAP_USER,
+                    subject,
+                    body,
+                    source: 'imap',
+                    threadId,
+                    messageId,
+                    inReplyTo,
+                  });
 
-                if (savedId) {
-                  // Upsert email_threads
-                  try {
-                    await pool.query(
-                      `INSERT INTO email_threads (
-                        thread_id, from_email, from_name, subject, source, total_messages, last_activity_at
-                      ) VALUES ($1, $2, $3, $4, $5, 1, NOW())
-                      ON CONFLICT (thread_id) DO UPDATE SET
-                        total_messages = email_threads.total_messages + 1,
-                        last_activity_at = NOW()`,
-                      [threadId, fromEmail, fromName, subject, 'imap']
-                    );
-                  } catch (threadErr) {
-                    console.error('[ImapPoller] Failed to upsert thread:', threadErr.message);
-                  }
+                  if (savedId) {
+                    // Upsert email_threads
+                    try {
+                      await pool.query(
+                        `INSERT INTO email_threads (
+                          thread_id, from_email, from_name, subject, source, total_messages, last_activity_at
+                        ) VALUES ($1, $2, $3, $4, $5, 1, NOW())
+                        ON CONFLICT (thread_id) DO UPDATE SET
+                          total_messages = email_threads.total_messages + 1,
+                          last_activity_at = NOW()`,
+                        [threadId, fromEmail, fromName, subject, 'imap']
+                      );
+                    } catch (threadErr) {
+                      console.error('[ImapPoller] Failed to upsert thread:', threadErr.message);
+                    }
 
-                  // Mark as SEEN only after successful DB save
-                  processedUids.push(seqno);
-                  result.saved++;
+                    // Mark as SEEN only after successful DB save
+                    processedUids.push(seqno);
+                    result.saved++;
 
-                  // Emit structured log event
-                  /* console.log(
-                    JSON.stringify({
-                      event: 'email_received',
-                      source: 'imap',
-                      from_email: fromEmail,
-                      subject,
-                      thread_id: threadId,
-                      timestamp: new Date().toISOString(),
-                    })
-                  ); */
-
-                  // 🔑 Trigger AI auto-reply pipeline
-                  try {
-                    const { processInboundEmail } = await import('./aiResponder.js');
                     const inboundRow = {
                       id: savedId,
                       from_email: fromEmail,
@@ -183,20 +170,20 @@ async function pollOnce() {
                       thread_id: threadId,
                       source: 'imap',
                     };
-                    processInboundEmail(inboundRow).catch((aiErr) => {
-                      console.error('[ImapPoller] AI responder error:', aiErr.message);
-                    });
-                  } catch (aiImportErr) {
-                    console.error('[ImapPoller] Failed to import aiResponder:', aiImportErr.message);
+                    
+                    resolveMsg({ success: true, row: inboundRow });
+                  } else {
+                    result.errors.push(`Failed to save message ${seqno} after retries`);
+                    resolveMsg({ success: false });
                   }
-                } else {
-                  result.errors.push(`Failed to save message ${seqno} after retries`);
+                } catch (parseErr) {
+                  console.error('[ImapPoller] Parse error:', parseErr.message);
+                  result.errors.push(parseErr.message);
+                  resolveMsg({ success: false });
                 }
-              } catch (parseErr) {
-                console.error('[ImapPoller] Parse error:', parseErr.message);
-                result.errors.push(parseErr.message);
-              }
+              });
             });
+            messagePromises.push(p);
           });
 
           fetch.once('error', (fetchErr) => {
@@ -204,19 +191,45 @@ async function pollOnce() {
             result.errors.push(fetchErr.message);
           });
 
-          fetch.once('end', () => {
+          fetch.once('end', async () => {
+            // Wait for all messages to finish DB saves and parsing
+            const results = await Promise.all(messagePromises);
+            const successfulRows = results.filter(r => r.success).map(r => r.row);
+
+            const completePoll = async () => {
+              cleanup();
+              
+              // 🔑 Trigger AI auto-reply pipeline SEQUENTIALLY to prevent network overload
+              if (successfulRows.length > 0) {
+                console.log(`[ImapPoller] Processing ${successfulRows.length} AI replies sequentially...`);
+                try {
+                  const { processInboundEmail } = await import('./aiResponder.js');
+                  for (const row of successfulRows) {
+                    try {
+                      await processInboundEmail(row);
+                      // Wait 8 seconds between emails to respect Groq's 6000 TPM limit on free tier
+                      await new Promise(resolve => setTimeout(resolve, 8000));
+                    } catch (aiErr) {
+                      console.error('[ImapPoller] AI responder error:', aiErr.message);
+                    }
+                  }
+                } catch (aiImportErr) {
+                  console.error('[ImapPoller] Failed to import aiResponder:', aiImportErr.message);
+                }
+              }
+              resolve(result);
+            };
+
             // Mark all successfully processed messages as SEEN
             if (processedUids.length > 0) {
               imap.addFlags(processedUids, ['\\Seen'], (flagErr) => {
                 if (flagErr) {
                   console.error('[ImapPoller] Failed to mark as SEEN:', flagErr.message);
                 }
-                cleanup();
-                resolve(result);
+                completePoll();
               });
             } else {
-              cleanup();
-              resolve(result);
+              completePoll();
             }
           });
         });

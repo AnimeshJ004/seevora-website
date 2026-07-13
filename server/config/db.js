@@ -11,11 +11,15 @@ const pool = new Pool({
   password: process.env.PGPASSWORD,
   ssl: process.env.DATABASE_URL?.includes('neon.tech') || process.env.DATABASE_URL?.includes('supabase.com') ? { rejectUnauthorized: false } : (process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined),
   // Performance tuning: keep connections warm to avoid cold-start overhead with remote DB
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  max: 20,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 15000,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
+});
+
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle database client', err);
 });
 
 export default pool;

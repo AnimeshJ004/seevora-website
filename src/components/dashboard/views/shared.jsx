@@ -241,3 +241,35 @@ export function Tabs({ tabs, active, onChange }) {
     </div>
   );
 }
+
+/* ── Expandable Text ── */
+export function ExpandableText({ text, max = 30 }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!text) return <span>-</span>;
+  if (text.length <= max) return <span style={{ color: 'var(--text-muted)' }}>{text}</span>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+      <span style={{ 
+        color: 'var(--text-muted)', 
+        lineHeight: 1.4, 
+        whiteSpace: expanded ? 'normal' : 'nowrap', 
+        overflow: expanded ? 'visible' : 'hidden', 
+        textOverflow: expanded ? 'clip' : 'ellipsis', 
+        maxWidth: expanded ? '100%' : 180,
+        display: 'inline-block'
+      }}>
+        {text}
+      </span>
+      <button 
+        onClick={() => setExpanded(!expanded)} 
+        style={{ 
+          background: 'none', border: 'none', color: '#14c9e1', 
+          fontSize: '0.72rem', cursor: 'pointer', padding: 0, 
+          textAlign: 'left', fontWeight: 600, textDecoration: 'underline' 
+        }}
+      >
+        {expanded ? 'Show Less' : 'Read More'}
+      </button>
+    </div>
+  );
+}

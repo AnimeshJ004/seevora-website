@@ -481,4 +481,120 @@ router.delete('/:employeeCode', requireEmployeeManagement, async (req, res, next
   }
 });
 
+router.get('/:employeeCode/profile', async (req, res, next) => {
+  try {
+    const year = new Date().getFullYear();
+    const employeeCode = req.params.employeeCode;
+    
+    const empResult = await pool.query(`
+      SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
+             e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
+             e.manager_id, m.name AS manager_name, u.username, u.role AS account_role
+      FROM hr_employees e
+      LEFT JOIN hr_employees m ON m.id = e.manager_id
+      LEFT JOIN users u ON u.id = e.user_id
+      WHERE e.employee_code = $1 OR e.id::text = $1
+      LIMIT 1
+    `, [employeeCode]);
+    
+    const empRow = empResult.rows[0];
+    if (!empRow) return res.status(404).json({ message: 'Employee not found.' });
+    
+    const employee = toEmployee(empRow);
+    
+    const balResult = await pool.query(`
+      SELECT * FROM leave_balances WHERE employee_id = $1 AND year = $2 LIMIT 1
+    `, [empRow.id, year]);
+    
+    let balances;
+    if (balResult.rows.length > 0) {
+      const r = balResult.rows[0];
+      balances = {
+        casual: { total: r.casual_total, used: r.casual_used, remaining: r.casual_total - r.casual_used },
+        sick: { total: r.sick_total, used: r.sick_used, remaining: r.sick_total - r.sick_used },
+        annual: { total: r.annual_total, used: r.annual_used, remaining: r.annual_total - r.annual_used },
+        compOff: { total: r.comp_off_total, used: r.comp_off_used, remaining: r.comp_off_total - r.comp_off_used }
+      };
+    } else {
+      balances = {
+        casual: { total: 0, used: 0, remaining: 0 },
+        sick: { total: 0, used: 0, remaining: 0 },
+        annual: { total: 0, used: 0, remaining: 0 },
+        compOff: { total: 0, used: 0, remaining: 0 }
+      };
+    }
+    
+    const month = new Date().getMonth() + 1;
+
+    const monthlyResult = await pool.query(
+      `SELECT COALESCE(SUM(days), 0)::int AS used
+       FROM leave_requests
+       WHERE employee_id = $1
+         AND status <> 'rejected'
+         AND EXTRACT(YEAR FROM from_date) = $2
+         AND EXTRACT(MONTH FROM from_date) = $3`,
+      [empRow.id, year, month]
+    );
+
+    const yearlyResult = await pool.query(
+      `SELECT COALESCE(SUM(days), 0)::int AS used
+       FROM leave_requests
+       WHERE employee_id = $1
+         AND status <> 'rejected'
+         AND EXTRACT(YEAR FROM from_date) = $2`,
+      [empRow.id, year]
+    );
+
+    const monthlyUsed = Number(monthlyResult.rows[0]?.used || 0);
+    const yearlyUsed = Number(yearlyResult.rows[0]?.used || 0);
+    
+    const MONTHLY_LEAVE_ALLOWANCE = 2;
+    const YEARLY_LEAVE_ALLOWANCE = MONTHLY_LEAVE_ALLOWANCE * 12;
+
+    const policy = {
+      monthly: {
+        total: MONTHLY_LEAVE_ALLOWANCE,
+        used: monthlyUsed,
+        remaining: Math.max(MONTHLY_LEAVE_ALLOWANCE - monthlyUsed, 0),
+      },
+      yearly: {
+        total: YEARLY_LEAVE_ALLOWANCE,
+        used: yearlyUsed,
+        remaining: Math.max(YEARLY_LEAVE_ALLOWANCE - yearlyUsed, 0),
+      },
+    };
+    
+    const leaveResult = await pool.query(`
+      SELECT lr.*, 
+             COALESCE(reviewer.username, reviewer.email) AS reviewed_by_name
+      FROM leave_requests lr
+      LEFT JOIN users reviewer ON reviewer.id = lr.reviewed_by
+      WHERE lr.employee_id = $1
+      ORDER BY lr.applied_at DESC
+    `, [empRow.id]);
+    
+    const leaves = leaveResult.rows.map(row => ({
+      id: row.id,
+      type: row.leave_type,
+      from: row.from_date ? String(row.from_date).slice(0, 10) : '',
+      to: row.to_date ? String(row.to_date).slice(0, 10) : '',
+      days: Number(row.days || 1),
+      reason: row.reason || '',
+      status: row.status,
+      applied: row.applied_at,
+      reviewedByName: row.reviewed_by_name || '',
+      reviewedAt: row.reviewed_at,
+    }));
+    
+    return res.json({
+      employee,
+      balances,
+      policy,
+      leaves
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 export default router;

@@ -21,8 +21,10 @@ import emailOutreachRoutes from './routes/emailOutreach.js';
 import webhooksRoutes from './routes/webhooks.js';
 import leadsRoutes from './routes/leads.js';
 import employeeLeavesRoutes from './routes/employeeLeaves.js';
+import managerLeavesRoutes from './routes/managerLeaves.js';
 import productivityRoutes from './routes/productivity.js';
 import businessesRoutes from './routes/businesses.js';
+
 import usersRoutes from './routes/users.js';
 import appointmentsRoutes from './routes/appointments.js';
 import reviewsRoutes from './routes/reviews.js';
@@ -47,11 +49,21 @@ if (!process.env.JWT_SECRET) {
 }
 
 // ── API Key validation ────────────────────────────────────────────────────────
-if (!process.env.ANTHROPIC_CHATBOT_API_KEY) {
-  console.warn('[Config] ⚠️  ANTHROPIC_CHATBOT_API_KEY not set — website chatbot will return empty replies');
-}
-if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
-  console.warn('[Config] ⚠️  ANTHROPIC_EMAIL_API_KEY not set — email AI agent is disabled');
+const aiProvider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+if (aiProvider === 'anthropic') {
+  if (!process.env.ANTHROPIC_CHATBOT_API_KEY) {
+    console.warn('[Config] ⚠️  ANTHROPIC_CHATBOT_API_KEY not set — website chatbot will return empty replies');
+  }
+  if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
+    console.warn('[Config] ⚠️  ANTHROPIC_EMAIL_API_KEY not set — email AI agent is disabled');
+  }
+} else {
+  if (!process.env.GROQ_CHATBOT_API_KEY) {
+    console.warn('[Config] ⚠️  GROQ_CHATBOT_API_KEY not set — website chatbot will return empty replies');
+  }
+  if (!process.env.GROQ_EMAIL_API_KEY) {
+    console.warn('[Config] ⚠️  GROQ_EMAIL_API_KEY not set — email AI agent is disabled');
+  }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -83,6 +95,7 @@ app.use('/api/hr/recruitment', recruitmentRoutes);
 app.use('/api/hr/payroll', payrollRoutes);
 app.use('/api/hr/documents', documentRoutes);
 app.use('/api/employee/leaves', employeeLeavesRoutes);
+app.use('/api/manager/leaves', managerLeavesRoutes);
 app.use('/api/employee', employeeDocumentRoutes);
 app.use('/api/email-outreach', emailOutreachRoutes);
 app.use('/api/webhooks', webhooksRoutes);

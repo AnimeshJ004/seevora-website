@@ -218,7 +218,7 @@ export default function VerificationStatus({ user }) {
             textAlign: 'center', padding: '32px 0',
             color: 'var(--text-muted)', fontSize: '0.85rem',
           }}>
-            No documents uploaded yet. Go to <strong>Document Upload</strong> to get started.
+            No documents uploaded yet. Go to <strong>My Documents</strong> and use the upload button to get started.
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>

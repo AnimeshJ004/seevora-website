@@ -2,8 +2,11 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
+router.use(requireAuth);
+router.use(requireRole('hr', 'admin', 'super_admin'));
 
 const CACHE_LEAVE_SUMMARY = 'hr_leave_summary';
 const LEAVE_SUMMARY_TTL = 60;
@@ -31,8 +34,10 @@ function toLeaveRequest(row) {
     status: row.status,
     applied: row.applied_at,
     reviewedBy: row.reviewed_by,
+    reviewedByName: row.reviewed_by_name || '',
     reviewedAt: row.reviewed_at,
     role: row.role,
+    managerName: row.manager_name || '',
   };
 }
 
@@ -55,10 +60,14 @@ router.get('/', async (req, res, next) => {
   try {
     const statusFilter = req.query.status;
     let sql = `
-      SELECT lr.*, e.name AS emp_name, e.email AS emp_email, e.employee_code
+      SELECT lr.*, e.name AS emp_name, e.email AS emp_email, e.employee_code, u.role AS role,
+             manager.name AS manager_name,
+             COALESCE(reviewer.username, reviewer.email) AS reviewed_by_name
       FROM leave_requests lr
       JOIN hr_employees e ON e.id = lr.employee_id
       JOIN users u ON u.id = e.user_id
+      LEFT JOIN hr_employees manager ON manager.id = e.manager_id
+      LEFT JOIN users reviewer ON reviewer.id = lr.reviewed_by
       WHERE u.role NOT IN ('admin', 'super_admin')
     `;
     const params = [];
@@ -138,25 +147,48 @@ router.get('/balances', async (_req, res, next) => {
     }
 
     const result = await pool.query(`
-      SELECT lb.*, e.name AS emp_name, e.employee_code
+      SELECT 
+        lb.employee_id, lb.year, e.name AS emp_name, e.employee_code,
+        (
+          SELECT COALESCE(SUM(days), 0)::int
+          FROM leave_requests lr
+          WHERE lr.employee_id = lb.employee_id
+            AND lr.status <> 'rejected'
+            AND EXTRACT(YEAR FROM lr.from_date) = lb.year
+        ) AS yearly_used,
+        (
+          SELECT COALESCE(SUM(days), 0)::int
+          FROM leave_requests lr
+          WHERE lr.employee_id = lb.employee_id
+            AND lr.status <> 'rejected'
+            AND EXTRACT(YEAR FROM lr.from_date) = lb.year
+            AND EXTRACT(MONTH FROM lr.from_date) = $2
+        ) AS monthly_used
       FROM leave_balances lb
       JOIN hr_employees e ON e.id = lb.employee_id
       JOIN users u ON u.id = e.user_id
       WHERE lb.year = $1 AND u.role NOT IN ('admin', 'super_admin')
       ORDER BY e.name ASC
-    `, [year]);
+    `, [year, new Date().getMonth() + 1]);
+
+    const MONTHLY_LEAVE_ALLOWANCE = 2; // matching other endpoints
+    const YEARLY_LEAVE_ALLOWANCE = MONTHLY_LEAVE_ALLOWANCE * 12;
 
     const balances = result.rows.map(row => ({
       employeeId: row.employee_id,
       employeeCode: row.employee_code,
       name: row.emp_name,
       year: row.year,
-      casual: { total: row.casual_total, used: row.casual_used, remaining: row.casual_total - row.casual_used },
-      sick: { total: row.sick_total, used: row.sick_used, remaining: row.sick_total - row.sick_used },
-      annual: { total: row.annual_total, used: row.annual_used, remaining: row.annual_total - row.annual_used },
-      compOff: { total: row.comp_off_total, used: row.comp_off_used, remaining: row.comp_off_total - row.comp_off_used },
-      totalUsed: row.casual_used + row.sick_used + row.annual_used + row.comp_off_used,
-      totalRemaining: (row.casual_total - row.casual_used) + (row.sick_total - row.sick_used) + (row.annual_total - row.annual_used) + (row.comp_off_total - row.comp_off_used),
+      monthly: {
+        total: MONTHLY_LEAVE_ALLOWANCE,
+        used: row.monthly_used,
+        remaining: Math.max(MONTHLY_LEAVE_ALLOWANCE - row.monthly_used, 0)
+      },
+      yearly: {
+        total: YEARLY_LEAVE_ALLOWANCE,
+        used: row.yearly_used,
+        remaining: Math.max(YEARLY_LEAVE_ALLOWANCE - row.yearly_used, 0)
+      }
     }));
 
     return res.json({ balances });
@@ -228,6 +260,10 @@ router.put('/:id/approve', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (!['admin', 'super_admin'].includes(req.user?.role)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ message: 'Manager approval is required for employee leave requests.' });
+    }
 
     const leaveResult = await client.query(
       'SELECT * FROM leave_requests WHERE id = $1 LIMIT 1',
@@ -259,6 +295,10 @@ router.put('/:id/reject', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (!['admin', 'super_admin'].includes(req.user?.role)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ message: 'Manager rejection is required for employee leave requests.' });
+    }
 
     const leaveResult = await client.query('SELECT * FROM leave_requests WHERE id = $1 LIMIT 1', [req.params.id]);
     const leave = leaveResult.rows[0];

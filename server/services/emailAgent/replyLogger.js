@@ -2,11 +2,17 @@ import pool from '../../config/db.js';
 
 /**
  * Detect which AI model is configured based on env var priority.
- * Priority: ANTHROPIC_EMAIL_API_KEY → null
+ * Priority: GROQ_EMAIL_API_KEY → null
  * @returns {string|null}
  */
 export function detectModelUsed() {
-  if (process.env.ANTHROPIC_EMAIL_API_KEY) return process.env.ANTHROPIC_EMAIL_MODEL || 'claude-haiku-4-5';
+  const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+  if (provider === 'anthropic' && process.env.ANTHROPIC_EMAIL_API_KEY) {
+    return process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-haiku-20240307';
+  }
+  if (provider === 'groq' && process.env.GROQ_EMAIL_API_KEY) {
+    return process.env.GROQ_EMAIL_MODEL || 'llama-3.1-8b-instant';
+  }
   return null;
 }
 

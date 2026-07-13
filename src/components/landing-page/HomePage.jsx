@@ -212,9 +212,9 @@ function Hero() {
           preload="auto"
         >
           {/* Primary: Futuristic Digital Grid with Dynamic Flow (glowing AI network nodes) */}
-          <source src="https://videos.pexels.com/video-files/34645139/14683902_2560_1440_30fps.mp4" type="video/mp4" />
+          <source src="/hero-bg-primary.mp4" type="video/mp4" />
           {/* Fallback: Abstract Wavy Digital Grid with Floating Particles */}
-          <source src="https://videos.pexels.com/video-files/34189669/14492116_1920_1080_30fps.mp4" type="video/mp4" />
+          <source src="/hero-bg-fallback.mp4" type="video/mp4" />
         </video>
         {/* Dark overlay so text stays readable */}
         <div className="bk-hero-video-overlay" />

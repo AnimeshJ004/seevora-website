@@ -50,8 +50,14 @@ export async function sendCampaign(campaignId) {
         .replace(/\{\{industry\}\}/g, lead.industry || '')
         .replace(/\{\{sender_name\}\}/g, campaign.sender_persona || 'Seevora Team');
 
-      // AI-personalize each email via Anthropic (email key)
-      if (process.env.ANTHROPIC_EMAIL_API_KEY) {
+      const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+      const systemPrompt = 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.';
+      const prompt = `Personalize this outbound email for ${lead.name} at ${lead.company || 'their company'} in the ${lead.industry || 'industry'}. Keep it under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`;
+      let finalSubject = subject;
+      let finalBody = body;
+
+      // AI-personalize each email via active provider
+      if (provider === 'anthropic' && process.env.ANTHROPIC_EMAIL_API_KEY) {
         try {
           const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
@@ -61,29 +67,57 @@ export async function sendCampaign(campaignId) {
               'content-type': 'application/json',
             },
             body: JSON.stringify({
-              model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-              max_tokens: 400,
-              system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
-              messages: [{
-                role: 'user',
-                content: `Personalize this outbound email for ${lead.name} at ${lead.company || 'their company'} in the ${lead.industry || 'industry'}. Keep it under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
-              }]
+              model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-haiku-20240307',
+              max_tokens: 300,
+              system: systemPrompt,
+              messages: [{ role: 'user', content: prompt }]
             })
           });
+
           if (aiRes.ok) {
-            const aiData = await aiRes.json();
-            const raw = aiData.content?.[0]?.text || '';
-            const m = raw.match(/\{[\s\S]*?\}/);
-            if (m) {
-              const parsed = JSON.parse(m[0]);
-              if (parsed.subject && parsed.body) {
-                subject = parsed.subject;
-                body = parsed.body;
-              }
+            const data = await aiRes.json();
+            const text = data.content?.[0]?.text || '';
+            const match = text.match(/\{[\s\S]*\}/);
+            if (match) {
+              const parsed = JSON.parse(match[0]);
+              finalSubject = parsed.subject || finalSubject;
+              finalBody = parsed.body || finalBody;
             }
           }
-        } catch (aiErr) {
-          console.warn(`[CampaignSender] AI personalization failed for ${lead.email}:`, aiErr.message);
+        } catch (err) {
+          console.error(`[campaignSender] Anthropic personalization failed for ${lead.email}:`, err.message);
+        }
+      } else if (provider === 'groq' && process.env.GROQ_EMAIL_API_KEY) {
+        try {
+          const baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+          const aiRes = await fetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.GROQ_EMAIL_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: process.env.GROQ_EMAIL_MODEL || 'llama-3.1-8b-instant',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+              ],
+              response_format: { type: 'json_object' }
+            })
+          });
+
+          if (aiRes.ok) {
+            const data = await aiRes.json();
+            const text = data.choices?.[0]?.message?.content || '';
+            const match = text.match(/\{[\s\S]*\}/);
+            if (match) {
+              const parsed = JSON.parse(match[0]);
+              finalSubject = parsed.subject || finalSubject;
+              finalBody = parsed.body || finalBody;
+            }
+          }
+        } catch (err) {
+          console.error(`[campaignSender] OpenAI/Groq personalization failed for ${lead.email}:`, err.message);
         }
       }
 
@@ -94,16 +128,16 @@ export async function sendCampaign(campaignId) {
         return `${process.env.VITE_API_URL || 'http://localhost:4000'}/api/email-bot/track/click/${logId}?url=${encodeURIComponent(url)}`;
       };
 
-      body = body.replace(/href="([^"]+)"/g, (match, url) => `href="${wrapLink(url)}"`);
-      body = body.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => `[${text}](${wrapLink(url)})`);
+      finalBody = finalBody.replace(/href="([^"]+)"/g, (match, url) => `href="${wrapLink(url)}"`);
+      finalBody = finalBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => `[${text}](${wrapLink(url)})`);
 
-      const htmlBody = `<div style="font-family:sans-serif;color:#333;line-height:1.6;">${body.replace(/\n/g, '<br/>')}</div>${openTracker}`;
+      const htmlBody = `<div style="font-family:sans-serif;color:#333;line-height:1.6;">${finalBody.replace(/\n/g, '<br/>')}</div>${openTracker}`;
 
       const r = await sendMail({
         to: lead.email,
-        subject,
+        subject: finalSubject,
         html: htmlBody,
-        text: body
+        text: finalBody
       });
 
       if (r.success) {
@@ -129,6 +163,9 @@ export async function sendCampaign(campaignId) {
           [campaignId, lead.id]
         ).catch(() => {});
       }
+      
+      // Delay 8 seconds to prevent Groq API rate limits (6000 TPM limit on free tier)
+      await new Promise(resolve => setTimeout(resolve, 8000));
     }
 
     await pool.query(

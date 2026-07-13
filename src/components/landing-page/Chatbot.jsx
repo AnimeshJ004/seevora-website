@@ -5,7 +5,7 @@ const SEEVORA_KNOWLEDGE = [
   // ── Seevora Company & Products ──
   {
     keywords: ['what is seevora', 'about seevora', 'what does seevora do', 'company', 'platform', 'product', 'explain seevora'],
-    response: "Seevora is an Indian enterprise AI automation company that turns manual business workflows into profit centers. We deploy AI Voice Receptionists, WhatsApp automations, custom dashboards, and multi-agent AI systems — all customized to your business in 5 days."
+    response: "Seevora is an Indian enterprise AI automation company based in Indore, Madhya Pradesh that turns manual business workflows into profit centers. We deploy AI Voice Receptionists, WhatsApp automations, custom dashboards, and multi-agent AI systems — all customized to your business in 5 days."
   },
   {
     keywords: ['b2b', 'sales automation', 'sales pipeline', 'lead generation', 'outreach', 'sales agent'],

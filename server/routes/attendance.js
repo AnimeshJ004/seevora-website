@@ -170,12 +170,6 @@ router.get('/team', requireAuth, async (req, res, next) => {
       });
     }
 
-    const directReportsResult = await pool.query(
-      'SELECT 1 FROM hr_employees WHERE manager_id = $1 LIMIT 1',
-      [managerEmployeeId]
-    );
-    const directReportsExist = directReportsResult.rowCount > 0;
-
     const result = await pool.query(`
       SELECT
         e.id,
@@ -185,6 +179,7 @@ router.get('/team', requireAuth, async (req, res, next) => {
         e.email,
         e.department,
         e.job_title,
+        e.status AS employee_status,
         u.role AS account_role,
         a.id AS attendance_id,
         a.work_date,
@@ -202,16 +197,11 @@ router.get('/team', requireAuth, async (req, res, next) => {
       LEFT JOIN attendance_records a
         ON a.user_id = e.user_id
        AND a.work_date = ${getKolkataDateSql()}
-      WHERE e.status = 'active'
-        AND (
-          e.id = $1
-          OR (
-            COALESCE(u.role, 'employee') = 'employee'
-            AND (e.manager_id = $1 OR ($2 = false AND e.manager_id IS NULL))
-          )
-        )
-      ORDER BY (e.id = $1) DESC, e.name ASC
-    `, [managerEmployeeId, directReportsExist]);
+      WHERE e.id <> $1
+        AND e.status IN ('active', 'probation')
+        AND e.manager_id = $1
+      ORDER BY e.name ASC
+    `, [managerEmployeeId]);
 
     const now = new Date();
     const isPast6PM = now.getHours() >= 18;
@@ -256,6 +246,57 @@ router.get('/team', requireAuth, async (req, res, next) => {
       summary,
       attendance,
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/team/employee/:id', requireAuth, async (req, res, next) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'manager') {
+      return res.status(403).json({ message: 'Manager access is required.' });
+    }
+
+    const managerResult = await pool.query(
+      'SELECT id FROM hr_employees WHERE user_id = $1 LIMIT 1',
+      [req.user.id]
+    );
+    const managerEmployeeId = managerResult.rows[0]?.id || null;
+
+    if (!managerEmployeeId) {
+      return res.status(403).json({ message: 'Manager profile not found.' });
+    }
+
+    const { id } = req.params;
+
+    // Check if employee exists and belongs to this manager
+    const empResult = await pool.query(
+      'SELECT id, user_id FROM hr_employees WHERE id = $1 AND manager_id = $2 LIMIT 1',
+      [id, managerEmployeeId]
+    );
+    const employee = empResult.rows[0];
+
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found or not assigned to you.' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM hr_employees WHERE id = $1', [employee.id]);
+      if (employee.user_id) {
+        await client.query("DELETE FROM users WHERE id = $1 AND role IN ('employee', 'manager', 'hr')", [employee.user_id]);
+      }
+      await client.query('COMMIT');
+    } catch (dbError) {
+      await client.query('ROLLBACK');
+      throw dbError;
+    } finally {
+      client.release();
+    }
+
+    return res.json({ message: 'Employee removed successfully.', removedId: id });
   } catch (error) {
     return next(error);
   }

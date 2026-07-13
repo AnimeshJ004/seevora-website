@@ -84,6 +84,10 @@ export default function TeamTasks() {
   const updateForm = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   const openCreateModal = () => {
+    if (team.length === 0) {
+      showToast('No team members assigned. HR must assign employees to this manager.');
+      return;
+    }
     setEditingTask(null);
     setForm({ ...EMPTY_FORM, assigned_to: team[0]?.id || '' });
     setIsTaskModalOpen(true);
@@ -231,11 +235,13 @@ export default function TeamTasks() {
         <div style={{ position: 'fixed', top: 24, right: 24, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: '0.85rem', zIndex: 9999, boxShadow: '0 8px 24px rgba(16,185,129,0.3)', maxWidth: 380 }}>{toast}</div>
       )}
 
-      <PageHeader title="Team Tasks" sub={isLoading ? 'Loading team work...' : `${tasks.length} visible tasks · ${team.length} assignable employees`} action="+ New Task" onAction={openCreateModal} />
+      <PageHeader title="Team Tasks" sub={isLoading ? 'Loading team work...' : `${tasks.length} visible tasks · ${team.length} direct reports`} action="+ New Task" onAction={openCreateModal} />
 
       <Panel>
         {isLoading ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>Loading team tasks...</p>
+        ) : team.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No team members assigned. HR must assign employees to this manager.</p>
         ) : tasks.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No team tasks yet. Create a task for one of your direct reports.</p>
         ) : (

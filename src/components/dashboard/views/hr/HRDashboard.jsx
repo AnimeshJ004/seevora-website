@@ -25,6 +25,21 @@ function card(s = {}) {
   return { background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", ...s };
 }
 
+function navigableProps(target, onNavigate, canNavigate) {
+  if (!target || !onNavigate || (canNavigate && !canNavigate(target))) return {};
+  return {
+    role: "button",
+    tabIndex: 0,
+    onClick: () => onNavigate(target),
+    onKeyDown: (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onNavigate(target);
+      }
+    },
+  };
+}
+
 const MOBILE_STYLES = `
   .hr-kpi-grid    { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
   .hr-mid-grid    { display:grid; grid-template-columns:2fr 1fr;       gap:16px; margin-bottom:16px; }
@@ -40,7 +55,7 @@ const MOBILE_STYLES = `
   }
 `;
 
-export default function HRDashboard({ user }) {
+export default function HRDashboard({ user, onNavigate, canNavigate }) {
   const name = user?.name?.split(" ")[0] || "HR";
   const [toast, setToast] = useState(null);
 
@@ -165,11 +180,11 @@ export default function HRDashboard({ user }) {
   const presentCount = attendanceSummary.present + attendanceSummary.fullDay + attendanceSummary.halfDay;
 
   const kpis = [
-    { label: "Total Employees",    value: String(empSummary.total),         delta: empSummary.active > 0 ? `${empSummary.active} active` : "", color: C.blue },
-    { label: "Present Today",      value: String(presentCount),             delta: attendanceSummary.total > 0 ? `of ${attendanceSummary.total}` : "", color: C.green },
-    { label: "On Leave Today",     value: String(leaveSummary.onLeaveToday || 0), delta: leaveSummary.pending > 0 ? `${leaveSummary.pending} pending` : "", color: C.orange },
-    { label: "Payroll This Month", value: payrollSummary.totalPayroll || "₹0",     delta: payrollSummary.totalRecords > 0 ? `${payrollSummary.paid || 0} paid` : "", color: C.green },
-    { label: "Docs Unverified",    value: String(docSummary.pending || 0),         delta: docSummary.total > 0 ? `of ${docSummary.total}` : "", color: C.red },
+    { label: "Total Employees",    value: String(empSummary.total),         delta: empSummary.active > 0 ? `${empSummary.active} active` : "", color: C.blue, target: "employees" },
+    { label: "Present Today",      value: String(presentCount),             delta: attendanceSummary.total > 0 ? `of ${attendanceSummary.total}` : "", color: C.green, target: "attendance" },
+    { label: "On Leave Today",     value: String(leaveSummary.onLeaveToday || 0), delta: leaveSummary.pending > 0 ? `${leaveSummary.pending} pending` : "", color: C.orange, target: "leave" },
+    { label: "Payroll This Month", value: payrollSummary.totalPayroll || "₹0",     delta: payrollSummary.totalRecords > 0 ? `${payrollSummary.paid || 0} paid` : "", color: C.green, target: "payroll" },
+    { label: "Docs Unverified",    value: String(docSummary.pending || 0),         delta: docSummary.total > 0 ? `of ${docSummary.total}` : "", color: C.red, target: "document-verifications" },
   ];
 
   const departmentColors = [C.blue, C.green, C.purple, C.orange, C.red, C.cyan];
@@ -207,7 +222,11 @@ export default function HRDashboard({ user }) {
       {/* KPI Cards */}
       <div className="hr-kpi-grid">
         {kpis.map((k, i) => (
-          <div key={i} style={card({ padding: "20px 20px 18px", textAlign: "left" })}>
+          <div
+            key={i}
+            {...navigableProps(k.target, onNavigate, canNavigate)}
+            style={card({ padding: "20px 20px 18px", textAlign: "left", cursor: canNavigate?.(k.target) ? "pointer" : "default", outline: "none" })}
+          >
             <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: "2.35rem", color: C.text, lineHeight: 0.95 }}>{k.value}</div>
             <div style={{ fontSize: "0.72rem", color: C.dim, marginTop: 10, marginBottom: 8 }}>{k.label}</div>
             <div style={{ fontSize: "0.72rem", fontWeight: 600, color: k.color }}>{k.delta}</div>
@@ -219,7 +238,7 @@ export default function HRDashboard({ user }) {
       <div className="hr-mid-grid">
 
         {/* Attendance table */}
-        <div style={card()}>
+        <div {...navigableProps("attendance", onNavigate, canNavigate)} style={card({ cursor: canNavigate?.("attendance") ? "pointer" : "default", outline: "none" })}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <span style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text }}>Today's Attendance</span>
             <span style={{ fontSize: "0.72rem", color: C.green, background: "rgba(16,185,129,0.1)", padding: "4px 10px", borderRadius: 100 }}>● Live</span>
@@ -250,7 +269,7 @@ export default function HRDashboard({ user }) {
         </div>
 
         {/* Pending leaves */}
-        <div style={card()}>
+        <div {...navigableProps("leave", onNavigate, canNavigate)} style={card({ cursor: canNavigate?.("leave") ? "pointer" : "default", outline: "none" })}>
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Pending Leave Requests</div>
           {pendingLeaves.length === 0 ? (
             <p style={{ fontSize: "0.82rem", color: C.dim, textAlign: "center", padding: "20px 0" }}>No pending leave requests.</p>
@@ -262,9 +281,8 @@ export default function HRDashboard({ user }) {
               </div>
               <div style={{ fontSize: "0.75rem", color: C.dim, marginBottom: 8 }}>{l.type?.replace(/_/g, ' ')} · {l.from} → {l.to} ({l.days} days)</div>
               {l.reason && <div style={{ fontSize: "0.75rem", color: C.muted, marginBottom: 8, fontStyle: "italic" }}>"{l.reason}"</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => handleApproveLeave(l.id)} style={{ flex: 1, padding: "6px", background: C.green, border: "none", borderRadius: 8, color: "#fff", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>Approve</button>
-                <button onClick={() => handleRejectLeave(l.id)} style={{ flex: 1, padding: "6px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: C.red, fontSize: "0.72rem", fontWeight: 600, cursor: "pointer" }}>Reject</button>
+              <div style={{ fontSize: "0.72rem", fontWeight: 700, color: C.orange }}>
+                Awaiting manager approval
               </div>
             </div>
           ))}
@@ -274,7 +292,7 @@ export default function HRDashboard({ user }) {
       {/* Bottom row */}
       <div>
         {/* Headcount by dept */}
-        <div style={card()}>
+        <div {...navigableProps("employees", onNavigate, canNavigate)} style={card({ cursor: canNavigate?.("employees") ? "pointer" : "default", outline: "none" })}>
           <div style={{ fontWeight: 700, fontSize: "0.9rem", color: C.text, marginBottom: 14 }}>Headcount by Department</div>
           <div className="hr-dept-grid">
             {departments.map(d => (

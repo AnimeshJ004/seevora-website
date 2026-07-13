@@ -471,9 +471,11 @@ router.post('/preview', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName);
 
-    // Call Anthropic AI directly (email key)
+    // Call AI directly (email key)
     let aiUsed = false;
-    if (process.env.ANTHROPIC_EMAIL_API_KEY) {
+    const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+
+    if (provider === 'anthropic' && process.env.ANTHROPIC_EMAIL_API_KEY) {
       try {
         const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -483,7 +485,7 @@ router.post('/preview', async (req, res, next) => {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
+            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-haiku-20240307',
             max_tokens: 400,
             system: 'You are a high-converting B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
             messages: [{
@@ -493,8 +495,8 @@ router.post('/preview', async (req, res, next) => {
           })
         });
         if (anthropicRes.ok) {
-          const anthropicData = await anthropicRes.json();
-          const raw = anthropicData.content?.[0]?.text || '';
+          const data = await anthropicRes.json();
+          const raw = data.content?.[0]?.text || '';
           const jsonMatch = raw.match(/\{[\s\S]*?\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
@@ -510,6 +512,46 @@ router.post('/preview', async (req, res, next) => {
         }
       } catch (e) {
         console.warn('[Preview] Anthropic call failed:', e.message);
+      }
+    } else if (provider === 'groq' && process.env.GROQ_EMAIL_API_KEY) {
+      try {
+        const baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+        const openaiRes = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.GROQ_EMAIL_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: process.env.GROQ_EMAIL_MODEL || 'llama-3.1-8b-instant',
+            messages: [
+              { role: 'system', content: 'You are a high-converting B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.' },
+              {
+                role: 'user',
+                content: `Refine this email to a "${tone}" tone in "${language}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
+              }
+            ],
+            response_format: { type: 'json_object' }
+          })
+        });
+        if (openaiRes.ok) {
+          const openaiData = await openaiRes.json();
+          const raw = openaiData.choices?.[0]?.message?.content || '';
+          const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.subject && parsed.body) {
+              subject = parsed.subject;
+              body = parsed.body;
+              aiUsed = true;
+            }
+          }
+        } else {
+          const errText = await openaiRes.text();
+          console.warn('[Preview] OpenAI/Groq error:', openaiRes.status, errText);
+        }
+      } catch (e) {
+        console.warn('[Preview] OpenAI/Groq call failed:', e.message);
       }
     }
 
@@ -549,9 +591,11 @@ router.post('/send-single', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName || 'Seevora Team');
 
-    // Call Anthropic AI directly (email key)
+    // Call AI directly (email key)
     let aiUsed = false;
-    if (process.env.ANTHROPIC_EMAIL_API_KEY) {
+    const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+
+    if (provider === 'anthropic' && process.env.ANTHROPIC_EMAIL_API_KEY) {
       try {
         const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -561,7 +605,7 @@ router.post('/send-single', async (req, res, next) => {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
+            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-haiku-20240307',
             max_tokens: 400,
             system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
             messages: [{
@@ -571,8 +615,8 @@ router.post('/send-single', async (req, res, next) => {
           })
         });
         if (anthropicRes.ok) {
-          const anthropicData = await anthropicRes.json();
-          const raw = anthropicData.content?.[0]?.text || '';
+          const data = await anthropicRes.json();
+          const raw = data.content?.[0]?.text || '';
           const jsonMatch = raw.match(/\{[\s\S]*?\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
@@ -588,6 +632,46 @@ router.post('/send-single', async (req, res, next) => {
         }
       } catch (e) {
         console.warn('[SendSingle] Anthropic call failed:', e.message);
+      }
+    } else if (provider === 'groq' && process.env.GROQ_EMAIL_API_KEY) {
+      try {
+        const baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+        const openaiRes = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.GROQ_EMAIL_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: process.env.GROQ_EMAIL_MODEL || 'llama-3.1-8b-instant',
+            messages: [
+              { role: 'system', content: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.' },
+              {
+                role: 'user',
+                content: `Refine this email to a "${tone || 'professional'}" tone in "${language || 'english'}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
+              }
+            ],
+            response_format: { type: 'json_object' }
+          })
+        });
+        if (openaiRes.ok) {
+          const openaiData = await openaiRes.json();
+          const raw = openaiData.choices?.[0]?.message?.content || '';
+          const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.subject && parsed.body) {
+              subject = parsed.subject;
+              body = parsed.body;
+              aiUsed = true;
+            }
+          }
+        } else {
+          const errText = await openaiRes.text();
+          console.warn('[SendSingle] OpenAI error:', openaiRes.status, errText);
+        }
+      } catch (e) {
+        console.warn('[SendSingle] OpenAI call failed:', e.message);
       }
     }
 
@@ -724,36 +808,68 @@ router.post('/inbound/:id/ai-suggest', async (req, res, next) => {
       return res.status(404).json({ error: 'Inbound email not found.' });
     }
 
-    if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
-      return res.status(503).json({ error: 'ANTHROPIC_EMAIL_API_KEY is not set in .env' });
+    const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
+    let aiResponse = '';
+
+    if (provider === 'anthropic' && process.env.ANTHROPIC_EMAIL_API_KEY) {
+      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-haiku-20240307',
+          max_tokens: 600,
+          system: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.',
+          messages: [{
+            role: 'user',
+            content: `Please write a professional reply to this email:\n\nSubject: ${email.subject}\n\nMessage:\n${email.body}`
+          }]
+        })
+      });
+
+      if (!anthropicRes.ok) {
+        const errText = await anthropicRes.text();
+        console.error('[ai-suggest] Anthropic error:', anthropicRes.status, errText);
+        return res.status(503).json({ error: `AI API error (${anthropicRes.status}): ${errText.slice(0, 200)}` });
+      }
+
+      const anthropicData = await anthropicRes.json();
+      aiResponse = anthropicData.content?.[0]?.text || '';
+    } else if (provider === 'groq' && process.env.GROQ_EMAIL_API_KEY) {
+      const baseUrl = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
+      const openaiRes = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_EMAIL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_EMAIL_MODEL || 'llama-3.1-8b-instant',
+          max_tokens: 600,
+          messages: [
+            { role: 'system', content: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.' },
+            {
+              role: 'user',
+              content: `Please write a professional reply to this email:\n\nSubject: ${email.subject}\n\nMessage:\n${email.body}`
+            }
+          ]
+        })
+      });
+
+      if (!openaiRes.ok) {
+        const errText = await openaiRes.text();
+        console.error('[ai-suggest] OpenAI error:', openaiRes.status, errText);
+        return res.status(503).json({ error: `AI API error (${openaiRes.status}): ${errText.slice(0, 200)}` });
+      }
+
+      const openaiData = await openaiRes.json();
+      aiResponse = openaiData.choices?.[0]?.message?.content || '';
+    } else {
+      return res.status(503).json({ error: 'No configured AI provider or key is set in .env' });
     }
-
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
-        max_tokens: 600,
-        system: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.',
-        messages: [{
-          role: 'user',
-          content: `Please write a professional reply to this email:\n\nSubject: ${email.subject}\n\nMessage:\n${email.body}`
-        }]
-      })
-    });
-
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      console.error('[ai-suggest] Anthropic error:', anthropicRes.status, errText);
-      return res.status(503).json({ error: `AI API error (${anthropicRes.status}): ${errText.slice(0, 200)}` });
-    }
-
-    const anthropicData = await anthropicRes.json();
-    const aiResponse = anthropicData.content?.[0]?.text || '';
 
     if (!aiResponse.trim()) {
       return res.status(503).json({ error: 'AI returned an empty response. Please try again.' });

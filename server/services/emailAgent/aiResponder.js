@@ -490,10 +490,14 @@ export async function processInboundEmail(inboundEmail) {
   // ── Step 9: Call AI ───────────────────────────────────────────────────────
   let replyText;
   try {
+    // Truncate body to prevent 413 Request too large errors on free tier
+    const safeBody = (inboundEmail.body || '').substring(0, 5000);
+    
     replyText = await generateAIReply({
-      prompt: inboundEmail.body,
+      prompt: safeBody,
       systemPrompt,
       thread: history,
+      context: 'email'
     });
   } catch (err) {
     console.error('[aiResponder] generateAIReply threw:', err.message);

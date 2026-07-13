@@ -946,7 +946,7 @@ Seevora — AI-Powered Growth`,
       INSERT INTO system_settings (key, value)
       VALUES ('ai_sales_agent_prompt', $1)
       ON CONFLICT (key) DO NOTHING;
-    `, [`You are an AI Sales Agent for Seevora Private Limited, an Indian AI automation company.
+    `, [`You are an AI Sales Agent for Seevora Private Limited, an Indian AI automation company based in Indore, Madhya Pradesh.
 
 ## Your Role
 - Help potential clients understand Seevora's AI automation solutions

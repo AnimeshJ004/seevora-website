@@ -1,28 +1,29 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { detectModelUsed } from './replyLogger.js';
 
 describe('replyLogger — detectModelUsed precedence', () => {
   let originalEmailApiKey;
 
-  before(() => {
-    originalEmailApiKey = process.env.ANTHROPIC_EMAIL_API_KEY;
+  beforeEach(() => {
+    originalEmailApiKey = process.env.GROQ_EMAIL_API_KEY;
+    delete process.env.GROQ_EMAIL_API_KEY;
   });
 
-  after(() => {
-    process.env.ANTHROPIC_EMAIL_API_KEY = originalEmailApiKey;
+  afterEach(() => {
+    process.env.GROQ_EMAIL_API_KEY = originalEmailApiKey;
   });
 
-  it("returns configured model when ANTHROPIC_EMAIL_API_KEY is set", () => {
-    process.env.ANTHROPIC_EMAIL_API_KEY = 'sk-ant-123';
-
+  it("returns configured model when GROQ_EMAIL_API_KEY is set", () => {
+    process.env.GROQ_EMAIL_API_KEY = 'sk-groq-123';
+    process.env.AI_PROVIDER = 'groq';
     const model = detectModelUsed();
-    assert.equal(model, process.env.ANTHROPIC_EMAIL_MODEL || 'claude-haiku-4-5');
+    assert.equal(model, process.env.GROQ_EMAIL_MODEL || 'llama-3.1-8b-instant');
   });
 
-  it("returns null when ANTHROPIC_EMAIL_API_KEY is not set", () => {
-    delete process.env.ANTHROPIC_EMAIL_API_KEY;
-
+  it("returns null when GROQ_EMAIL_API_KEY is not set", () => {
+    delete process.env.GROQ_EMAIL_API_KEY;
+    process.env.AI_PROVIDER = 'groq';
     const model = detectModelUsed();
     assert.equal(model, null);
   });

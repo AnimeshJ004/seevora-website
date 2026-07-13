@@ -26,6 +26,7 @@ router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'man
       const empRes = await pool.query('SELECT COUNT(*) as count FROM hr_employees WHERE status = $1', ['active']);
       const leadsCountRes = await pool.query('SELECT COUNT(*) as count FROM leads');
       const recentLeadsRes = await pool.query('SELECT * FROM leads ORDER BY created_at DESC LIMIT 5');
+      const recentBusinessesRes = await pool.query('SELECT id, name, contact_email as email, created_at, status FROM businesses ORDER BY created_at DESC LIMIT 5');
       const projectsRes = await pool.query('SELECT COUNT(*) as count FROM projects WHERE status = $1', ['active']);
       const tasksRes = await pool.query('SELECT status, COUNT(*) as count FROM tasks GROUP BY status');
       const apptCountRes = await pool.query('SELECT COUNT(*) as count FROM appointments');
@@ -60,6 +61,9 @@ router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'man
     // 2. Leads count & Recent leads
     data.leadsCount = parseInt(leadsCountRes.rows[0].count);
     data.recentLeads = recentLeadsRes.rows;
+
+    // 2b. Recent Businesses
+    data.recentBusinesses = recentBusinessesRes.rows;
 
     // 3. Active Projects count
     data.projectsCount = parseInt(projectsRes.rows[0].count);

@@ -71,6 +71,32 @@ export default function TeamAttendance({ user }) {
     }
   };
 
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently delete employee ${name}?`)) {
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
+      const response = await fetch(`/api/attendance/team/employee/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(payload.message || 'Unable to delete employee.');
+      } else {
+        await loadAttendance(); // reload list
+      }
+    } catch {
+      setError('Unable to reach the server.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadAttendance();
 
@@ -160,11 +186,11 @@ export default function TeamAttendance({ user }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Employee', 'Department', 'Login Time', 'Logout Time', 'Hours', 'Status'].map((heading) => (
+                {['Employee', 'Department', 'HR Status', 'Login Time', 'Logout Time', 'Hours', 'Attendance', 'Actions'].map((heading) => (
                   <th
                     key={heading}
                     style={{
-                      textAlign: 'left',
+                      textAlign: heading === 'Actions' ? 'right' : 'left',
                       fontSize: '0.72rem',
                       fontWeight: 600,
                       textTransform: 'uppercase',
@@ -183,14 +209,15 @@ export default function TeamAttendance({ user }) {
             <tbody>
               {!isLoading && filteredAttendance.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
-                    No matching attendance records.
+                  <td colSpan={8} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                    {data.attendance.length === 0
+                      ? 'No team members assigned. HR must assign employees to this manager.'
+                      : 'No matching attendance records.'}
                   </td>
                 </tr>
               )}
               {filteredAttendance.map((entry) => {
                 const meta = statusMeta(entry.status);
-                const isSelf = entry.userId && user?.id && entry.userId === user.id;
                 return (
                   <tr 
                     key={entry.id}
@@ -200,12 +227,18 @@ export default function TeamAttendance({ user }) {
                   >
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                       <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
-                        {entry.name}{isSelf ? ' (You)' : ''}
+                        {entry.name}
                       </div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{entry.email}</div>
                     </td>
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       {entry.department}
+                    </td>
+                    <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                      <Badge 
+                        label={entry.employeeStatus || 'Active'} 
+                        color={entry.employeeStatus === 'inactive' ? 'gray' : entry.employeeStatus === 'probation' ? 'orange' : 'green'} 
+                      />
                     </td>
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       {formatTime(entry.checkInAt)}
@@ -216,8 +249,25 @@ export default function TeamAttendance({ user }) {
                     <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       {entry.status === 'present' ? 'In progress' : `${entry.workedHours} hrs`}
                     </td>
-                    <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                    <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                       <Badge label={meta.label} color={meta.color} />
+                    </td>
+                    <td style={{ padding: '11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', textAlign: 'right' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(entry.id, entry.name); }}
+                        style={{
+                          background: '#fee2e2',
+                          color: '#991b1b',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontSize: '0.8rem',
+                          fontWeight: 600
+                        }}
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 );

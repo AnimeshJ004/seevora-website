@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Avatar, Btn, Table, Tabs } from '../shared';
+import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Avatar, Btn, Table, Tabs, ExpandableText } from '../shared';
 import { hrApiFetch } from './hrApi';
 
 const LEAVE_TYPES = [
@@ -131,7 +131,7 @@ export default function Leave({ user }) {
         <div style={{ position: 'fixed', top: 24, right: 24, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: '0.85rem', zIndex: 9999, boxShadow: '0 8px 24px rgba(16,185,129,0.3)', maxWidth: 380 }}>{toast}</div>
       )}
 
-      <PageHeader title="Leave Management" sub="Manage leave requests and balances" action="+ Apply Leave" onAction={() => setIsModalOpen(true)} />
+      <PageHeader title="Leave Management" sub="Track company leave records. Managers approve direct-report leave requests." />
       <StatsGrid stats={stats} />
 
       <Panel>
@@ -154,29 +154,21 @@ export default function Leave({ user }) {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No leave requests found. Use "+ Apply Leave" to create one.</p>
             ) : (
               <Table
-                cols={['#', 'Employee', 'Leave Type', 'From', 'To', 'Days', 'Reason', 'Applied', 'Status', 'Actions']}
+                cols={['#', 'Employee', 'Manager', 'Leave Type', 'From', 'To', 'Days', 'Reason', 'Applied', 'Status', 'Reviewed By']}
                 rows={filtered.map((l, idx) => [
                   <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{idx + 1}</span>,
                   <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.emp}</span>,
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{l.managerName || 'Unassigned'}</span>,
                   <span style={{ textTransform: 'capitalize' }}>{l.type.replace(/_/g, ' ')}</span>,
                   l.from,
                   l.to,
                   <span style={{ fontWeight: 700, color: 'var(--accent-teal)' }}>{l.days}</span>,
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 140, display: 'inline-block' }}>{l.reason}</span>,
+                  <ExpandableText text={l.reason} />,
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{l.applied ? new Date(l.applied).toLocaleDateString('en-IN') : ''}</span>,
                   <Badge label={l.status.toUpperCase()} color={STATUS_COLORS[l.status] || 'gray'} />,
-                  l.status === 'pending' ? (
-                    l.role === 'hr' ? (
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Awaiting Admin</span>
-                    ) : (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <Btn label="Approve" size="sm" onClick={() => handleApprove(l.id)} />
-                        <Btn label="Reject" variant="danger" size="sm" onClick={() => handleReject(l.id)} />
-                      </div>
-                    )
-                  ) : (
-                    <Btn label="View" variant="ghost" size="sm" />
-                  ),
+                  l.status === 'pending'
+                    ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Awaiting manager</span>
+                    : <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{l.reviewedByName || 'Recorded'}</span>,
                 ])}
               />
             )}
@@ -188,16 +180,14 @@ export default function Leave({ user }) {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: 40 }}>No employees found. Add employees first.</p>
           ) : (
             <Table
-              cols={['#', 'Employee', 'Casual Leave', 'Sick Leave', 'Annual Leave', 'Comp Off', 'Used', 'Remaining']}
+              cols={['#', 'Employee', 'Monthly Used', 'Monthly Left', 'Yearly Used', 'Yearly Left']}
               rows={balances.map((b, idx) => [
                 <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{idx + 1}</span>,
                 <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{b.name}</span>,
-                <span style={{ fontWeight: 600 }}>{b.casual.used}/{b.casual.total}</span>,
-                <span style={{ fontWeight: 600 }}>{b.sick.used}/{b.sick.total}</span>,
-                <span style={{ fontWeight: 600 }}>{b.annual.used}/{b.annual.total}</span>,
-                <span style={{ fontWeight: 600 }}>{b.compOff.used}/{b.compOff.total}</span>,
-                <span style={{ color: 'var(--accent-orange)', fontWeight: 700 }}>{b.totalUsed}</span>,
-                <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{b.totalRemaining}</span>,
+                <span style={{ fontWeight: 600, color: 'var(--accent-orange)' }}>{b.monthly.used}/{b.monthly.total}</span>,
+                <span style={{ fontWeight: 600, color: 'var(--accent-green)' }}>{b.monthly.remaining}</span>,
+                <span style={{ fontWeight: 600, color: 'var(--accent-orange)' }}>{b.yearly.used}/{b.yearly.total}</span>,
+                <span style={{ fontWeight: 600, color: 'var(--accent-green)' }}>{b.yearly.remaining}</span>,
               ])}
             />
           )

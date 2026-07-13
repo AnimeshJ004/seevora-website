@@ -157,7 +157,7 @@ router.post('/message', rateLimit, async (req, res, next) => {
     // Get the appropriate system prompt (DB custom → master fallback)
     const systemPrompt = await getSystemPrompt(context);
 
-    // Delegate to the ai.js utility — supports Anthropic, OpenAI, Gemini
+    // Delegate to the ai.js utility — supports OpenAI, Gemini
     const reply = await generateAIReply({
       prompt: message,
       systemPrompt,

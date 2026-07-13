@@ -19,29 +19,18 @@ async function resolveEmployeeId(userId) {
   return rows[0]?.id || null;
 }
 
-async function hasDirectReports(managerEmployeeId) {
-  if (!managerEmployeeId) return false;
-  const { rowCount } = await pool.query(
-    'SELECT 1 FROM hr_employees WHERE manager_id = $1 LIMIT 1',
-    [managerEmployeeId]
-  );
-  return rowCount > 0;
-}
-
 async function canAssignToEmployee(managerEmployeeId, employeeId) {
   if (!managerEmployeeId || !employeeId) return false;
-  const directReportsExist = await hasDirectReports(managerEmployeeId);
   const { rowCount } = await pool.query(
     `SELECT 1
      FROM hr_employees e
      LEFT JOIN users u ON u.id = e.user_id
      WHERE e.id = $1
        AND e.id <> $2
-       AND e.status = 'active'
-       AND COALESCE(u.role, 'employee') = 'employee'
-       AND (e.manager_id = $2 OR ($3 = false AND e.manager_id IS NULL))
+       AND e.status IN ('active', 'probation')
+       AND e.manager_id = $2
      LIMIT 1`,
-    [employeeId, managerEmployeeId, directReportsExist]
+    [employeeId, managerEmployeeId]
   );
   return rowCount > 0;
 }
@@ -72,7 +61,6 @@ async function canAccessTask(req, task) {
     return Boolean(ownEmployeeId && task.assigned_to === ownEmployeeId);
   }
 
-  if (task.created_by && task.created_by === req.user?.id) return true;
   return canAssignToEmployee(ownEmployeeId, task.assigned_to);
 }
 
@@ -186,7 +174,7 @@ router.get('/my-team', async (req, res) => {
                u.role AS account_role
         FROM hr_employees e
         LEFT JOIN users u ON u.id = e.user_id
-        WHERE e.status = 'active'
+        WHERE e.status IN ('active', 'probation')
         ORDER BY e.name ASC
       `);
       return res.json(rows);
@@ -195,18 +183,16 @@ router.get('/my-team', async (req, res) => {
     const managerEmployeeId = await resolveEmployeeId(req.user?.id);
     if (!managerEmployeeId) return res.json([]);
 
-    const directReportsExist = await hasDirectReports(managerEmployeeId);
     const { rows } = await pool.query(`
       SELECT e.id, e.employee_code, e.name, e.email, e.department, e.job_title,
              u.role AS account_role
       FROM hr_employees e
       LEFT JOIN users u ON u.id = e.user_id
       WHERE e.id <> $1
-        AND e.status = 'active'
-        AND COALESCE(u.role, 'employee') = 'employee'
-        AND (e.manager_id = $1 OR ($2 = false AND e.manager_id IS NULL))
+        AND e.status IN ('active', 'probation')
+        AND e.manager_id = $1
       ORDER BY e.name ASC
-    `, [managerEmployeeId, directReportsExist]);
+    `, [managerEmployeeId]);
 
     return res.json(rows);
   } catch (error) {
@@ -227,18 +213,19 @@ router.get('/tasks', async (req, res) => {
       values.push(employeeId);
       where = 'WHERE t.assigned_to = $1';
     } else if (role === 'manager') {
-      const employeeId = await resolveEmployeeId(req.user?.id);
-      const directReportsExist = await hasDirectReports(employeeId);
-      values.push(employeeId || '00000000-0000-0000-0000-000000000000', req.user?.id, directReportsExist);
-      where = `WHERE t.assigned_to IN (
-        SELECT e.id
-        FROM hr_employees e
-        LEFT JOIN users u ON u.id = e.user_id
-        WHERE e.id <> $1
-          AND e.status = 'active'
-          AND COALESCE(u.role, 'employee') = 'employee'
-          AND (e.manager_id = $1 OR ($3 = false AND e.manager_id IS NULL))
-      ) OR t.created_by = $2`;
+      const managerEmployeeId = await resolveEmployeeId(req.user?.id);
+      if (managerEmployeeId) {
+        values.push(managerEmployeeId);
+        where = `WHERE (t.assigned_to = $1 OR t.assigned_to IN (
+          SELECT e.id
+          FROM hr_employees e
+          WHERE e.id <> $1
+            AND e.status IN ('active', 'probation')
+            AND e.manager_id = $1
+        ))`;
+      } else {
+        where = `WHERE 1=0`;
+      }
     }
 
     const { rows } = await pool.query(`
@@ -275,7 +262,7 @@ router.post('/tasks', async (req, res) => {
       if (!nextAssignee) return res.status(400).json({ error: 'Assign this task to a direct report.' });
       const managerEmployeeId = await resolveEmployeeId(req.user?.id);
       const allowed = await canAssignToEmployee(managerEmployeeId, nextAssignee);
-      if (!allowed) return res.status(400).json({ error: 'Managers can only assign tasks to direct reports or unassigned employees.' });
+      if (!allowed) return res.status(400).json({ error: 'Managers can only assign tasks to direct reports.' });
     }
 
     const resolvedProjectId = await resolveProjectId({ project_id, project_name, req });
@@ -324,7 +311,7 @@ router.put('/tasks/:id', async (req, res) => {
       if (!nextAssignee) return res.status(400).json({ error: 'Managers must assign tasks to a direct report.' });
       const managerEmployeeId = await resolveEmployeeId(req.user?.id);
       const allowed = await canAssignToEmployee(managerEmployeeId, nextAssignee);
-      if (!allowed) return res.status(400).json({ error: 'Managers can only assign tasks to direct reports or unassigned employees.' });
+      if (!allowed) return res.status(400).json({ error: 'Managers can only assign tasks to direct reports.' });
     }
 
     const resolvedProjectId = project_name ? await resolveProjectId({ project_id, project_name, req }) : project_id;

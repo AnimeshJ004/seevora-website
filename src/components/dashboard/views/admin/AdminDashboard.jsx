@@ -17,9 +17,32 @@ const C = {
   cyan:   "#0ea5e9",
 };
 
-function Card({ children, style }) {
+function Card({ children, style, onClick, title }) {
+  const handleKeyDown = (event) => {
+    if (onClick && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "18px 20px", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", ...style }}>
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={title}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      style={{
+        background: C.card,
+        border: "1px solid " + C.border,
+        borderRadius: 12,
+        padding: "18px 20px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+        cursor: onClick ? "pointer" : "default",
+        outline: "none",
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
@@ -49,7 +72,7 @@ const MOBILE_STYLES = `
   }
 `;
 
-export default function AdminDashboard({ user }) {
+export default function AdminDashboard({ user, onNavigate, canNavigate }) {
   const h = new Date().getHours();
   const greet = h < 12 ? "Morning" : h < 17 ? "Afternoon" : "Evening";
   
@@ -107,14 +130,15 @@ export default function AdminDashboard({ user }) {
   }
 
   const kpis = [
-    { label:"Active Employees", value: stats.employeesCount || 0, color: C.blue,   icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8" },
-    { label:"Total Leads",      value: stats.leadsCount || 0,     color: C.green,  icon: "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" },
-    { label:"Active Projects",  value: stats.projectsCount || 0,  color: C.purple, icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
-    { label:"Total Appointments",value: stats.appointmentsCount || 0, color: C.orange, icon: "M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18" },
+    { label:"Active Employees", value: stats.employeesCount || 0, color: C.blue, target: "employees", icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8" },
+    { label:"Total Leads",      value: stats.leadsCount || 0,     color: C.green, target: "leads", icon: "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" },
+    { label:"Active Projects",  value: stats.projectsCount || 0,  color: C.purple, target: "project-management", icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
+    { label:"Total Appointments",value: stats.appointmentsCount || 0, color: C.orange, target: "appointments", icon: "M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18" },
   ];
 
   const totalTasks = (stats.taskStats?.todo || 0) + (stats.taskStats?.in_progress || 0) + (stats.taskStats?.done || 0);
   const latestAuditRequest = stats.recentAuditRequests?.[0];
+  const navigateIfAllowed = (target) => canNavigate?.(target) ? () => onNavigate?.(target) : undefined;
 
   return (
     <div style={{ fontFamily:"Inter,sans-serif", color: C.text, height: '100%', overflowY: 'auto' }}>
@@ -133,7 +157,7 @@ export default function AdminDashboard({ user }) {
       {/* KPI row */}
       <div className="admin-kpi-grid">
         {kpis.map((k,i) => (
-          <Card key={i} style={{ padding:"20px" }}>
+          <Card key={i} title={`Open ${k.label}`} onClick={navigateIfAllowed(k.target)} style={{ padding:"20px" }}>
             <div style={{ fontFamily:"Outfit,sans-serif", fontWeight:800, fontSize:"2.5rem", color: "#111", lineHeight:1 }}>
               {k.value}
             </div>
@@ -146,7 +170,7 @@ export default function AdminDashboard({ user }) {
       <div className="admin-half-grid">
         
         {/* Messages */}
-        <Card>
+        <Card title="Open audit requests" onClick={navigateIfAllowed("audit-logs")}>
           <CardTitle title="Messages" />
           {latestAuditRequest ? (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -166,7 +190,7 @@ export default function AdminDashboard({ user }) {
         </Card>
 
         {/* Recent Leads */}
-        <Card>
+        <Card title="Open CRM leads" onClick={navigateIfAllowed("leads")}>
           <CardTitle title="Recent Leads" />
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {stats.recentLeads && stats.recentLeads.length > 0 ? stats.recentLeads.map((l,i) => (
@@ -187,7 +211,7 @@ export default function AdminDashboard({ user }) {
         </Card>
 
         {/* Upcoming Appointments */}
-        <Card>
+        <Card title="Open appointments" onClick={navigateIfAllowed("appointments")}>
           <CardTitle title="Upcoming Appointments" />
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {stats.upcomingAppointments && stats.upcomingAppointments.length > 0 ? stats.upcomingAppointments.map((a,i) => (
@@ -205,13 +229,34 @@ export default function AdminDashboard({ user }) {
           </div>
         </Card>
 
+        {/* Recent Businesses */}
+        <Card title="Open businesses" onClick={navigateIfAllowed("businesses")}>
+          <CardTitle title="Recent Businesses" />
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            {stats.recentBusinesses && stats.recentBusinesses.length > 0 ? stats.recentBusinesses.map((b,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:12, paddingBottom: 12, borderBottom: i<stats.recentBusinesses.length-1 ? "1px solid #f1f5f9" : "none" }}>
+                <div style={{ width:36, height:36, borderRadius:"50%", background: C.purple+"15", color: C.purple, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:"0.85rem", flexShrink:0 }}>
+                  {b.name?.[0]?.toUpperCase() || 'B'}
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:"0.85rem", fontWeight:700, color: C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.name}</div>
+                  <div style={{ fontSize:"0.75rem", color: C.dim }}>{b.email || 'No email'}</div>
+                </div>
+                <span style={{ padding:"4px 10px", borderRadius:100, fontSize:"0.65rem", fontWeight:700, background: C.purple+"15", color: C.purple, textTransform: 'uppercase' }}>
+                  {b.status || 'ACTIVE'}
+                </span>
+              </div>
+            )) : <div style={{ fontSize:"0.8rem", color: C.dim }}>No recent businesses found.</div>}
+          </div>
+        </Card>
+
       </div>
 
       {/* Bottom Sections */}
       <div className="admin-bottom-grid">
         
         {/* Task Overview */}
-        <Card>
+        <Card title="Open task management" onClick={navigateIfAllowed("task-management")}>
           <CardTitle title="Task Overview" />
           {totalTasks > 0 ? (
             <div style={{ marginTop: 20 }}>
@@ -243,7 +288,7 @@ export default function AdminDashboard({ user }) {
         </Card>
 
         {/* Recent Audit Logs */}
-        <Card>
+        <Card title="Open audit logs" onClick={navigateIfAllowed("audit-logs")}>
           <CardTitle title="Recent System Activity" />
           <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
             {stats.recentAuditLogs && stats.recentAuditLogs.length > 0 ? stats.recentAuditLogs.map((log,i) => (
