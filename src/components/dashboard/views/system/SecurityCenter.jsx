@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-export default function SecurityCenter({ user }) {
+export default function SecurityCenter() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -10,9 +11,7 @@ export default function SecurityCenter({ user }) {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('/api/system/security-events', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      });
+      const res = await apiFetch('/api/system/security-events');
       if (res.ok) {
         setEvents(await res.json());
       }

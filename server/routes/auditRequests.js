@@ -4,8 +4,12 @@ import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
 import { callBookingConfirmation, contactAdminNotification, contactThreadReply, aiContactReply } from '../utils/emailTemplates.js';
 import { generateAIReply } from '../utils/ai.js';
+import { requireRole } from '../middleware/auth.js';
+import { createRateLimiter } from '../middleware/security.js';
 
 const router = express.Router();
+const publicSubmitLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'audit_submit' });
+const adminGuard = requireRole('admin');
 
 function normalizeRequest(row) {
   return {
@@ -107,7 +111,7 @@ async function sendEnquiryBotEmails(requestId, data) {
 
   return { customer: customerResult, admin: adminResult, status, error };
 }
-router.post('/', async (req, res, next) => {
+router.post('/', publicSubmitLimiter, async (req, res, next) => {
   try {
     const { isValid, errors, data } = validateAuditRequest(req.body);
     if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });
@@ -156,7 +160,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-router.get('/', async (_req, res, next) => {
+router.get('/', adminGuard, async (_req, res, next) => {
   try {
     const result = await pool.query('SELECT * FROM audit_requests ORDER BY created_at DESC');
     return res.json({ requests: result.rows.map(normalizeRequest) });
@@ -165,7 +169,7 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
-router.post('/:id/convert-to-lead', async (req, res, next) => {
+router.post('/:id/convert-to-lead', adminGuard, async (req, res, next) => {
   try {
     const requestResult = await pool.query('SELECT * FROM audit_requests WHERE id = $1', [req.params.id]);
     const auditRequest = requestResult.rows[0];
@@ -248,7 +252,7 @@ router.post('/:id/convert-to-lead', async (req, res, next) => {
   }
 });
 
-router.post('/:id/respond', async (req, res, next) => {
+router.post('/:id/respond', adminGuard, async (req, res, next) => {
   try {
     const { isValid, errors, data } = validateResponse(req.body);
     if (!isValid) return res.status(400).json({ message: 'Please fix the highlighted fields.', errors });

@@ -32,7 +32,7 @@ export default function Employees({ user }) {
   const [selectedDept, setSelectedDept] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const employeesSectionRef = React.useRef(null);
-  const canManageEmployees = ['hr', 'super_admin', 'admin'].includes(user?.role);
+  const canManageEmployees = ['hr', 'admin'].includes(user?.role === 'super_admin' ? 'admin' : user?.role);
 
   const [viewingProfile, setViewingProfile] = useState(null);
   const [profileData, setProfileData] = useState(null);
@@ -157,7 +157,7 @@ export default function Employees({ user }) {
 
       if (!response.ok) {
         if (data.errors) setErrors(data.errors);
-        showToast(data.message || 'Unable to create employee account.');
+        showToast(data.message || data.error || 'Unable to create employee account.');
         return;
       }
 
@@ -251,7 +251,7 @@ export default function Employees({ user }) {
       showToast('No employee records to export.');
       return;
     }
-    const headers = ['Employee ID', 'Name', 'Email', 'Phone', 'Department', 'Salary', 'Joined Date', 'Status', 'Access Role'];
+    const headers = ['Employee ID', 'Name', 'Email', 'Phone', 'Department', 'Manager', 'Salary', 'Joined Date', 'Status', 'Access Role'];
     const csvRows = [
       headers.join(','),
       ...f.map(u => [
@@ -260,6 +260,7 @@ export default function Employees({ user }) {
         u.email || '',
         u.phone || '',
         u.dept || '',
+        u.managerName || 'Unassigned',
         u.salaryAmount || 0,
         u.joined || '',
         u.status || '',
@@ -307,10 +308,12 @@ export default function Employees({ user }) {
   };
 
   const managerOptions = employees.filter((employee) => {
-    const title = String(employee.role || '').toLowerCase();
     const accountRole = String(employee.accountRole || '').toLowerCase();
+    const status = String(employee.status || '').toLowerCase();
     return employee.databaseId !== editingEmployee?.databaseId
-      && (accountRole === 'manager' || title.includes('manager'));
+      && accountRole === 'manager'
+      && employee.hasAccount
+      && ['active', 'probation'].includes(status);
   });
 
   return (
@@ -361,7 +364,7 @@ export default function Employees({ user }) {
             <thead>
               <tr>
                 {[
-                  '#', 'Employee', 'ID', 'Department', 'Role', 'Salary', 'Joined', 'Status', 'Login Role', 'Account',
+                  '#', 'Employee', 'ID', 'Department', 'Role', 'Manager', 'Salary', 'Joined', 'Status', 'Login Role', 'Account',
                   'Actions',
                 ].map(h => (
                   <th key={h} style={{
@@ -376,7 +379,7 @@ export default function Employees({ user }) {
             <tbody>
               {!isLoading && f.length === 0 && (
                 <tr>
-                  <td colSpan={11} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+                  <td colSpan={12} style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
                     No employees found.
                   </td>
                 </tr>
@@ -397,6 +400,9 @@ export default function Employees({ user }) {
                   <td style={{ padding: '11px 10px 11px 0', fontSize: '0.78rem', fontFamily: 'monospace', color: 'var(--accent-cyan)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{u.id}</td>
                   <td style={{ padding: '11px 10px 11px 0', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{u.dept}</td>
                   <td style={{ padding: '11px 10px 11px 0', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{u.role}</td>
+                  <td style={{ padding: '11px 10px 11px 0', fontSize: '0.82rem', color: u.managerName ? 'var(--text-primary)' : 'var(--text-muted)', borderBottom: '1px solid rgba(0,0,0,0.04)', whiteSpace: 'nowrap' }}>
+                    {u.managerName || 'Unassigned'}
+                  </td>
                   <td style={{ padding: '11px 10px 11px 0', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{u.salary}</td>
                   <td style={{ padding: '11px 10px 11px 0', fontSize: '0.78rem', color: 'var(--text-muted)', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{u.joined}</td>
                   <td style={{ padding: '11px 10px 11px 0', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>

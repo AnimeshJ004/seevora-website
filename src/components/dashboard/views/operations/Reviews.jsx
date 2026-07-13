@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-export default function Reviews({ user }) {
+export default function Reviews() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -12,9 +13,7 @@ export default function Reviews({ user }) {
 
   const fetchReviews = async () => {
     try {
-      const res = await fetch('/api/reviews', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      });
+      const res = await apiFetch('/api/reviews');
       if (res.ok) {
         setReviews(await res.json());
       }
@@ -28,11 +27,10 @@ export default function Reviews({ user }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/reviews', {
+      const res = await apiFetch('/api/reviews', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(newReview)
       });
@@ -49,9 +47,8 @@ export default function Reviews({ user }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this review?')) return;
     try {
-      await fetch(`/api/reviews/${id}`, {
+      await apiFetch(`/api/reviews/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
       fetchReviews();
     } catch (err) {

@@ -4,8 +4,12 @@ import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
 import { sendCampaign } from '../utils/campaignSender.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { requireRole } from '../middleware/auth.js';
+import { createRateLimiter } from '../middleware/security.js';
 
 const router = express.Router();
+const [authenticateEmailBot, authorizeEmailBot] = requireRole('admin', 'manager');
+const emailSendLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: 'email_bot_send' });
 
 const CACHE_EMAIL_TEMPLATES = 'email_templates_list';
 const CACHE_EMAIL_SUBSCRIBERS = 'email_subscribers_list';
@@ -15,6 +19,38 @@ const EMAIL_BOT_TTL = 60;
 function bustTemplatesCache() { clearCache(CACHE_EMAIL_TEMPLATES); }
 function bustSubscribersCache() { clearCache(CACHE_EMAIL_SUBSCRIBERS); }
 function bustCampaignsCache() { clearCache(CACHE_EMAIL_CAMPAIGNS); }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
+function requireUuidParam(req, res, paramName = 'id') {
+  if (isUuid(req.params[paramName])) return true;
+  res.status(400).json({ message: `Invalid ${paramName}.` });
+  return false;
+}
+
+function requireUuidValue(res, value, fieldName) {
+  if (isUuid(value)) return true;
+  res.status(400).json({ message: `Invalid ${fieldName}.` });
+  return false;
+}
+
+function hasOnlyUuids(values) {
+  return Array.isArray(values) && values.every(isUuid);
+}
+
+router.use((req, res, next) => {
+  if (req.path.startsWith('/track/open/') || req.path.startsWith('/track/click/')) {
+    return next();
+  }
+  return authenticateEmailBot(req, res, (error) => {
+    if (error) return next(error);
+    return authorizeEmailBot(req, res, next);
+  });
+});
 
 // Helper to check auth (similar to mockAuth in leads.js or requireAuth if token exists)
 const getUserId = (req) => {
@@ -57,6 +93,7 @@ router.post('/templates', async (req, res, next) => {
 });
 
 router.put('/templates/:id', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const { name, category, subject, body, variables, tone, is_active } = req.body;
     const existing = await pool.query('SELECT * FROM email_templates WHERE id = $1', [req.params.id]);
@@ -86,6 +123,7 @@ router.put('/templates/:id', async (req, res, next) => {
 });
 
 router.delete('/templates/:id', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const result = await pool.query('DELETE FROM email_templates WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Template not found.' });
@@ -159,6 +197,7 @@ router.post('/subscribers/bulk', async (req, res, next) => {
 });
 
 router.put('/subscribers/:id', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const { name, status } = req.body;
     const existing = await pool.query('SELECT * FROM subscribers WHERE id = $1', [req.params.id]);
@@ -181,6 +220,7 @@ router.put('/subscribers/:id', async (req, res, next) => {
 });
 
 router.delete('/subscribers/:id', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const result = await pool.query('DELETE FROM subscribers WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Subscriber not found.' });
@@ -192,7 +232,8 @@ router.delete('/subscribers/:id', async (req, res, next) => {
 });
 
 /* ── Send personalised email to a single subscriber ── */
-router.post('/subscribers/:id/send-email', async (req, res, next) => {
+router.post('/subscribers/:id/send-email', emailSendLimiter, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const { rows } = await pool.query('SELECT * FROM subscribers WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Subscriber not found.' });
@@ -262,7 +303,7 @@ router.post('/subscribers/:id/send-email', async (req, res, next) => {
     if (result2.success) {
       return res.json({ message: `Email sent to ${sub.email} successfully.`, success: true });
     } else {
-      return res.status(500).json({ message: `Failed to send email: ${result2.error}`, success: false });
+      return res.status(503).json({ message: `Failed to send email: ${result2.error}`, success: false });
     }
   } catch (err) {
     next(err);
@@ -296,6 +337,8 @@ router.post('/campaigns', async (req, res, next) => {
   try {
     const { name, templateId, status = 'draft', scheduledAt, tone = 'professional', language = 'english', senderPersona, campaignType = 'newsletter', leadIds = [] } = req.body;
     if (!name) return res.status(400).json({ message: 'Campaign name is required.' });
+    if (templateId && !requireUuidValue(res, templateId, 'templateId')) return;
+    if (!hasOnlyUuids(leadIds)) return res.status(400).json({ message: 'Invalid leadIds.' });
 
     const campaignId = crypto.randomUUID();
     const result = await pool.query(
@@ -323,8 +366,11 @@ router.post('/campaigns', async (req, res, next) => {
 });
 
 router.put('/campaigns/:id', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const { name, templateId, status, scheduledAt, tone, language, senderPersona, campaignType, leadIds } = req.body;
+    if (templateId && !requireUuidValue(res, templateId, 'templateId')) return;
+    if (leadIds !== undefined && !hasOnlyUuids(leadIds)) return res.status(400).json({ message: 'Invalid leadIds.' });
     const existing = await pool.query('SELECT * FROM email_campaigns WHERE id = $1', [req.params.id]);
     if (!existing.rowCount) return res.status(404).json({ message: 'Campaign not found.' });
 
@@ -368,6 +414,7 @@ router.put('/campaigns/:id', async (req, res, next) => {
 });
 
 router.delete('/campaigns/:id', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const result = await pool.query('DELETE FROM email_campaigns WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Campaign not found.' });
@@ -378,7 +425,8 @@ router.delete('/campaigns/:id', async (req, res, next) => {
   }
 });
 
-router.post('/campaigns/:id/publish', async (req, res, next) => {
+router.post('/campaigns/:id/publish', emailSendLimiter, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const existing = await pool.query('SELECT * FROM email_campaigns WHERE id = $1', [req.params.id]);
     const campaign = existing.rows[0];
@@ -395,7 +443,7 @@ router.post('/campaigns/:id/publish', async (req, res, next) => {
 
     const result = await sendCampaign(campaign.id);
     bustCampaignsCache();
-    if (!result.success) return res.status(500).json({ message: result.error || 'Failed to publish campaign.' });
+    if (!result.success) return res.status(503).json({ message: result.error || 'Failed to publish campaign.' });
     return res.json({ message: `Campaign published and sent. ${result.sent} sent, ${result.failed} failed.`, sent: result.sent, failed: result.failed });
   } catch (err) {
     next(err);
@@ -403,12 +451,13 @@ router.post('/campaigns/:id/publish', async (req, res, next) => {
 });
 
 /* â”€â”€ 4. MANUAL CAMPAIGN SEND (DISPATCH IMMEDIATELY) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-router.post('/campaigns/:id/send', async (req, res, next) => {
+router.post('/campaigns/:id/send', emailSendLimiter, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const campaignId = req.params.id;
     const result = await sendCampaign(campaignId);
     if (!result.success) {
-      return res.status(500).json({ message: result.error || 'Failed to send campaign' });
+      return res.status(503).json({ message: result.error || 'Failed to send campaign' });
     }
     bustCampaignsCache();
     res.json({ message: `Campaign sent. ${result.sent} successfully, ${result.failed} failed.`, sent: result.sent, failed: result.failed });
@@ -442,12 +491,13 @@ router.get('/history', async (req, res, next) => {
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    6. AI OUTBOUND PERSONALIZATION & PREVIEW
    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-router.post('/preview', async (req, res, next) => {
+router.post('/preview', emailSendLimiter, async (req, res, next) => {
   try {
     const { leadId, templateId, tone = 'professional', language = 'english', senderName = 'Seevora Team' } = req.body;
     if (!leadId || !templateId) {
       return res.status(400).json({ error: 'leadId and templateId are required.' });
     }
+    if (!requireUuidValue(res, leadId, 'leadId') || !requireUuidValue(res, templateId, 'templateId')) return;
 
     const leadRes = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
     const lead = leadRes.rows[0];
@@ -562,12 +612,13 @@ router.post('/preview', async (req, res, next) => {
 });
 
 
-router.post('/send-single', async (req, res, next) => {
+router.post('/send-single', emailSendLimiter, async (req, res, next) => {
   try {
     const { leadId, templateId, tone, language, senderName } = req.body;
     if (!leadId || !templateId) {
       return res.status(400).json({ error: 'leadId and templateId are required.' });
     }
+    if (!requireUuidValue(res, leadId, 'leadId') || !requireUuidValue(res, templateId, 'templateId')) return;
 
     const leadRes = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
     const lead = leadRes.rows[0];
@@ -708,7 +759,7 @@ router.post('/send-single', async (req, res, next) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7, 'failed', $8, NOW())`,
         [logId, lead.id, template.id, lead.email, lead.name, subject, body, r.error]
       );
-      res.status(500).json({ message: `Failed to send email: ${r.error}`, subject, body, aiUsed: false });
+      res.status(503).json({ message: `Failed to send email: ${r.error}`, subject, body, aiUsed: false });
     }
   } catch (err) {
     next(err);
@@ -723,7 +774,9 @@ router.post('/send-single', async (req, res, next) => {
 router.get('/track/open/:logId', async (req, res) => {
   try {
     const { logId } = req.params;
-    await pool.query('UPDATE email_logs SET opened_at = NOW() WHERE id = $1 AND opened_at IS NULL', [logId]);
+    if (isUuid(logId)) {
+      await pool.query('UPDATE email_logs SET opened_at = NOW() WHERE id = $1 AND opened_at IS NULL', [logId]);
+    }
   } catch (err) {
     console.error('Error tracking email open:', err.message);
   }
@@ -742,7 +795,9 @@ router.get('/track/click/:logId', async (req, res) => {
   const { logId } = req.params;
   const targetUrl = req.query.url;
   try {
-    await pool.query('UPDATE email_logs SET clicked_at = NOW() WHERE id = $1 AND clicked_at IS NULL', [logId]);
+    if (isUuid(logId)) {
+      await pool.query('UPDATE email_logs SET clicked_at = NOW() WHERE id = $1 AND clicked_at IS NULL', [logId]);
+    }
   } catch (err) {
     console.error('Error tracking email click:', err.message);
   }
@@ -763,6 +818,7 @@ router.get('/inbound', async (req, res, next) => {
 });
 
 router.post('/inbound/:id/reply', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const { id } = req.params;
     const { body: replyBody } = req.body;
@@ -792,7 +848,7 @@ router.post('/inbound/:id/reply', async (req, res, next) => {
       );
       return res.json({ success: true, message: 'Reply sent successfully.' });
     } else {
-      return res.status(500).json({ error: mailResult?.error || 'Failed to send mail.' });
+      return res.status(503).json({ error: mailResult?.error || 'Failed to send mail.' });
     }
   } catch (err) {
     next(err);
@@ -800,6 +856,7 @@ router.post('/inbound/:id/reply', async (req, res, next) => {
 });
 
 router.post('/inbound/:id/ai-suggest', async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT * FROM inbound_emails WHERE id = $1', [id]);

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-const API = async (path, token, opts = {}) => {
-  const response = await fetch(`/api/email-bot${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+const API = async (path, opts = {}) => {
+  const response = await apiFetch(`/api/email-bot${path}`, {
     ...opts,
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message || data.error || 'Request failed');
@@ -22,8 +23,30 @@ const lightInput = {
   boxSizing: 'border-box'
 };
 
+const statusStyles = {
+  replied: { background: '#d1fae5', color: '#065f46' },
+  quarantined: { background: '#fee2e2', color: '#991b1b' },
+  send_failed: { background: '#fee2e2', color: '#991b1b' },
+  needs_review: { background: '#fef3c7', color: '#92400e' },
+  received: { background: '#fed7aa', color: '#9a3412' },
+};
+
+const quarantineReasonLabels = {
+  message_too_large: 'Message exceeded the safe 1 MiB processing limit.',
+  invalid_sender: 'The sender address is missing or invalid.',
+  empty_body: 'The message does not contain a readable plain-text body.',
+  mail_loop: 'The message originated from this mailbox and could create a mail loop.',
+  automated_sender: 'The sender is an automated or non-reply mailbox.',
+  automated_message: 'Automated-message headers were detected.',
+  bulk_message: 'Bulk-mail or mailing-list headers were detected.',
+  mail_parse_failed: 'The message could not be parsed safely.',
+};
+
+function quarantineReasonText(reason) {
+  return quarantineReasonLabels[reason] || 'The message did not pass automatic email safety checks.';
+}
+
 export default function InboundEmails() {
-  const token = localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,7 +65,7 @@ export default function InboundEmails() {
     setLoading(true);
     setError('');
     try {
-      const res = await API('/inbound', token);
+      const res = await API('/inbound');
       if (res.emails) {
         setEmails(res.emails);
         if (res.emails.length > 0) {
@@ -55,7 +78,7 @@ export default function InboundEmails() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchEmails();
@@ -70,7 +93,7 @@ export default function InboundEmails() {
     if (!selectedEmail) return;
     setGeneratingAI(true);
     try {
-      const res = await API(`/inbound/${selectedEmail.id}/ai-suggest`, token, {
+      const res = await API(`/inbound/${selectedEmail.id}/ai-suggest`, {
         method: 'POST'
       });
       if (res.aiResponse) {
@@ -89,7 +112,7 @@ export default function InboundEmails() {
     if (!selectedEmail || !replyText.trim()) return;
     setSending(true);
     try {
-      const res = await API(`/inbound/${selectedEmail.id}/reply`, token, {
+      const res = await API(`/inbound/${selectedEmail.id}/reply`, {
         method: 'POST',
         body: JSON.stringify({ body: replyText })
       });
@@ -131,6 +154,7 @@ export default function InboundEmails() {
           <div style={{ background: '#ffffff', border: '1px solid #dbe3ef', borderRadius: 12, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
             {emails.map((email) => {
               const isSelected = selectedEmail && selectedEmail.id === email.id;
+              const statusStyle = statusStyles[email.status] || statusStyles.received;
               return (
                 <div
                   key={email.id}
@@ -153,8 +177,8 @@ export default function InboundEmails() {
                       fontWeight: 700,
                       padding: '2px 6px',
                       borderRadius: 6,
-                      background: email.status === 'replied' ? '#d1fae5' : '#fed7aa',
-                      color: email.status === 'replied' ? '#065f46' : '#9a3412',
+                      background: statusStyle.background,
+                      color: statusStyle.color,
                       textTransform: 'uppercase'
                     }}>
                       {email.status}
@@ -194,6 +218,21 @@ export default function InboundEmails() {
 
               {/* Message Body */}
               <div style={{ padding: 20, flex: 1, overflowY: 'auto', borderBottom: '1px solid #f1f5f9' }}>
+                {selectedEmail.status === 'quarantined' && (
+                  <div style={{
+                    marginBottom: 16,
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    color: '#991b1b',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    fontSize: '0.8rem',
+                    lineHeight: 1.5,
+                  }}>
+                    <strong>Automatic reply held.</strong>{' '}
+                    {quarantineReasonText(selectedEmail.quarantine_reason)} You can review the message and reply manually.
+                  </div>
+                )}
                 <div style={{ fontSize: '0.85rem', color: '#334155', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                   {selectedEmail.body}
                 </div>

@@ -2,15 +2,68 @@ import Imap from 'imap';
 import { simpleParser } from 'mailparser';
 import crypto from 'node:crypto';
 import pool from '../../config/db.js';
+import {
+  MAX_RAW_MESSAGE_BYTES,
+  hashMessageIdentity,
+  prepareInboundMessage,
+  prepareMalformedMessage,
+} from './inboundSecurity.js';
+
+export { deriveThreadId } from './inboundSecurity.js';
+
+function writeStructuredLog(level, event, details = {}) {
+  const payload = JSON.stringify({
+    event,
+    ...details,
+    timestamp: new Date().toISOString(),
+  });
+  const writer = console[level] || console.log;
+  writer(payload);
+}
+
+export function createImapConfig(env = process.env) {
+  const host = String(env.IMAP_HOST || '').trim();
+  const user = String(env.IMAP_USER || '').trim();
+  const password = String(env.IMAP_PASS || '');
+  const port = Number(env.IMAP_PORT || 993);
+  const secureSetting = String(env.IMAP_SECURE ?? 'true').trim().toLowerCase();
+
+  if (!host || !user || !password) {
+    throw new Error('IMAP credentials are not configured');
+  }
+  if (port !== 993 || secureSetting !== 'true') {
+    throw new Error('IMAP must use TLS on port 993');
+  }
+
+  return {
+    user,
+    password,
+    host,
+    port,
+    tls: true,
+    tlsOptions: {
+      rejectUnauthorized: true,
+      servername: host,
+    },
+    connTimeout: 15000,
+    authTimeout: 10000,
+  };
+}
+
+export function markSequenceNumbersSeen(imap, sequenceNumbers, callback) {
+  return imap.seq.addFlags(sequenceNumbers, ['\\Seen'], callback);
+}
 
 /**
  * Start the IMAP polling loop. Called once from server/index.js.
  * Reads IMAP_POLL_INTERVAL_SECONDS (30-3600, default 60).
  */
 export function startImapPoller() {
-  // Check if IMAP credentials are configured
-  if (!process.env.IMAP_HOST || !process.env.IMAP_USER || !process.env.IMAP_PASS) {
-    console.warn('[ImapPoller] IMAP credentials not configured. Polling disabled.');
+  let config;
+  try {
+    config = createImapConfig();
+  } catch (error) {
+    writeStructuredLog('error', 'imap_configuration_rejected', { error: error.message });
     return;
   }
 
@@ -26,17 +79,27 @@ export function startImapPoller() {
     );
   }
 
-  console.log(`[ImapPoller] Starting with interval: ${intervalSeconds}s`);
+  writeStructuredLog('log', 'imap_poller_started', { interval_seconds: intervalSeconds });
 
-  // Start polling loop
-  setInterval(async () => {
-    try {
-      await pollOnce();
-    } catch (err) {
-      console.error('[ImapPoller] Unhandled error:', err.message);
-      // Do NOT rethrow — poller must keep running
+  let pollInProgress = false;
+  const runPoll = async () => {
+    if (pollInProgress) {
+      writeStructuredLog('warn', 'imap_poll_skipped', { reason: 'previous_poll_running' });
+      return;
     }
-  }, intervalSeconds * 1000);
+
+    pollInProgress = true;
+    try {
+      await pollOnce(config);
+    } catch (err) {
+      writeStructuredLog('error', 'imap_poll_failed', { error: err.message });
+    } finally {
+      pollInProgress = false;
+    }
+  };
+
+  void runPoll();
+  return setInterval(runPoll, intervalSeconds * 1000);
 }
 
 /**
@@ -44,20 +107,11 @@ export function startImapPoller() {
  * saves to DB, marks as SEEN, disconnects.
  * @returns {Promise<{ fetched: number, saved: number, errors: string[] }>}
  */
-async function pollOnce() {
-  const result = { fetched: 0, saved: 0, errors: [] };
+export async function pollOnce(config = createImapConfig()) {
+  const result = { fetched: 0, saved: 0, quarantined: 0, duplicates: 0, errors: [] };
 
-  return new Promise((resolve, reject) => {
-    const imap = new Imap({
-      user: process.env.IMAP_USER,
-      password: process.env.IMAP_PASS,
-      host: process.env.IMAP_HOST,
-      port: parseInt(process.env.IMAP_PORT || '993', 10),
-      tls: true,
-      tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 15000,
-      authTimeout: 10000,
-    });
+  return new Promise((resolve) => {
+    const imap = new Imap(config);
 
     let boxClosed = false;
 
@@ -65,14 +119,14 @@ async function pollOnce() {
       if (!boxClosed) {
         try {
           imap.end();
-        } catch (e) {
+        } catch {
           // Ignore cleanup errors
         }
       }
     };
 
     imap.once('ready', () => {
-      imap.openBox('INBOX', false, (err, box) => {
+      imap.openBox('INBOX', false, (err, _box) => {
         if (err) {
           console.error('[ImapPoller] Failed to open INBOX:', err.message);
           result.errors.push(err.message);
@@ -99,79 +153,84 @@ async function pollOnce() {
           console.log(`[ImapPoller] Found ${uids.length} unseen message(s)`);
 
           const fetch = imap.fetch(uids, { bodies: '' });
-          const processedUids = [];
+          const processedSequenceNumbers = [];
           const messagePromises = [];
 
           fetch.on('message', (msg, seqno) => {
-            let buffer = '';
+            const chunks = [];
+            let retainedBytes = 0;
+            let rawBytes = 0;
 
             msg.on('body', (stream) => {
               stream.on('data', (chunk) => {
-                buffer += chunk.toString('utf8');
+                const data = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+                rawBytes += data.length;
+
+                const remaining = MAX_RAW_MESSAGE_BYTES - retainedBytes;
+                if (remaining > 0) {
+                  const retained = data.subarray(0, remaining);
+                  chunks.push(retained);
+                  retainedBytes += retained.length;
+                }
               });
             });
 
             const p = new Promise((resolveMsg) => {
               msg.once('end', async () => {
                 try {
-                  const parsed = await simpleParser(buffer);
+                  const rawMessage = Buffer.concat(chunks);
+                  let inbound;
+                  try {
+                    const parsed = await simpleParser(rawMessage);
+                    inbound = prepareInboundMessage(parsed, {
+                      rawBytes,
+                      mailboxAddress: config.user,
+                      smtpUser: process.env.SMTP_USER,
+                      smtpFrom: process.env.SMTP_FROM,
+                    });
+                  } catch (parseError) {
+                    inbound = prepareMalformedMessage(rawMessage, rawBytes, config.user);
+                    writeStructuredLog('warn', 'imap_message_parse_failed', {
+                      error: parseError.message,
+                      identity: hashMessageIdentity(inbound.messageId),
+                    });
+                  }
 
-                  // Extract email data
-                  const fromEmail = parsed.from?.value?.[0]?.address || parsed.from?.text || '';
-                  const fromName = parsed.from?.value?.[0]?.name || '';
-                  const subject = parsed.subject || '';
-                  const body = parsed.text || '';
-                  const messageId = parsed.messageId || '';
-                  const inReplyTo = parsed.inReplyTo || '';
-                  const references = parsed.references || [];
+                  const saveResult = await saveInboundEmail(inbound);
 
-                  // Derive thread ID
-                  const threadId = deriveThreadId(parsed);
-
-                  // Save to DB with retry
-                  const savedId = await retryDbSave({
-                    fromEmail,
-                    fromName,
-                    toEmail: process.env.IMAP_USER,
-                    subject,
-                    body,
-                    source: 'imap',
-                    threadId,
-                    messageId,
-                    inReplyTo,
-                  });
-
-                  if (savedId) {
-                    // Upsert email_threads
-                    try {
-                      await pool.query(
-                        `INSERT INTO email_threads (
-                          thread_id, from_email, from_name, subject, source, total_messages, last_activity_at
-                        ) VALUES ($1, $2, $3, $4, $5, 1, NOW())
-                        ON CONFLICT (thread_id) DO UPDATE SET
-                          total_messages = email_threads.total_messages + 1,
-                          last_activity_at = NOW()`,
-                        [threadId, fromEmail, fromName, subject, 'imap']
-                      );
-                    } catch (threadErr) {
-                      console.error('[ImapPoller] Failed to upsert thread:', threadErr.message);
-                    }
-
-                    // Mark as SEEN only after successful DB save
-                    processedUids.push(seqno);
+                  if (saveResult.status === 'saved') {
+                    processedSequenceNumbers.push(seqno);
                     result.saved++;
 
+                    if (inbound.quarantineReason) {
+                      result.quarantined++;
+                      writeStructuredLog('warn', 'imap_message_quarantined', {
+                        inbound_email_id: saveResult.id,
+                        reason: inbound.quarantineReason,
+                        identity: hashMessageIdentity(inbound.messageId),
+                      });
+                      resolveMsg({ success: true, row: null });
+                      return;
+                    }
+
                     const inboundRow = {
-                      id: savedId,
-                      from_email: fromEmail,
-                      from_name: fromName,
-                      subject,
-                      body,
-                      thread_id: threadId,
+                      id: saveResult.id,
+                      from_email: inbound.fromEmail,
+                      from_name: inbound.fromName,
+                      subject: inbound.subject,
+                      body: inbound.body,
+                      thread_id: inbound.threadId,
                       source: 'imap',
                     };
-                    
+
                     resolveMsg({ success: true, row: inboundRow });
+                  } else if (saveResult.status === 'duplicate') {
+                    processedSequenceNumbers.push(seqno);
+                    result.duplicates++;
+                    writeStructuredLog('log', 'imap_message_duplicate', {
+                      identity: hashMessageIdentity(inbound.messageId),
+                    });
+                    resolveMsg({ success: true, row: null });
                   } else {
                     result.errors.push(`Failed to save message ${seqno} after retries`);
                     resolveMsg({ success: false });
@@ -194,7 +253,7 @@ async function pollOnce() {
           fetch.once('end', async () => {
             // Wait for all messages to finish DB saves and parsing
             const results = await Promise.all(messagePromises);
-            const successfulRows = results.filter(r => r.success).map(r => r.row);
+            const successfulRows = results.filter(r => r.success && r.row).map(r => r.row);
 
             const completePoll = async () => {
               cleanup();
@@ -210,19 +269,22 @@ async function pollOnce() {
                       // Wait 8 seconds between emails to respect Groq's 6000 TPM limit on free tier
                       await new Promise(resolve => setTimeout(resolve, 8000));
                     } catch (aiErr) {
-                      console.error('[ImapPoller] AI responder error:', aiErr.message);
+                      writeStructuredLog('error', 'imap_ai_processing_failed', {
+                        inbound_email_id: row.id,
+                        error: aiErr.message,
+                      });
                     }
                   }
                 } catch (aiImportErr) {
-                  console.error('[ImapPoller] Failed to import aiResponder:', aiImportErr.message);
+                  writeStructuredLog('error', 'imap_ai_module_load_failed', { error: aiImportErr.message });
                 }
               }
               resolve(result);
             };
 
             // Mark all successfully processed messages as SEEN
-            if (processedUids.length > 0) {
-              imap.addFlags(processedUids, ['\\Seen'], (flagErr) => {
+            if (processedSequenceNumbers.length > 0) {
+              markSequenceNumbersSeen(imap, processedSequenceNumbers, (flagErr) => {
                 if (flagErr) {
                   console.error('[ImapPoller] Failed to mark as SEEN:', flagErr.message);
                 }
@@ -237,14 +299,7 @@ async function pollOnce() {
     });
 
     imap.once('error', (err) => {
-      console.error('[ImapPoller] IMAP connection error:', err.message);
-      console.log(
-        JSON.stringify({
-          event: 'imap_poll_error',
-          error: err.message,
-          timestamp: new Date().toISOString(),
-        })
-      );
+      writeStructuredLog('error', 'imap_poll_error', { error: err.message });
       result.errors.push(err.message);
       cleanup();
       resolve(result);
@@ -259,51 +314,26 @@ async function pollOnce() {
 }
 
 /**
- * Derive a stable thread_id from email headers.
- * Priority: References header last ID > In-Reply-To > sha256(from+subject).
- * @param {ParsedMail} parsed
- * @returns {string} thread_id
- */
-export function deriveThreadId(parsed) {
-  // Priority 1: Last ID in References header
-  if (parsed.references && Array.isArray(parsed.references) && parsed.references.length > 0) {
-    const lastRef = parsed.references[parsed.references.length - 1];
-    if (lastRef && typeof lastRef === 'string') {
-      return lastRef.trim();
-    }
-  }
-
-  // Priority 2: In-Reply-To header
-  if (parsed.inReplyTo && typeof parsed.inReplyTo === 'string') {
-    const inReplyTo = parsed.inReplyTo.trim();
-    if (inReplyTo) {
-      return inReplyTo;
-    }
-  }
-
-  // Priority 3: sha256(fromEmail + '::' + subject)
-  const fromEmail = (parsed.from?.value?.[0]?.address || parsed.from?.text || '').trim().toLowerCase();
-  const subject = (parsed.subject || '').trim();
-  const input = `${fromEmail}::${subject}`;
-
-  return crypto.createHash('sha256').update(input).digest('hex');
-}
-
-/**
  * DB retry helper — tries to save to inbound_emails, retries up to 3 times with 5s delay.
  * @param {object} data
- * @returns {Promise<string|null>} Saved row ID or null on failure
+ * @returns {Promise<{status: 'saved'|'duplicate'|'failed', id?: string}>}
  */
-async function retryDbSave(data) {
+export async function saveInboundEmail(data, query = pool.query.bind(pool)) {
   const maxAttempts = 3;
   const delayMs = 5000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const { rows } = await pool.query(
+      const { rows } = await query(
         `INSERT INTO inbound_emails (
-          id, from_email, from_name, to_email, subject, body, source, thread_id, message_id, in_reply_to, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'received')
+          id, from_email, from_name, to_email, subject, body, source, thread_id,
+          message_id, in_reply_to, status, quarantine_reason, processed_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+          $11::VARCHAR(40), $12::VARCHAR(80),
+          CASE WHEN $11::VARCHAR(40) = 'quarantined' THEN NOW() ELSE NULL END
+        )
+        ON CONFLICT DO NOTHING
         RETURNING id`,
         [
           crypto.randomUUID(),
@@ -316,31 +346,30 @@ async function retryDbSave(data) {
           data.threadId,
           data.messageId,
           data.inReplyTo,
+          data.status,
+          data.quarantineReason,
         ]
       );
 
-      return rows[0].id;
+      if (!rows[0]) return { status: 'duplicate' };
+      return { status: 'saved', id: rows[0].id };
     } catch (err) {
-      console.error(`[ImapPoller] DB save attempt ${attempt}/${maxAttempts} failed:`, err.message);
+      writeStructuredLog('error', 'imap_db_save_retry', {
+        attempt,
+        max_attempts: maxAttempts,
+        error: err.message,
+      });
 
       if (attempt < maxAttempts) {
         // Wait before retry
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       } else {
         // All attempts exhausted
-        console.error(
-          JSON.stringify({
-            event: 'db_save_failed',
-            error: err.message,
-            from_email: data.fromEmail,
-            subject: data.subject,
-            timestamp: new Date().toISOString(),
-          })
-        );
-        return null;
+        writeStructuredLog('error', 'imap_db_save_failed', { error: err.message });
+        return { status: 'failed' };
       }
     }
   }
 
-  return null;
+  return { status: 'failed' };
 }

@@ -2,8 +2,10 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { normalizeRole, requireRole } from '../middleware/auth.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { revokeUserSessions } from '../services/auth/sessionService.js';
+import { createEmployeeCode } from '../services/hr/employeeProfileService.js';
 
 const router = express.Router();
 
@@ -15,6 +17,7 @@ const EMPLOYEES_TTL = 60; // 60 seconds
 function bustEmployeeCache() {
   clearCache(CACHE_EMPLOYEES_LIST);
   clearCache(CACHE_EMPLOYEES_SUMMARY);
+  clearCache('users_list');
 }
 
 const DEFAULT_PASSWORD = 'Seevora@123';
@@ -24,8 +27,8 @@ function cleanText(value) {
 }
 
 function requireEmployeeManagement(req, res, next) {
-  const allowedRoles = ['hr', 'super_admin', 'admin'];
-  if (!allowedRoles.includes(String(req.user?.role || '').toLowerCase())) {
+  const allowedRoles = ['hr', 'admin'];
+  if (!allowedRoles.includes(normalizeRole(req.user?.role))) {
     return res.status(403).json({
       message: 'Only HR or Admins can create, edit, or delete employee accounts.',
     });
@@ -39,7 +42,7 @@ function toEmployee(row) {
     databaseId: row.id,
     userId: row.user_id,
     username: row.username || '',
-    accountRole: row.account_role || 'employee',
+    accountRole: normalizeRole(row.account_role || 'employee'),
     managerId: row.manager_id || '',
     managerName: row.manager_name || '',
     name: row.name,
@@ -67,7 +70,7 @@ function validateEmployee(body) {
     salary: Number(body.salary || body.salaryAmount || 0),
     joinedOn: cleanText(body.joinedOn || body.joined),
     status: cleanText(body.status || 'active').toLowerCase(),
-    accountRole: cleanText(body.accountRole || 'employee').toLowerCase(),
+    accountRole: normalizeRole(cleanText(body.accountRole || 'employee')),
     managerId: cleanText(body.managerId),
     username: cleanText(body.username).toLowerCase(),
     password: String(body.password || DEFAULT_PASSWORD),
@@ -121,20 +124,31 @@ async function createUniqueUsername(client, preferred, email) {
   return `${base}${crypto.randomUUID().slice(0, 6)}`;
 }
 
-async function createEmployeeCode(client) {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const code = `EMP-${crypto.randomInt(1000, 9999)}`;
-    const result = await client.query(
-      'SELECT id FROM hr_employees WHERE employee_code = $1 LIMIT 1',
-      [code]
-    );
-    if (result.rowCount === 0) return code;
-  }
-
-  return `EMP-${Date.now().toString().slice(-6)}`;
+async function isAssignableManager(client, managerId) {
+  const result = await client.query(
+    `SELECT e.id
+     FROM hr_employees e
+     JOIN users u ON u.id = e.user_id
+     WHERE e.id = $1
+       AND LOWER(u.role) = 'manager'
+       AND LOWER(e.status) IN ('active', 'probation')
+       AND e.account_active = true
+     LIMIT 1
+     FOR KEY SHARE OF u`,
+    [managerId]
+  );
+  return result.rowCount > 0;
 }
 
-router.use(requireAuth);
+async function directReportCount(client, employeeId) {
+  const result = await client.query(
+    'SELECT COUNT(*)::int AS count FROM hr_employees WHERE manager_id = $1',
+    [employeeId]
+  );
+  return Number(result.rows[0]?.count || 0);
+}
+
+router.use(requireRole('hr', 'admin'));
 
 router.get('/', async (_req, res, next) => {
   try {
@@ -212,10 +226,9 @@ router.post('/', requireEmployeeManagement, async (req, res, next) => {
     await client.query('BEGIN');
 
     if (data.managerId) {
-      const managerResult = await client.query('SELECT id FROM hr_employees WHERE id = $1 LIMIT 1', [data.managerId]);
-      if (!managerResult.rowCount) {
+      if (!await isAssignableManager(client, data.managerId)) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'Selected manager was not found.', errors: { managerId: 'Select a valid manager.' } });
+        return res.status(400).json({ message: 'Selected manager is not available.', errors: { managerId: 'Select an active manager account.' } });
       }
     }
 
@@ -244,7 +257,7 @@ router.post('/', requireEmployeeManagement, async (req, res, next) => {
     const passwordHash = await bcrypt.hash(data.password, 12);
 
     /* Employees start as PENDING_VERIFICATION; HR/admin are pre-verified */
-    const verificationStatus = ['hr', 'super_admin', 'admin', 'manager', 'support'].includes(data.accountRole)
+    const verificationStatus = ['hr', 'admin', 'manager', 'support'].includes(data.accountRole)
       ? 'VERIFIED'
       : 'PENDING_VERIFICATION';
 
@@ -323,17 +336,26 @@ router.put('/:employeeCode', requireEmployeeManagement, async (req, res, next) =
       return res.status(404).json({ message: 'Employee not found.' });
     }
 
+    const currentAccountResult = current.user_id
+      ? await client.query('SELECT role FROM users WHERE id = $1 FOR UPDATE', [current.user_id])
+      : { rows: [] };
+    const currentAccountRole = normalizeRole(currentAccountResult.rows[0]?.role);
+
     if (data.managerId === current.id) {
       await client.query('ROLLBACK');
       return res.status(400).json({ message: 'An employee cannot report to themselves.', errors: { managerId: 'Select a different manager.' } });
     }
 
     if (data.managerId) {
-      const managerResult = await client.query('SELECT id FROM hr_employees WHERE id = $1 LIMIT 1', [data.managerId]);
-      if (!managerResult.rowCount) {
+      if (!await isAssignableManager(client, data.managerId)) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ message: 'Selected manager was not found.', errors: { managerId: 'Select a valid manager.' } });
+        return res.status(400).json({ message: 'Selected manager is not available.', errors: { managerId: 'Select an active manager account.' } });
       }
+    }
+
+    if (normalizeRole(data.accountRole) !== 'manager' && (await directReportCount(client, current.id)) > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: "Reassign this manager's direct reports before changing their role." });
     }
 
     const existingEmployee = await client.query(
@@ -394,6 +416,10 @@ router.put('/:employeeCode', requireEmployeeManagement, async (req, res, next) =
       }
 
       await client.query(userSql, userValues);
+
+      if (data.password || currentAccountRole !== normalizeRole(data.accountRole)) {
+        await revokeUserSessions(current.user_id, 'password_or_role_changed', client);
+      }
     }
 
     const employeeResult = await client.query(
@@ -460,6 +486,24 @@ router.delete('/:employeeCode', requireEmployeeManagement, async (req, res, next
     if (!current) {
       await client.query('ROLLBACK');
       return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    if (current.user_id) {
+      await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [current.user_id]);
+    }
+
+    const lockedEmployee = await client.query(
+      'SELECT id FROM hr_employees WHERE id = $1 FOR UPDATE',
+      [current.id]
+    );
+    if (lockedEmployee.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    if (await directReportCount(client, current.id) > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ message: "Reassign this manager's direct reports before deleting their account." });
     }
 
     await client.query('DELETE FROM hr_employees WHERE id = $1', [current.id]);

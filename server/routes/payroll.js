@@ -2,8 +2,10 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { getCache, setCache } from '../utils/cache.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
+router.use(requireRole('hr', 'admin'));
 
 function salaryParts(salary, deductions = 0) {
   const monthlySalary = Number(salary || 0);

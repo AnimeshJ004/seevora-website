@@ -84,10 +84,7 @@ export default function AdminDashboard({ user, onNavigate, canNavigate }) {
 
     const fetchStats = async () => {
       try {
-        const token = user?.token || localStorage.getItem('seevoraAuthToken');
-        const res = await hrApiFetch('/api/dashboard/stats', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await hrApiFetch('/api/dashboard/stats');
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data?.error || data?.message || `Dashboard stats request failed (${res.status})`);
@@ -119,7 +116,7 @@ export default function AdminDashboard({ user, onNavigate, canNavigate }) {
     return () => {
       ignore = true;
     };
-  }, [user?.token]);
+  }, []);
 
   if (loading) {
     return <div style={{ padding: 40, color: C.muted, textAlign: 'center' }}>Loading dashboard...</div>;

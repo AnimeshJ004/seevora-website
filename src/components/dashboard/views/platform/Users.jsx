@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-export default function Users({ user }) {
+export default function Users({ user: currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -13,9 +14,7 @@ export default function Users({ user }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      });
+      const res = await apiFetch('/api/users');
       if (res.ok) {
         setUsers(await res.json());
       }
@@ -30,11 +29,10 @@ export default function Users({ user }) {
     e.preventDefault();
     setErrorMsg('');
     try {
-      const res = await fetch('/api/users', {
+      const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(newUser)
       });
@@ -42,6 +40,7 @@ export default function Users({ user }) {
         setShowModal(false);
         setNewUser({ username: '', email: '', phone: '', role: 'employee', password: '' });
         fetchUsers();
+        window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
       } else {
         const err = await res.json();
         setErrorMsg(err.error || 'Failed to create user');
@@ -53,18 +52,18 @@ export default function Users({ user }) {
   };
 
   const handleDelete = async (id) => {
-    if (id === user.id) {
+    if (id === currentUser?.id) {
       alert("You cannot delete your own account.");
       return;
     }
     if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
     try {
-      const res = await fetch(`/api/users/${id}`, {
+      const res = await apiFetch(`/api/users/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
       if (res.ok) {
         fetchUsers();
+        window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to delete user');
@@ -75,15 +74,15 @@ export default function Users({ user }) {
   };
 
   const getRoleBadge = (role) => {
+    const normalizedRole = role === 'super_admin' ? 'admin' : role;
     const roles = {
-      super_admin: { label: 'Super Admin', color: '#6366f1', bg: '#e0e7ff' },
       admin: { label: 'Admin', color: '#0ea5e9', bg: '#e0f2fe' },
       hr: { label: 'HR', color: '#10b981', bg: '#d1fae5' },
       manager: { label: 'Manager', color: '#f59e0b', bg: '#fef3c7' },
       support: { label: 'Support', color: '#8b5cf6', bg: '#ede9fe' },
       employee: { label: 'Employee', color: '#64748b', bg: '#f1f5f9' },
     };
-    const r = roles[role] || roles.employee;
+    const r = roles[normalizedRole] || roles.employee;
     return (
       <span style={{ background: r.bg, color: r.color, padding: '4px 8px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600 }}>
         {r.label}
@@ -130,7 +129,7 @@ export default function Users({ user }) {
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    {u.id !== user.id && (
+                    {u.id !== currentUser?.id && (
                       <button onClick={() => handleDelete(u.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>Delete</button>
                     )}
                   </td>
@@ -172,7 +171,7 @@ export default function Users({ user }) {
                     <option value="hr">HR</option>
                     <option value="manager">Manager</option>
                     <option value="support">Support</option>
-                    {user?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
               </div>

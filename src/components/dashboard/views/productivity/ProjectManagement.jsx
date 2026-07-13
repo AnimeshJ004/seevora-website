@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-export default function ProjectManagement({ user }) {
+export default function ProjectManagement() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -12,9 +13,7 @@ export default function ProjectManagement({ user }) {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch('/api/productivity/projects', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      });
+      const res = await apiFetch('/api/productivity/projects');
       if (res.ok) {
         const data = await res.json();
         setProjects(Array.isArray(data) ? data : []);
@@ -32,11 +31,10 @@ export default function ProjectManagement({ user }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/productivity/projects', {
+      const res = await apiFetch('/api/productivity/projects', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(newProject)
       });
@@ -53,9 +51,8 @@ export default function ProjectManagement({ user }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this project?')) return;
     try {
-      await fetch(`/api/productivity/projects/${id}`, {
+      await apiFetch(`/api/productivity/projects/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
       fetchProjects();
     } catch (err) {

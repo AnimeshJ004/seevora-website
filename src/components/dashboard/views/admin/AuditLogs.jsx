@@ -1,13 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Badge, Panel } from '../shared';
-
-const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
-
-async function apiFetch(endpoint, options) {
-  const response = await fetch(endpoint, options);
-  if (response.status !== 502) return response;
-  return fetch(`${API_FALLBACK_ORIGIN}${endpoint}`, options);
-}
+import { apiFetch } from '../../../../auth/api';
 
 function formatDate(value) {
   if (!value) return '-';

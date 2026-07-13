@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-const API = (path, token, opts = {}) =>
-  fetch(`/api/email-bot${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+const API = async (path, opts = {}) => {
+  const response = await apiFetch(`/api/email-bot${path}`, {
     ...opts,
-  }).then(r => r.json());
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { error: data.message || data.error || `Request failed (${response.status})` };
+  }
+  return data;
+};
 
 const STAGES = ['New', 'Contacted', 'Qualified', 'Proposal', 'Closed Won'];
 
 export default function Campaigns() {
-  const token = localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [campaigns, setCampaigns] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [leads, setLeads] = useState([]);
@@ -34,16 +40,20 @@ export default function Campaigns() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [cRes, tRes, lRes] = await Promise.all([
-      API('/campaigns', token),
-      API('/templates', token),
-      fetch('/api/leads', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+      API('/campaigns'),
+      API('/templates'),
+      apiFetch('/api/leads').then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) return { error: data.message || data.error || `Request failed (${r.status})` };
+        return data;
+      })
     ]);
 
     if (cRes.campaigns) setCampaigns(cRes.campaigns);
     if (tRes.templates) setTemplates(tRes.templates);
     if (lRes.leads) setLeads(lRes.leads);
     setLoading(false);
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -69,7 +79,7 @@ export default function Campaigns() {
       leadIds: selectedLeadIds
     };
 
-    const res = await API('/campaigns', token, {
+    const res = await API('/campaigns', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -100,7 +110,7 @@ export default function Campaigns() {
   const handleSendImmediately = async (id) => {
     if (!window.confirm('Send this campaign to all targets immediately?')) return;
     setSendingId(id);
-    const res = await API(`/campaigns/${id}/send`, token, { method: 'POST' });
+    const res = await API(`/campaigns/${id}/send`, { method: 'POST' });
     setSendingId(null);
     alert(res.message || 'Dispatch completed.');
     fetchData();
@@ -110,14 +120,14 @@ export default function Campaigns() {
   const handlePublish = async (id) => {
     if (!window.confirm('Publish this campaign now? Scheduled campaigns will be queued for their delivery time.')) return;
     setSendingId(id);
-    const res = await API(`/campaigns/${id}/publish`, token, { method: 'POST' });
+    const res = await API(`/campaigns/${id}/publish`, { method: 'POST' });
     setSendingId(null);
     alert(res.message || 'Publish completed.');
     fetchData();
   };
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this campaign?')) return;
-    const res = await API(`/campaigns/${id}`, token, { method: 'DELETE' });
+    const res = await API(`/campaigns/${id}`, { method: 'DELETE' });
     if (res.message?.includes('deleted')) {
       setCampaigns(prev => prev.filter(c => c.id !== id));
     }

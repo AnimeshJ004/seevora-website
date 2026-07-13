@@ -2,7 +2,7 @@ import React, { useEffect, useState, Suspense, lazy } from 'react';
 import Navbar from './components/landing-page/Navbar';
 import Footer from './components/landing-page/Footer';
 import ChatWidget from './components/SalesAgent/ChatWidget';
-import { getSession, logout } from './auth/roles';
+import { apiFetch, logoutSession, restoreAuthSession } from './auth/api';
 import logoIcon from './assets/logo-icon.png';
 
 // Lazy load page components for code splitting
@@ -21,34 +21,49 @@ const DashboardShell = lazy(() => import('./components/dashboard/DashboardShell'
 const NotFoundPage = lazy(() => import('./components/landing-page/NotFoundPage'));
 
 function getRolePath(role) {
-  if (role === 'super_admin' || role === 'admin') return '/admin';
+  if (role === 'admin' || role === 'super_admin') return '/admin';
   if (role === 'hr') return '/hr';
   if (role === 'manager' || role === 'employee') return '/dashboard';
   return '/dashboard';
 }
 
 async function finalizeAttendanceSession() {
-  const token = localStorage.getItem('seevoraAuthToken');
-  if (!token) return;
-
   try {
-    const options = {
+    await apiFetch('/api/attendance/clock-out', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-    const response = await fetch('/api/attendance/clock-out', options);
-    if (response.status === 502) {
-      await fetch('http://127.0.0.1:4000/api/attendance/clock-out', options);
-    }
+      redirectOnUnauthorized: false,
+    });
   } catch {
     // Ignore logout telemetry failures.
   }
 }
 
 function DashboardRoute() {
-  const [session, setSession] = useState(() => getSession());
+  const [session, setSession] = useState(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    restoreAuthSession()
+      .then((user) => {
+        if (active) setSession(user);
+      })
+      .catch(() => {
+        if (active) setSession(null);
+      })
+      .finally(() => {
+        if (active) setIsRestoringSession(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const expireSession = () => setSession(null);
+    window.addEventListener('authsessionexpired', expireSession);
+    return () => window.removeEventListener('authsessionexpired', expireSession);
+  }, []);
 
   const handleLogin = (user) => {
     setSession(user);
@@ -57,11 +72,12 @@ function DashboardRoute() {
 
   const handleLogout = async () => {
     await finalizeAttendanceSession();
-    logout();
+    await logoutSession();
     setSession(null);
     window.history.pushState({}, '', '/login');
   };
 
+  if (isRestoringSession) return <div className="page-loader" aria-label="Loading" />;
   if (session) return <DashboardShell user={session} onLogout={handleLogout} />;
   return (
     <>
@@ -79,7 +95,6 @@ export default function App() {
     hash: window.location.hash,
   }));
 
-  const isAuthenticated = Boolean(localStorage.getItem('seevoraAuthToken'));
   const path = locationState.pathname;
   const hash = locationState.hash;
 

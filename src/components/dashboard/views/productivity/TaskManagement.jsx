@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
 const taskCategories = [
   ['general', 'General'],
@@ -15,7 +16,7 @@ const taskCategories = [
 
 const categoryLabels = Object.fromEntries(taskCategories);
 
-export default function TaskManagement({ user }) {
+export default function TaskManagement() {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -30,9 +31,9 @@ export default function TaskManagement({ user }) {
   const fetchData = async () => {
     try {
       const [tasksRes, projectsRes, empRes] = await Promise.all([
-        fetch('/api/productivity/tasks', { headers: { 'Authorization': `Bearer ${user?.token}` } }),
-        fetch('/api/productivity/projects', { headers: { 'Authorization': `Bearer ${user?.token}` } }),
-        fetch('/api/hr/employees', { headers: { 'Authorization': `Bearer ${user?.token}` } })
+        apiFetch('/api/productivity/tasks'),
+        apiFetch('/api/productivity/projects'),
+        apiFetch('/api/hr/employees')
       ]);
       
       if (tasksRes.ok) {
@@ -57,11 +58,10 @@ export default function TaskManagement({ user }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/productivity/tasks', {
+      const res = await apiFetch('/api/productivity/tasks', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...newTask,
@@ -82,9 +82,9 @@ export default function TaskManagement({ user }) {
 
   const handleStatusChange = async (id, status) => {
     try {
-      await fetch(`/api/productivity/tasks/${id}`, {
+      await apiFetch(`/api/productivity/tasks/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
       fetchData();
@@ -96,9 +96,8 @@ export default function TaskManagement({ user }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this task?')) return;
     try {
-      await fetch(`/api/productivity/tasks/${id}`, {
+      await apiFetch(`/api/productivity/tasks/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
       fetchData();
     } catch (err) {

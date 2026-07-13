@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
 const theme = {
   page: '#f8fafc',
@@ -13,10 +14,6 @@ const theme = {
   red: '#dc2626',
   purple: '#7c3aed',
 };
-
-function getToken(user) {
-  return user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
-}
 
 function formatNumber(value) {
   return new Intl.NumberFormat('en-IN').format(Number(value || 0));
@@ -126,19 +123,16 @@ function DataTable({ columns, rows, empty }) {
   );
 }
 
-export default function Analytics({ user }) {
+export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const token = getToken(user);
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/analytics/manager', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch('/api/analytics/manager');
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.message || 'Failed to load analytics.');
       setData(result);
@@ -147,7 +141,7 @@ export default function Analytics({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     loadAnalytics();

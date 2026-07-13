@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-const API = async (path, token, opts = {}) => {
-  const response = await fetch(`/api/email-bot${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+const API = async (path, opts = {}) => {
+  const response = await apiFetch(`/api/email-bot${path}`, {
     ...opts,
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message || data.error || 'Request failed');
@@ -26,7 +27,6 @@ const lightInput = {
 };
 
 export default function EmailTemplates() {
-  const token = localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -37,14 +37,14 @@ export default function EmailTemplates() {
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await API('/templates', token);
+      const res = await API('/templates');
       if (res.templates) setTemplates(res.templates);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchTemplates();
@@ -60,7 +60,7 @@ export default function EmailTemplates() {
 
     setSaving(true);
     try {
-      const res = await API('/templates', token, {
+      const res = await API('/templates', {
         method: 'POST',
         body: JSON.stringify({ ...formData, variables: ['name', 'company', 'industry', 'sender_name'] }),
       });
@@ -80,7 +80,7 @@ export default function EmailTemplates() {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this template?')) return;
     try {
-      const res = await API(`/templates/${id}`, token, { method: 'DELETE' });
+      const res = await API(`/templates/${id}`, { method: 'DELETE' });
       if (res.message?.includes('deleted')) {
         setTemplates(prev => prev.filter(t => t.id !== id));
       }

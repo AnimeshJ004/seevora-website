@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-const API = (path, token, opts = {}) =>
-  fetch(`/api/email-bot${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
+const API = async (path, opts = {}) => {
+  const response = await apiFetch(`/api/email-bot${path}`, {
     ...opts,
-  }).then(r => r.json());
+    headers: { 'Content-Type': 'application/json', ...opts.headers },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { error: data.message || data.error || `Request failed (${response.status})` };
+  }
+  return data;
+};
 
 export default function Subscribers() {
-  const token = localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [subscribers, setSubscribers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -18,10 +24,10 @@ export default function Subscribers() {
 
   const fetchSubscribers = useCallback(async () => {
     setLoading(true);
-    const res = await API('/subscribers', token);
+    const res = await API('/subscribers');
     if (res.subscribers) setSubscribers(res.subscribers);
     setLoading(false);
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchSubscribers();
@@ -30,7 +36,7 @@ export default function Subscribers() {
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!formData.email) return;
-    const res = await API('/subscribers', token, {
+    const res = await API('/subscribers', {
       method: 'POST',
       body: JSON.stringify(formData),
     });
@@ -46,7 +52,7 @@ export default function Subscribers() {
   const handleSendEmail = async (sub) => {
     setSendState(prev => ({ ...prev, [sub.id]: 'sending' }));
     try {
-      const res = await API(`/subscribers/${sub.id}/send-email`, token, { method: 'POST' });
+      const res = await API(`/subscribers/${sub.id}/send-email`, { method: 'POST' });
       if (res.success) {
         setSendState(prev => ({ ...prev, [sub.id]: 'sent' }));
         // Reset back to idle after 3s
@@ -63,7 +69,7 @@ export default function Subscribers() {
   };
 
   const handleUpdateStatus = async (id, status) => {
-    const res = await API(`/subscribers/${id}`, token, {
+    const res = await API(`/subscribers/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ status })
     });
@@ -74,7 +80,7 @@ export default function Subscribers() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this subscriber?')) return;
-    const res = await API(`/subscribers/${id}`, token, { method: 'DELETE' });
+    const res = await API(`/subscribers/${id}`, { method: 'DELETE' });
     if (res.message?.includes('deleted')) {
       setSubscribers(prev => prev.filter(s => s.id !== id));
     }

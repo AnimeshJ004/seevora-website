@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-const API = (path, token, opts = {}) =>
-  fetch(`/api${path}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...opts.headers },
-    ...opts,
-  })
-    .then(r => r.json())
-    .catch(err => ({ error: err.message || 'Network error' }));
+const API = async (path, opts = {}) => {
+  try {
+    const response = await apiFetch(`/api${path}`, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { error: data.message || data.error || `Request failed (${response.status})` };
+    }
+    return data;
+  } catch (err) {
+    return { error: err.message || 'Network error' };
+  }
+};
 
 
 const STAGES = [
@@ -38,7 +47,7 @@ const StageBadge = ({ stage }) => {
   );
 };
 
-function AddLeadModal({ onClose, onSave, token }) {
+function AddLeadModal({ onClose, onSave }) {
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', industry: '', designation: '', source: 'manual', notes: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -47,7 +56,7 @@ function AddLeadModal({ onClose, onSave, token }) {
     if (!form.name.trim()) { setError('Name is required.'); return; }
     setSaving(true);
     setError('');
-    const res = await API('/leads', token, { method: 'POST', body: JSON.stringify(form) });
+    const res = await API('/leads', { method: 'POST', body: JSON.stringify(form) });
     setSaving(false);
     if (res.lead) { onSave(res.lead); onClose(); }
     else setError(res.message || res.error || 'Failed to create lead');
@@ -103,7 +112,7 @@ function AddLeadModal({ onClose, onSave, token }) {
     </div>
   );
 }
-function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
+function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail }) {
   const [stage, setStage] = useState(lead.pipelineStage);
   const [score, setScore] = useState(lead.score);
   const [notes, setNotes] = useState(lead.notes || '');
@@ -111,7 +120,7 @@ function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const res = await API(`/leads/${lead.id}`, token, {
+    const res = await API(`/leads/${lead.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ pipelineStage: stage, score: parseInt(score), notes }),
     });
@@ -191,7 +200,7 @@ function LeadDetailDrawer({ lead, onClose, onUpdate, onQuickEmail, token }) {
   );
 }
 
-function QuickEmailModal({ lead, templates, token, onClose }) {
+function QuickEmailModal({ lead, templates, onClose }) {
   const [templateId, setTemplateId] = useState(templates[0]?.id || '');
   const [tone, setTone] = useState('professional');
   const [language, setLanguage] = useState('english');
@@ -206,7 +215,7 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
   const handlePreview = async () => {
     if (!templateId) return;
     setPreviewing(true);
-    const res = await API('/email-bot/preview', token, {
+    const res = await API('/email-bot/preview', {
       method: 'POST',
       body: JSON.stringify({ leadId: lead.id, templateId, tone, language, senderName }),
     });
@@ -216,7 +225,7 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
 
   const handleSend = async () => {
     setSending(true);
-    const res = await API('/email-bot/send-single', token, {
+    const res = await API('/email-bot/send-single', {
       method: 'POST',
       body: JSON.stringify({ leadId: lead.id, templateId, tone, language, senderName }),
     });
@@ -303,8 +312,7 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
     </div>
   );
 }
-export default function CRMLeads({ user }) {
-  const token = localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
+export default function CRMLeads({ user: _user }) {
   const [leads, setLeads] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -317,17 +325,17 @@ export default function CRMLeads({ user }) {
   const [bulkError, setBulkError] = useState('');
 
   const fetchLeads = useCallback(async () => {
-    const res = await API(`/leads${search ? `?search=${encodeURIComponent(search)}` : ''}`, token);
+    const res = await API(`/leads${search ? `?search=${encodeURIComponent(search)}` : ''}`);
     if (res.leads) setLeads(res.leads);
-  }, [token, search]);
+  }, [search]);
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       fetchLeads(),
-      API('/email-bot/templates', token).then(r => r.templates && setTemplates(r.templates)),
+      API('/email-bot/templates').then(r => r.templates && setTemplates(r.templates)),
     ]).finally(() => setLoading(false));
-  }, [fetchLeads, token]);
+  }, [fetchLeads]);
 
   const handleLeadUpdate = (updated) => {
     setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
@@ -343,7 +351,7 @@ export default function CRMLeads({ user }) {
     setBulkError('');
     try {
       const leadIds = withEmail.map(l => l.id);
-      const res = await API('/leads/bulk-email', token, { method: 'POST', body: JSON.stringify({ leadIds }) });
+      const res = await API('/leads/bulk-email', { method: 'POST', body: JSON.stringify({ leadIds }) });
       if (res.error) {
         setBulkSendState('error');
         setBulkError(res.error);
@@ -368,7 +376,7 @@ export default function CRMLeads({ user }) {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this lead?")) return;
     try {
-      const res = await API(`/leads/${leadId}`, token, { method: 'DELETE' });
+      const res = await API(`/leads/${leadId}`, { method: 'DELETE' });
       if (res.error) {
         setBulkError(res.error || 'Failed to delete lead.');
         setTimeout(() => setBulkError(''), 5000);
@@ -385,7 +393,7 @@ export default function CRMLeads({ user }) {
   const handleDeleteAll = async () => {
     if (!window.confirm("Are you sure you want to delete ALL leads? This action cannot be undone.")) return;
     try {
-      const res = await API('/leads/all', token, { method: 'DELETE' });
+      const res = await API('/leads/all', { method: 'DELETE' });
       if (res.error) {
         setBulkError(res.error || 'Failed to delete all leads.');
         setTimeout(() => setBulkError(''), 5000);
@@ -535,9 +543,9 @@ export default function CRMLeads({ user }) {
       )}
 
       {/* Modals */}
-      {showAdd && <AddLeadModal onClose={() => setShowAdd(false)} onSave={l => setLeads(prev => [l, ...prev])} token={token} />}
-      {selectedLead && <LeadDetailDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={handleLeadUpdate} onQuickEmail={setQuickEmailLead} token={token} />}
-      {quickEmailLead && <QuickEmailModal lead={quickEmailLead} templates={templates} token={token} onClose={() => setQuickEmailLead(null)} />}
+      {showAdd && <AddLeadModal onClose={() => setShowAdd(false)} onSave={l => setLeads(prev => [l, ...prev])} />}
+      {selectedLead && <LeadDetailDrawer lead={selectedLead} onClose={() => setSelectedLead(null)} onUpdate={handleLeadUpdate} onQuickEmail={setQuickEmailLead} />}
+      {quickEmailLead && <QuickEmailModal lead={quickEmailLead} templates={templates} onClose={() => setQuickEmailLead(null)} />}
     </div>
   );
 }

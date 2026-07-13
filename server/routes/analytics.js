@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/auth.js';
 import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
-const ANALYTICS_ROLES = ['super_admin', 'admin', 'manager'];
+const ANALYTICS_ROLES = ['admin', 'manager'];
 
 function toInt(value) {
   return Number.parseInt(value || 0, 10);

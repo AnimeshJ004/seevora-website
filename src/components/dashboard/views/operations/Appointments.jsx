@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
 const emptyAppointment = { client_name: '', client_email: '', client_phone: '', scheduled_at: '', duration: 30, status: 'scheduled', notes: '' };
 
@@ -18,6 +19,7 @@ export default function Appointments({ user }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [appointmentForm, setAppointmentForm] = useState(emptyAppointment);
+  const canDeleteAppointments = user?.role === 'admin' || user?.role === 'super_admin';
 
   useEffect(() => {
     fetchAppointments();
@@ -25,9 +27,7 @@ export default function Appointments({ user }) {
 
   const fetchAppointments = async () => {
     try {
-      const res = await fetch('/api/appointments', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      });
+      const res = await apiFetch('/api/appointments');
       if (res.ok) {
         setAppointments(await res.json());
       } else {
@@ -77,11 +77,10 @@ export default function Appointments({ user }) {
     setError('');
     try {
       const isEditing = Boolean(editingAppointment);
-      const res = await fetch(isEditing ? `/api/appointments/${editingAppointment.id}` : '/api/appointments', {
+      const res = await apiFetch(isEditing ? `/api/appointments/${editingAppointment.id}` : '/api/appointments', {
         method: isEditing ? 'PUT' : 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(appointmentForm)
       });
@@ -102,9 +101,9 @@ export default function Appointments({ user }) {
 
   const handleStatusChange = async (id, status) => {
     try {
-      await fetch(`/api/appointments/${id}`, {
+      await apiFetch(`/api/appointments/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
       fetchAppointments();
@@ -116,9 +115,8 @@ export default function Appointments({ user }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this appointment?')) return;
     try {
-      await fetch(`/api/appointments/${id}`, {
+      await apiFetch(`/api/appointments/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
       fetchAppointments();
     } catch (err) {
@@ -174,7 +172,9 @@ export default function Appointments({ user }) {
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <button onClick={() => openEditModal(apt)} style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, marginRight: 12 }}>Edit</button>
-                    <button onClick={() => handleDelete(apt.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>Delete</button>
+                    {canDeleteAppointments && (
+                      <button onClick={() => handleDelete(apt.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>Delete</button>
+                    )}
                   </td>
                 </tr>
               ))}

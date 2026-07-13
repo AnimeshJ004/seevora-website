@@ -1,13 +1,13 @@
 import express from 'express';
 import pool from '../config/db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
 
 let fetchPromise = null;
 
-router.get('/stats', requireAuth, requireRole('super_admin', 'admin', 'hr', 'manager'), async (req, res) => {
+router.get('/stats', requireRole('admin', 'hr', 'manager'), async (req, res) => {
   try {
     const cachedStats = getCache('dashboard_stats');
     if (cachedStats) {

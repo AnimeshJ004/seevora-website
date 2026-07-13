@@ -2,11 +2,10 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
-router.use(requireAuth);
-router.use(requireRole('hr', 'admin', 'super_admin'));
+router.use(requireRole('hr', 'admin'));
 
 const CACHE_LEAVE_SUMMARY = 'hr_leave_summary';
 const LEAVE_SUMMARY_TTL = 60;
@@ -260,7 +259,7 @@ router.put('/:id/approve', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    if (!['admin', 'super_admin'].includes(req.user?.role)) {
+    if (req.user?.role !== 'admin') {
       await client.query('ROLLBACK');
       return res.status(403).json({ message: 'Manager approval is required for employee leave requests.' });
     }
@@ -295,7 +294,7 @@ router.put('/:id/reject', async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    if (!['admin', 'super_admin'].includes(req.user?.role)) {
+    if (req.user?.role !== 'admin') {
       await client.query('ROLLBACK');
       return res.status(403).json({ message: 'Manager rejection is required for employee leave requests.' });
     }

@@ -10,7 +10,7 @@ const WINDOW_MS = 60 * 1000; // 1 minute
 const requestMap = new Map();
 
 // Clean up old entries every 5 minutes
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of requestMap.entries()) {
     if (now - entry.windowStart > WINDOW_MS * 2) {
@@ -18,6 +18,7 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+cleanupInterval.unref?.();
 
 /**
  * Check if the given session is rate-limited.

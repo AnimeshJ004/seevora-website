@@ -2,13 +2,43 @@ import express from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { normalizeRole, requireRole } from '../middleware/auth.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { revokeUserSessions } from '../services/auth/sessionService.js';
+import { ensureManagerEmployeeProfile } from '../services/hr/employeeProfileService.js';
 
 const router = express.Router();
+const USER_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'employee']);
+const PREVERIFIED_ROLES = new Set(['admin', 'hr', 'manager', 'support']);
 
-router.use(requireAuth);
-router.use(requireRole(['super_admin', 'admin']));
+router.use(requireRole('admin'));
+
+function normalizeUserRow(row) {
+  return row ? { ...row, role: normalizeRole(row.role) } : row;
+}
+
+function clearUserAndEmployeeCaches() {
+  clearCache('users_list');
+  clearCache('hr_employees_list');
+  clearCache('hr_employees_summary');
+}
+
+async function directReportCount(client, userId) {
+  const result = await client.query(
+    `SELECT COUNT(report.id)::int AS count
+     FROM hr_employees manager
+     LEFT JOIN hr_employees report ON report.manager_id = manager.id
+     WHERE manager.user_id = $1`,
+    [userId]
+  );
+  return Number(result.rows[0]?.count || 0);
+}
+
+function directReportsConflict(res, action) {
+  return res.status(409).json({
+    error: `Reassign this manager's direct reports before ${action}.`,
+  });
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -22,7 +52,7 @@ router.get('/', async (req, res) => {
     `);
     
     setCache('users_list', rows, 120); // Cache for 2 minutes
-    res.json(rows);
+    res.json(rows.map(normalizeUserRow));
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Server error' });
@@ -30,105 +60,187 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  let client;
   try {
     const { username, email, phone, role, password } = req.body;
     if (!username || !email || !password) return res.status(400).json({ error: 'Username, email and password are required' });
 
-    // Ensure only super_admin can create super_admin
-    if (role === 'super_admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Only super_admin can create another super_admin' });
+    const nextRole = normalizeRole(role || 'employee');
+    if (!USER_ROLES.has(nextRole)) {
+      return res.status(400).json({ error: 'Select a valid account role' });
     }
 
     const password_hash = await bcrypt.hash(password, 12);
     const id = crypto.randomUUID();
-    
-    const { rows } = await pool.query(`
-      INSERT INTO users (id, username, email, phone, role, password_hash)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, username, email, phone, role, created_at
-    `, [id, username, email, phone, role || 'employee', password_hash]);
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedUsername = String(username).trim();
+    const normalizedPhone = String(phone || '').trim() || null;
+    const verificationStatus = PREVERIFIED_ROLES.has(nextRole)
+      ? 'VERIFIED'
+      : 'PENDING_VERIFICATION';
 
-    clearCache('users_list');
-    res.status(201).json(rows[0]);
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const { rows } = await client.query(`
+      INSERT INTO users (id, username, email, phone, role, password_hash, verification_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, username, email, phone, role, verification_status, created_at, updated_at
+    `, [
+      id,
+      normalizedUsername,
+      normalizedEmail,
+      normalizedPhone,
+      nextRole,
+      password_hash,
+      verificationStatus,
+    ]);
+
+    if (nextRole === 'manager') {
+      await ensureManagerEmployeeProfile(client, rows[0]);
+    }
+
+    await client.query('COMMIT');
+    clearUserAndEmployeeCaches();
+    res.status(201).json(normalizeUserRow(rows[0]));
   } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {}
+    }
     console.error('Error creating user:', error);
     if (error.code === '23505') return res.status(400).json({ error: 'Email or username already exists' });
+    if (error.code === 'MANAGER_PROFILE_CONFLICT') return res.status(409).json({ error: error.message });
     res.status(500).json({ error: 'Server error' });
+  } finally {
+    client?.release();
   }
 });
 
 router.put('/:id', async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
     const { username, email, phone, role, password } = req.body;
 
-    // Prevent non-super_admin from updating super_admin roles
-    if (req.user.role !== 'super_admin') {
-      const { rows: checkUser } = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
-      if (checkUser.length > 0 && checkUser[0].role === 'super_admin') {
-        return res.status(403).json({ error: 'Cannot modify super_admin user' });
-      }
-      if (role === 'super_admin') {
-        return res.status(403).json({ error: 'Cannot set role to super_admin' });
-      }
+    await client.query('BEGIN');
+    const currentResult = await client.query(
+      `SELECT id, username, email, phone, role, verification_status, created_at
+       FROM users
+       WHERE id = $1
+       FOR UPDATE`,
+      [id]
+    );
+    const current = currentResult.rows[0];
+
+    if (!current) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    let query = `
-      UPDATE users 
-      SET username = COALESCE($1, username), 
-          email = COALESCE($2, email), 
-          phone = COALESCE($3, phone),
-          role = COALESCE($4, role),
-          updated_at = NOW()
-    `;
-    let values = [username, email, phone, role];
-    let paramIndex = 5;
-
-    if (password) {
-      const password_hash = await bcrypt.hash(password, 12);
-      query += `, password_hash = $${paramIndex}`;
-      values.push(password_hash);
-      paramIndex++;
+    const roleProvided = Object.prototype.hasOwnProperty.call(req.body, 'role');
+    const nextRole = roleProvided ? normalizeRole(role) : normalizeRole(current.role);
+    if (!USER_ROLES.has(nextRole)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Select a valid account role' });
     }
 
-    query += ` WHERE id = $${paramIndex} RETURNING id, username, email, phone, role, updated_at`;
-    values.push(id);
+    const nextUsername = username === undefined ? current.username : String(username).trim();
+    const nextEmail = email === undefined ? current.email : String(email).trim().toLowerCase();
+    const nextPhone = phone === undefined ? current.phone : (String(phone || '').trim() || null);
+    if (!nextUsername || !nextEmail) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Username and email are required' });
+    }
 
-    const { rows } = await pool.query(query, values);
-    
-    if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    
-    clearCache('users_list');
-    res.json(rows[0]);
+    if (nextRole !== 'manager' && (await directReportCount(client, id)) > 0) {
+      await client.query('ROLLBACK');
+      return directReportsConflict(res, 'changing their role');
+    }
+
+    const passwordChanged = typeof password === 'string' && password.length > 0;
+    const passwordHash = passwordChanged ? await bcrypt.hash(password, 12) : null;
+    const verificationStatus = PREVERIFIED_ROLES.has(nextRole)
+      ? 'VERIFIED'
+      : current.verification_status;
+    const { rows } = await client.query(
+      `UPDATE users
+       SET username = $1,
+           email = $2,
+           phone = $3,
+           role = $4,
+           verification_status = $5,
+           password_hash = COALESCE($6, password_hash),
+           updated_at = NOW()
+       WHERE id = $7
+       RETURNING id, username, email, phone, role, verification_status, created_at, updated_at`,
+      [nextUsername, nextEmail, nextPhone, nextRole, verificationStatus, passwordHash, id]
+    );
+
+    if (nextRole === 'manager') {
+      await ensureManagerEmployeeProfile(client, rows[0]);
+    }
+
+    const roleChanged = normalizeRole(current.role) !== nextRole;
+    if (roleChanged || passwordChanged) {
+      await revokeUserSessions(id, 'password_or_role_changed', client);
+    }
+
+    await client.query('COMMIT');
+
+    clearUserAndEmployeeCaches();
+    res.json(normalizeUserRow(rows[0]));
   } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
     console.error('Error updating user:', error);
     if (error.code === '23505') return res.status(400).json({ error: 'Email or username already exists' });
+    if (error.code === 'MANAGER_PROFILE_CONFLICT') return res.status(409).json({ error: error.message });
     res.status(500).json({ error: 'Server error' });
+  } finally {
+    client.release();
   }
 });
 
 router.delete('/:id', async (req, res) => {
+  let client;
   try {
     const { id } = req.params;
-    
+
     if (id === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' });
 
-    // Prevent non-super_admin from deleting super_admin
-    if (req.user.role !== 'super_admin') {
-      const { rows: checkUser } = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
-      if (checkUser.length > 0 && checkUser[0].role === 'super_admin') {
-        return res.status(403).json({ error: 'Cannot delete super_admin user' });
-      }
+    client = await pool.connect();
+    await client.query('BEGIN');
+    const currentResult = await client.query(
+      'SELECT id FROM users WHERE id = $1 FOR UPDATE',
+      [id]
+    );
+    if (currentResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const { rowCount } = await pool.query('DELETE FROM users WHERE id = $1', [id]);
-    if (rowCount === 0) return res.status(404).json({ error: 'User not found' });
-    
-    clearCache('users_list');
+    if (await directReportCount(client, id) > 0) {
+      await client.query('ROLLBACK');
+      return directReportsConflict(res, 'deleting their account');
+    }
+
+    await client.query('DELETE FROM users WHERE id = $1', [id]);
+    await client.query('COMMIT');
+
+    clearUserAndEmployeeCaches();
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {}
+    }
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Server error' });
+  } finally {
+    client?.release();
   }
 });
 

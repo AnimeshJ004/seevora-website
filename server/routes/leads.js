@@ -3,8 +3,11 @@ import express from 'express';
 import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
 import { getCache, setCache, clearCachePrefix } from '../utils/cache.js';
+import { requireRole } from '../middleware/auth.js';
+import { createRateLimiter } from '../middleware/security.js';
 
 const router = express.Router();
+const emailSendLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: 'leads_email' });
 
 const CACHE_LEADS_PREFIX = 'admin_leads_list_';
 const LEADS_TTL = 60;
@@ -13,11 +16,22 @@ function bustLeadsCache() {
   clearCachePrefix(CACHE_LEADS_PREFIX);
 }
 
-// Temporarily bypass auth for testing from frontend demo login
-const mockAuth = (req, res, next) => {
-  req.user = { id: null, role: 'admin', email: 'demo@seevora.com' };
-  next();
-};
+const guard = requireRole('admin', 'manager');
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
+function requireUuidParam(req, res, paramName = 'id') {
+  if (isUuid(req.params[paramName])) return true;
+  res.status(400).json({ message: `Invalid ${paramName}.` });
+  return false;
+}
+
+function hasOnlyUuids(values) {
+  return Array.isArray(values) && values.every(isUuid);
+}
 
 /* ── Helpers ─────────────────────────────────────────────────────────── */
 function normalizeLead(row) {
@@ -44,7 +58,7 @@ function normalizeLead(row) {
 }
 
 /* ── GET /api/leads — list all leads ────────────────────────────────── */
-router.get('/', mockAuth, async (req, res, next) => {
+router.get('/', guard, async (req, res, next) => {
   try {
     const { stage, source, search } = req.query;
 
@@ -85,7 +99,8 @@ router.get('/', mockAuth, async (req, res, next) => {
 });
 
 /* ── GET /api/leads/:id ──────────────────────────────────────────────── */
-router.get('/:id', mockAuth, async (req, res, next) => {
+router.get('/:id', guard, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const result = await pool.query('SELECT * FROM leads WHERE id = $1', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Lead not found.' });
@@ -97,7 +112,7 @@ router.get('/:id', mockAuth, async (req, res, next) => {
 });
 
 /* ── POST /api/leads — create lead ──────────────────────────────────── */
-router.post('/', mockAuth, async (req, res, next) => {
+router.post('/', guard, async (req, res, next) => {
   try {
     const {
       name, email, phone, company, industry, designation,
@@ -125,7 +140,8 @@ router.post('/', mockAuth, async (req, res, next) => {
 });
 
 /* ── PATCH /api/leads/:id — update lead / move stage ────────────────── */
-router.patch('/:id', mockAuth, async (req, res, next) => {
+router.patch('/:id', guard, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const existing = await pool.query('SELECT * FROM leads WHERE id = $1', [req.params.id]);
     if (!existing.rowCount) return res.status(404).json({ message: 'Lead not found.' });
@@ -160,7 +176,7 @@ router.patch('/:id', mockAuth, async (req, res, next) => {
 });
 
 /* ── DELETE /api/leads/all — delete all leads ───────────────────────── */
-router.delete('/all', mockAuth, async (req, res, next) => {
+router.delete('/all', requireRole('admin'), async (req, res, next) => {
   try {
     await pool.query('DELETE FROM leads');
     res.json({ message: 'All leads deleted.' });
@@ -171,7 +187,8 @@ router.delete('/all', mockAuth, async (req, res, next) => {
 });
 
 /* ── DELETE /api/leads/:id ───────────────────────────────────────────── */
-router.delete('/:id', mockAuth, async (req, res, next) => {
+router.delete('/:id', guard, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
   try {
     const result = await pool.query('DELETE FROM leads WHERE id = $1 RETURNING id', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Lead not found.' });
@@ -183,7 +200,7 @@ router.delete('/:id', mockAuth, async (req, res, next) => {
 });
 
 /* ── POST /api/leads/bulk — bulk import leads ───────────────────────── */
-router.post('/bulk', mockAuth, async (req, res, next) => {
+router.post('/bulk', guard, async (req, res, next) => {
   try {
     const { leads } = req.body;
     if (!Array.isArray(leads) || !leads.length) {
@@ -276,37 +293,15 @@ function buildLeadEmail(lead) {
   return { subject, html, text };
 }
 
-/* ── POST /api/leads/:id/send-email — send to one lead ──────────────── */
-router.post('/:id/send-email', mockAuth, async (req, res, next) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM leads WHERE id = $1', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ message: 'Lead not found.' });
-
-    const lead = normalizeLead(rows[0]);
-    if (!lead.email) return res.status(400).json({ message: 'This lead has no email address.' });
-
-    const { subject, html, text } = buildLeadEmail(lead);
-    const result = await sendMail({ to: lead.email, subject, html, text });
-
-    if (result.success) {
-      // Update last_contacted_at
-      await pool.query('UPDATE leads SET last_contacted_at = NOW(), updated_at = NOW() WHERE id = $1', [lead.id]);
-      return res.json({ success: true, message: `Email sent to ${lead.email}` });
-    } else {
-      return res.status(500).json({ success: false, message: result.error || 'Failed to send email.' });
-    }
-  } catch (err) {
-    next(err);
-  }
-});
-
 /* ── POST /api/leads/bulk-email — send to all leads with emails ──────── */
-router.post('/bulk-email', mockAuth, async (req, res, next) => {
+router.post('/bulk-email', guard, emailSendLimiter, async (req, res, next) => {
   try {
-    // Optional: filter by stage or specific ids
-    const { leadIds } = req.body; // if provided, send only to these; otherwise all with emails
+    const { leadIds } = req.body;
     let query;
     if (Array.isArray(leadIds) && leadIds.length) {
+      if (!hasOnlyUuids(leadIds)) {
+        return res.status(400).json({ message: 'Invalid leadIds.' });
+      }
       query = await pool.query(
         `SELECT * FROM leads WHERE id = ANY($1::uuid[]) AND email IS NOT NULL AND email != ''`,
         [leadIds]
@@ -334,10 +329,35 @@ router.post('/bulk-email', mockAuth, async (req, res, next) => {
 
     if (sent === 0) {
       const firstError = results.find(r => r.error)?.error || 'SMTP error. Check your SMTP settings in .env';
-      return res.status(500).json({ success: false, sent: 0, failed, total: rows.length, message: `Failed to send any emails. Error: ${firstError}`, results });
+      return res.status(503).json({ success: false, sent: 0, failed, total: rows.length, message: `Failed to send any emails. Error: ${firstError}`, results });
     }
 
     return res.json({ success: true, sent, failed, total: rows.length, results });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/* ── POST /api/leads/:id/send-email — send to one lead ──────────────── */
+router.post('/:id/send-email', guard, emailSendLimiter, async (req, res, next) => {
+  if (!requireUuidParam(req, res)) return;
+  try {
+    const { rows } = await pool.query('SELECT * FROM leads WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ message: 'Lead not found.' });
+
+    const lead = normalizeLead(rows[0]);
+    if (!lead.email) return res.status(400).json({ message: 'This lead has no email address.' });
+
+    const { subject, html, text } = buildLeadEmail(lead);
+    const result = await sendMail({ to: lead.email, subject, html, text });
+
+    if (result.success) {
+      // Update last_contacted_at
+      await pool.query('UPDATE leads SET last_contacted_at = NOW(), updated_at = NOW() WHERE id = $1', [lead.id]);
+      return res.json({ success: true, message: `Email sent to ${lead.email}` });
+    } else {
+      return res.status(503).json({ success: false, message: result.error || 'Failed to send email.' });
+    }
   } catch (err) {
     next(err);
   }

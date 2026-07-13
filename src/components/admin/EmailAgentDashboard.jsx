@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import EmailThreadViewer from './EmailThreadViewer';
+import { apiFetch } from '../../auth/api';
 
 const TABS = ['Overview', 'Threads', 'Reply Logs'];
 
@@ -35,7 +36,7 @@ function StatusBadge({ label, type }) {
   );
 }
 
-export default function EmailAgentDashboard({ token }) {
+export default function EmailAgentDashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [metrics, setMetrics] = useState(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
@@ -50,12 +51,10 @@ export default function EmailAgentDashboard({ token }) {
   const [logsLoading, setLogsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const authHeader = { Authorization: `Bearer ${token}` };
-
   const fetchMetrics = useCallback(async () => {
     setMetricsLoading(true);
     try {
-      const res = await fetch('/api/email-agent/metrics', { headers: authHeader });
+      const res = await apiFetch('/api/email-agent/metrics');
       if (!res.ok) throw new Error(`${res.status}`);
       setMetrics(await res.json());
     } catch (e) {
@@ -63,12 +62,12 @@ export default function EmailAgentDashboard({ token }) {
     } finally {
       setMetricsLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const fetchThreads = useCallback(async (page = 1) => {
     setThreadsLoading(true);
     try {
-      const res = await fetch(`/api/email-agent/threads?page=${page}&limit=20`, { headers: authHeader });
+      const res = await apiFetch(`/api/email-agent/threads?page=${page}&limit=20`);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       setThreads(data.threads || []);
@@ -78,12 +77,12 @@ export default function EmailAgentDashboard({ token }) {
     } finally {
       setThreadsLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const fetchLogs = useCallback(async (page = 1) => {
     setLogsLoading(true);
     try {
-      const res = await fetch(`/api/email-agent/logs?page=${page}&limit=50`, { headers: authHeader });
+      const res = await apiFetch(`/api/email-agent/logs?page=${page}&limit=50`);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       setLogs(data.logs || []);
@@ -93,7 +92,7 @@ export default function EmailAgentDashboard({ token }) {
     } finally {
       setLogsLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => { fetchMetrics(); }, [fetchMetrics]);
   useEffect(() => { if (activeTab === 'Threads') fetchThreads(threadsPage); }, [activeTab, threadsPage]);
@@ -103,7 +102,6 @@ export default function EmailAgentDashboard({ token }) {
     return (
       <EmailThreadViewer
         threadId={selectedThreadId}
-        token={token}
         onBack={() => { setSelectedThreadId(null); fetchThreads(threadsPage); }}
       />
     );

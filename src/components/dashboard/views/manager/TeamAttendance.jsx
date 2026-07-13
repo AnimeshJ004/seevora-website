@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, Badge, StatsGrid } from '../shared';
 import EmployeeAttendancePanel from '../EmployeeAttendancePanel';
 import { hrApiFetch } from '../hr/hrApi';
+import { apiFetch } from '../../../../auth/api';
 
 const OFFICE_START = '10:00 AM';
 const OFFICE_END = '6:00 PM';
@@ -36,7 +37,7 @@ function statusMeta(status) {
   }
 }
 
-export default function TeamAttendance({ user }) {
+export default function TeamAttendance() {
   const [data, setData] = useState({ attendance: [], summary: null, officeHours: null });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -78,10 +79,8 @@ export default function TeamAttendance({ user }) {
     
     setIsLoading(true);
     try {
-      const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
-      const response = await fetch(`/api/attendance/team/employee/${id}`, {
+      const response = await apiFetch(`/api/attendance/team/employee/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
       });
       const payload = await response.json().catch(() => ({}));
 

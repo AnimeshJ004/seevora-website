@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
 export default function CreateAccount({ user }) {
   const [newUser, setNewUser] = useState({ username: '', email: '', phone: '', role: 'employee', password: '' });
@@ -15,9 +16,7 @@ export default function CreateAccount({ user }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users', {
-        headers: { 'Authorization': `Bearer ${user?.token}` }
-      });
+      const res = await apiFetch('/api/users');
       if (res.ok) {
         setUsers(await res.json());
       }
@@ -33,11 +32,10 @@ export default function CreateAccount({ user }) {
     setLoading(true);
     setMsg({ type: '', text: '' });
     try {
-      const res = await fetch('/api/users', {
+      const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(newUser)
       });
@@ -45,6 +43,7 @@ export default function CreateAccount({ user }) {
         setMsg({ type: 'success', text: 'Account created successfully!' });
         setNewUser({ username: '', email: '', phone: '', role: 'employee', password: '' });
         fetchUsers();
+        window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
       } else {
         const err = await res.json();
         setMsg({ type: 'error', text: err.error || 'Failed to create account' });
@@ -65,11 +64,13 @@ export default function CreateAccount({ user }) {
     }
     if (!confirm('Are you sure you want to delete this account?')) return;
     try {
-      const res = await fetch(`/api/users/${id}`, {
+      const res = await apiFetch(`/api/users/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
-      if (res.ok) fetchUsers();
+      if (res.ok) {
+        fetchUsers();
+        window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
+      }
       else alert('Failed to delete account');
     } catch (err) {
       console.error(err);
@@ -109,7 +110,7 @@ export default function CreateAccount({ user }) {
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Account Role *</label>
             <select required value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff' }}>
-              {user?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
+              <option value="admin">Admin</option>
               <option value="hr">HR</option>
               <option value="manager">Manager</option>
               <option value="support">Support</option>

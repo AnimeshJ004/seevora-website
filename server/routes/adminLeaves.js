@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
+router.use(requireRole('hr', 'admin'));
 
 const LEAVE_TYPES = ['casual', 'sick', 'annual', 'comp_off'];
 const LEAVE_TYPE_COLUMN = {

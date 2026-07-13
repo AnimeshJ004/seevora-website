@@ -1,7 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
@@ -13,9 +13,10 @@ function bustAppointmentsCache() {
   clearCache(CACHE_APPOINTMENTS_LIST);
 }
 
-router.use(requireAuth);
+export const appointmentManagerGuard = requireRole('admin', 'manager');
+export const appointmentAdminGuard = requireRole('admin');
 
-router.get('/', async (req, res) => {
+router.get('/', appointmentManagerGuard, async (req, res) => {
   try {
     const cached = getCache(CACHE_APPOINTMENTS_LIST);
     if (cached) return res.json(cached);
@@ -34,7 +35,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', appointmentManagerGuard, async (req, res) => {
   try {
     const {
       title,
@@ -81,7 +82,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', appointmentManagerGuard, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, client_name, client_email, client_phone, scheduled_at, date, duration, status, notes } = req.body;
@@ -111,7 +112,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', appointmentAdminGuard, async (req, res) => {
   try {
     const { id } = req.params;
     const { rowCount } = await pool.query('DELETE FROM appointments WHERE id = $1', [id]);

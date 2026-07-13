@@ -4,10 +4,11 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from '../config/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { normalizeRole, requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const uploadsDir = path.resolve(__dirname, '../../uploads');
 
 /* ── Multer configuration ── */
 const ALLOWED_MIME_TYPES = [
@@ -22,7 +23,7 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const storage = multer.diskStorage({
-  destination: path.join(__dirname, '../../uploads'),
+  destination: uploadsDir,
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname);
     cb(null, `${crypto.randomUUID()}${ext}`);
@@ -45,6 +46,10 @@ const DOC_TYPES = [
   'aadhaar', 'pan', 'resume', 'qualification_certificate',
   'bank_details', 'offer_letter', 'payslip', 'experience_letter', 'other',
 ];
+
+function protectedFileUrl(documentId) {
+  return `/api/employee/documents/file/${documentId}`;
+}
 
 /* ── Helper: get hr_employees row linked to this user ── */
 async function getEmployeeByUserId(userId) {
@@ -85,7 +90,7 @@ router.get('/verification-status', requireAuth, async (req, res, next) => {
         id: d.id,
         docType: d.doc_type,
         fileName: d.file_name,
-        fileUrl: d.file_url,
+        fileUrl: protectedFileUrl(d.id),
         status: d.doc_status,
         rejectionReason: d.rejection_reason,
         uploadedAt: d.uploaded_at,
@@ -130,7 +135,7 @@ router.get('/documents/my-documents', requireAuth, async (req, res, next) => {
       id: d.id,
       docType: d.doc_type,
       fileName: d.file_name,
-      fileUrl: d.file_url,
+      fileUrl: protectedFileUrl(d.id),
       fileSize: d.file_size,
       status: d.doc_status,
       rejectionReason: d.rejection_reason,
@@ -179,7 +184,6 @@ router.post(
 
       const fileName = req.file.originalname;
       const filePath = req.file.path;
-      const fileUrl = `/uploads/${req.file.filename}`;
       const fileSize = `${(req.file.size / 1024).toFixed(0)} KB`;
       const docId = crypto.randomUUID();
 
@@ -202,7 +206,7 @@ router.post(
                verified = false, verified_at = NULL, verified_by = NULL,
                uploaded_at = NOW(), updated_at = NOW()
            WHERE id = $5`,
-          [fileName, filePath, fileUrl, fileSize, existing.rows[0].id]
+          [fileName, filePath, protectedFileUrl(existing.rows[0].id), fileSize, existing.rows[0].id]
         );
       } else {
         /* Insert new document */
@@ -210,7 +214,7 @@ router.post(
           `INSERT INTO employee_documents
              (id, employee_id, doc_type, file_name, file_path, file_url, file_size, doc_status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')`,
-          [docId, emp.id, type, fileName, filePath, fileUrl, fileSize]
+          [docId, emp.id, type, fileName, filePath, protectedFileUrl(docId), fileSize]
         );
       }
 
@@ -220,7 +224,7 @@ router.post(
         message: 'Your documents have been submitted successfully. Please wait for HR verification.',
         docType: type,
         fileName,
-        fileUrl,
+        fileUrl: existing.rowCount > 0 ? protectedFileUrl(existing.rows[0].id) : protectedFileUrl(docId),
       });
     } catch (error) {
       try { await client.query('ROLLBACK'); } catch {}
@@ -230,6 +234,36 @@ router.post(
     }
   }
 );
+
+router.get('/documents/file/:documentId', requireAuth, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT d.id, d.file_path, d.file_name, d.employee_id, e.user_id
+       FROM employee_documents d
+       JOIN hr_employees e ON e.id = d.employee_id
+       WHERE d.id = $1
+       LIMIT 1`,
+      [req.params.documentId]
+    );
+    const document = result.rows[0];
+    if (!document) return res.status(404).json({ message: 'Document not found.' });
+
+    const role = normalizeRole(req.user?.role);
+    const canAccess = ['admin', 'hr'].includes(role) || document.user_id === req.user?.id;
+    if (!canAccess) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    const resolvedPath = path.resolve(document.file_path || '');
+    if (!resolvedPath.startsWith(`${uploadsDir}${path.sep}`)) {
+      return res.status(404).json({ message: 'Document file not found.' });
+    }
+
+    return res.download(resolvedPath, document.file_name || path.basename(resolvedPath));
+  } catch (error) {
+    return next(error);
+  }
+});
 
 /* ── PUT /api/employee/documents/submit  —  Submit partial documents for HR review ── */
 router.put('/documents/submit', requireAuth, async (req, res, next) => {

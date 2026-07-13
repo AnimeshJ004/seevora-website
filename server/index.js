@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './config/db.js';
 import { initDb } from './db/init.js';
+import { assertInboundEmailSecuritySchema } from './db/secureInboundEmailMigration.js';
 import auditRequestRoutes from './routes/auditRequests.js';
 import attendanceRoutes from './routes/attendance.js';
 import authRoutes from './routes/auth.js';
@@ -18,7 +20,6 @@ import payrollRoutes from './routes/payroll.js';
 import documentRoutes from './routes/documents.js';
 import employeeDocumentRoutes from './routes/employeeDocuments.js';
 import emailOutreachRoutes from './routes/emailOutreach.js';
-import webhooksRoutes from './routes/webhooks.js';
 import leadsRoutes from './routes/leads.js';
 import employeeLeavesRoutes from './routes/employeeLeaves.js';
 import managerLeavesRoutes from './routes/managerLeaves.js';
@@ -39,13 +40,16 @@ import { startImapPoller } from './services/emailAgent/imapPoller.js';
 import { startContactFormProcessor } from './services/emailAgent/contactFormProcessor.js';
 import sitemapHandler from './routes/sitemap.js';
 import robotsHandler from './routes/robots.js';
+import { createRateLimiter, securityHeaders } from './middleware/security.js';
+import { cleanupAuthSessions } from './services/auth/sessionService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistPath = path.join(__dirname, '../dist');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
-if (!process.env.JWT_SECRET) {
-  throw new Error('JWT_SECRET is required. Copy .env.example to .env and set a strong secret.');
+if (process.env.NODE_ENV === 'production'
+    && !String(process.env.CLIENT_ORIGIN || '').startsWith('https://')) {
+  throw new Error('CLIENT_ORIGIN must use HTTPS in production.');
 }
 
 // ── API Key validation ────────────────────────────────────────────────────────
@@ -70,14 +74,20 @@ if (aiProvider === 'anthropic') {
 const app = express();
 const port = Number(process.env.PORT || 4000);
 
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(securityHeaders);
+const allowedOrigins = process.env.CLIENT_ORIGIN 
+  ? process.env.CLIENT_ORIGIN.split(',') 
+  : ['http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  origin: allowedOrigins,
   credentials: true,
 }));
+app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
-
-/* Serve uploaded files */
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api', createRateLimiter({ windowMs: 60 * 1000, max: 300, keyPrefix: 'api' }));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });
@@ -98,7 +108,6 @@ app.use('/api/employee/leaves', employeeLeavesRoutes);
 app.use('/api/manager/leaves', managerLeavesRoutes);
 app.use('/api/employee', employeeDocumentRoutes);
 app.use('/api/email-outreach', emailOutreachRoutes);
-app.use('/api/webhooks', webhooksRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/email-bot', emailBotRoutes);
 app.use('/api/email-agent', emailAgentRoutes);
@@ -117,60 +126,87 @@ app.get('/sitemap.xml', sitemapHandler);
 app.get('/robots.txt', robotsHandler);
 
 if (fs.existsSync(clientIndexPath)) {
-  app.use(express.static(clientDistPath));
+  const clientIndex = fs.readFileSync(clientIndexPath, 'utf8');
+  app.use(express.static(clientDistPath, { index: false }));
   app.get(/^\/(?!api\/).*/, (_req, res) => {
-    res.sendFile(clientIndexPath);
+    const html = clientIndex.replaceAll('__CSP_NONCE__', res.locals.cspNonce || '');
+    res.type('html').send(html);
   });
 }
-
-// Start background email campaign scheduler
-setInterval(async () => {
-  try {
-    const now = new Date();
-    const { rows } = await pool.query(
-      `SELECT id FROM email_campaigns 
-       WHERE status = 'scheduled' AND scheduled_at <= $1`,
-      [now]
-    );
-    if (rows.length > 0) {
-      console.log(`[Scheduler] Found ${rows.length} scheduled campaigns ready to send.`);
-      const { sendCampaign } = await import('./utils/campaignSender.js');
-      for (const row of rows) {
-        console.log(`[Scheduler] Sending campaign: ${row.id}`);
-        await sendCampaign(row.id);
-      }
-    }
-  } catch (error) {
-    console.error('[Scheduler] Error running scheduled campaigns job:', error.message);
-  }
-}, 30000); // Check every 30 seconds
-
-// Hourly cleanup: archive sales agent sessions older than 24 hours
-setInterval(runSessionCleanup, 60 * 60 * 1000);
-// Run once at startup too
-runSessionCleanup();
-
 
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ message: 'Something went wrong. Please try again.' });
 });
 
-initDb().then(() => {
+let server;
+const backgroundIntervals = [];
+
+function startBackgroundJobs() {
+  const campaignInterval = setInterval(async () => {
+    try {
+      const now = new Date();
+      const { rows } = await pool.query(
+        `SELECT id FROM email_campaigns
+         WHERE status = 'scheduled' AND scheduled_at <= $1`,
+        [now]
+      );
+      if (rows.length > 0) {
+        console.log(`[Scheduler] Found ${rows.length} scheduled campaigns ready to send.`);
+        const { sendCampaign } = await import('./utils/campaignSender.js');
+        for (const row of rows) {
+          console.log(`[Scheduler] Sending campaign: ${row.id}`);
+          await sendCampaign(row.id);
+        }
+      }
+    } catch (error) {
+      console.error('[Scheduler] Error running scheduled campaigns job:', error.message);
+    }
+  }, 30000);
+
+  const salesCleanupInterval = setInterval(runSessionCleanup, 60 * 60 * 1000);
+  const authCleanupInterval = setInterval(() => {
+    cleanupAuthSessions().catch((error) => {
+      console.error('[Auth] Session cleanup failed:', error.message);
+    });
+  }, 60 * 60 * 1000);
+
+  campaignInterval.unref?.();
+  salesCleanupInterval.unref?.();
+  authCleanupInterval.unref?.();
+  backgroundIntervals.push(campaignInterval, salesCleanupInterval, authCleanupInterval);
+}
+
+async function startServer() {
+  await initDb();
+  await assertInboundEmailSecuritySchema(pool);
+  await cleanupAuthSessions();
   console.log('Database initialized successfully.');
-}).catch((err) => {
-  console.error('Failed to initialize database:', err);
+
+  await runSessionCleanup();
+  startImapPoller();
+  startContactFormProcessor();
+  startBackgroundJobs();
+
+  server = app.listen(port, () => {
+    console.log(`Seevora API running on http://localhost:${port}`);
+  });
+}
+
+startServer().catch(async (error) => {
+  console.error('Failed to initialize server:', error);
+  await pool.end().catch(() => {});
+  process.exit(1);
 });
 
-// Start Email AI Sales Agent background workers (after DB init)
-startImapPoller();
-startContactFormProcessor();
+async function shutdown() {
+  backgroundIntervals.forEach(clearInterval);
 
-const server = app.listen(port, () => {
-  console.log(`Seevora API running on http://localhost:${port}`);
-});
+  if (!server) {
+    await pool.end();
+    process.exit(0);
+  }
 
-function shutdown() {
   server.close(async () => {
     await pool.end();
     process.exit(0);
@@ -179,4 +215,3 @@ function shutdown() {
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-// Trigger restart

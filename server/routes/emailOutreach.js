@@ -10,13 +10,17 @@ import express from 'express';
 import pool from '../config/db.js';
 import { sendMail, sendBulk } from '../utils/mailer.js';
 import { crmOutboundEmail } from '../utils/emailTemplates.js';
+import { requireRole } from '../middleware/auth.js';
+import { createRateLimiter } from '../middleware/security.js';
 
 const router = express.Router();
+const emailSendLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: 'email_outreach_send' });
+router.use(requireRole('admin', 'manager'));
 
 /* ── POST /api/email-outreach/send ─────────────────────────
    Send customized outbound email to a single lead
 ────────────────────────────────────────────────────────── */
-router.post('/send', async (req, res, next) => {
+router.post('/send', emailSendLimiter, async (req, res, next) => {
   try {
     const {
       leadId,
@@ -63,7 +67,7 @@ router.post('/send', async (req, res, next) => {
 /* ── POST /api/email-outreach/bulk ─────────────────────────
    Send outbound emails to multiple leads at once
 ────────────────────────────────────────────────────────── */
-router.post('/bulk', async (req, res, next) => {
+router.post('/bulk', emailSendLimiter, async (req, res, next) => {
   try {
     const { leads, senderName, customMessage, serviceContext } = req.body;
     // leads = [{ email, name, company, leadId }]

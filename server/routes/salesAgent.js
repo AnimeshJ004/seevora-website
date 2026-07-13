@@ -5,7 +5,7 @@ import * as sessionManager from '../services/salesAgent/sessionManager.js';
 import { generateResponse, shouldOfferLeadCapture, extractMentionedServices, invalidatePromptCache } from '../services/salesAgent/responseGenerator.js';
 import { validateLeadData, leadExistsForSession, createLead, linkLeadToSession } from '../services/salesAgent/leadProcessor.js';
 import { logEvent, trackEvent, calculateMetrics, trackServiceDiscussion, getDashboardMetrics } from '../services/salesAgent/analyticsTracker.js';
-import { checkRateLimit, rateLimitMiddleware } from '../utils/rateLimiter.js';
+import { checkRateLimit } from '../utils/rateLimiter.js';
 
 const router = express.Router();
 
@@ -233,7 +233,7 @@ router.post('/session/end', async (req, res) => {
 // ─── ADMIN ENDPOINTS ────────────────────────────────────────────────────────
 
 // GET /api/sales-agent/admin/dashboard
-router.get('/admin/dashboard', requireRole('super_admin', 'admin'), async (req, res) => {
+router.get('/admin/dashboard', requireRole('admin'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const metrics = await getDashboardMetrics({ startDate, endDate });
@@ -245,7 +245,7 @@ router.get('/admin/dashboard', requireRole('super_admin', 'admin'), async (req, 
 });
 
 // GET /api/sales-agent/admin/conversations/:sessionId
-router.get('/admin/conversations/:sessionId', requireRole('super_admin', 'admin'), async (req, res) => {
+router.get('/admin/conversations/:sessionId', requireRole('admin'), async (req, res) => {
   try {
     const { sessionId } = req.params;
     const session = await sessionManager.getSessionBySessionId(sessionId);
@@ -288,7 +288,7 @@ router.get('/admin/conversations/:sessionId', requireRole('super_admin', 'admin'
 });
 
 // GET /api/sales-agent/admin/conversations (list)
-router.get('/admin/conversations', requireRole('super_admin', 'admin'), async (req, res) => {
+router.get('/admin/conversations', requireRole('admin'), async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || 1));
     const limit = Math.min(50, parseInt(req.query.limit || 20));
@@ -318,7 +318,7 @@ router.get('/admin/conversations', requireRole('super_admin', 'admin'), async (r
 });
 
 // PUT /api/sales-agent/admin/prompt
-router.put('/admin/prompt', requireRole('super_admin', 'admin'), async (req, res) => {
+router.put('/admin/prompt', requireRole('admin'), async (req, res) => {
   try {
     const { systemPrompt } = req.body;
     if (!systemPrompt || typeof systemPrompt !== 'string' || systemPrompt.trim().length < 50) {

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { getCache, setCache } from '../utils/cache.js';
 
 const router = express.Router();
@@ -10,6 +10,10 @@ const CACHE_DOC_SUMMARY = 'hr_documents_summary';
 const DOC_SUMMARY_TTL = 60;
 
 const DOC_TYPES = ['aadhaar', 'pan', 'offer_letter', 'payslip', 'resume', 'experience_letter', 'bank_details', 'qualification_certificate', 'other'];
+
+function protectedFileUrl(documentId) {
+  return `/api/employee/documents/file/${documentId}`;
+}
 
 function toDocument(row) {
   return {
@@ -21,7 +25,7 @@ function toDocument(row) {
     typeKey: row.doc_type || 'other',
     fileName: row.file_name,
     filePath: row.file_path || '',
-    fileUrl: row.file_url || '',
+    fileUrl: protectedFileUrl(row.id),
     size: row.file_size || '',
     status: row.doc_status || (row.verified ? 'VERIFIED' : 'PENDING'),
     verified: Boolean(row.verified),
@@ -33,7 +37,7 @@ function toDocument(row) {
 }
 
 /* ── GET /  —  List all documents (HR) ── */
-router.get('/', requireAuth, async (_req, res, next) => {
+router.get('/', requireRole('hr', 'admin'), async (_req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT d.*, e.name AS emp_name, e.employee_code
@@ -48,7 +52,7 @@ router.get('/', requireAuth, async (_req, res, next) => {
 });
 
 /* ── GET /summary  —  Document stats ── */
-router.get('/summary', requireAuth, async (_req, res, next) => {
+router.get('/summary', requireRole('hr', 'admin'), async (_req, res, next) => {
   try {
     const cached = getCache(CACHE_DOC_SUMMARY);
     if (cached) return res.json(cached);
@@ -76,7 +80,7 @@ router.get('/summary', requireAuth, async (_req, res, next) => {
 });
 
 /* ── GET /verifications  —  List ALL employees with their verification status ── */
-router.get('/verifications', requireAuth, async (_req, res, next) => {
+router.get('/verifications', requireRole('hr', 'admin'), async (_req, res, next) => {
   try {
     /* No WHERE filter on role — show every hr_employees row */
     const result = await pool.query(`
@@ -157,7 +161,7 @@ router.get('/verifications', requireAuth, async (_req, res, next) => {
 });
 
 /* ── GET /verifications/:employeeId  —  Employee detail + documents ── */
-router.get('/verifications/:employeeId', requireAuth, async (req, res, next) => {
+router.get('/verifications/:employeeId', requireRole('hr', 'admin'), async (req, res, next) => {
   try {
     const empResult = await pool.query(`
       SELECT e.id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
@@ -187,7 +191,7 @@ router.get('/verifications/:employeeId', requireAuth, async (req, res, next) => 
       docType:         d.doc_type,
       docTypeLabel:    d.doc_type.replace(/_/g, ' '),
       fileName:        d.file_name,
-      fileUrl:         d.file_url || '',
+      fileUrl:         protectedFileUrl(d.id),
       fileSize:        d.file_size || '',
       status:          d.doc_status || 'PENDING',
       rejectionReason: d.rejection_reason || '',
@@ -216,7 +220,7 @@ router.get('/verifications/:employeeId', requireAuth, async (req, res, next) => 
 });
 
 /* ── PUT /verifications/:employeeId/verify  —  HR verifies employee ── */
-router.put('/verifications/:employeeId/verify', requireAuth, async (req, res, next) => {
+router.put('/verifications/:employeeId/verify', requireRole('hr', 'admin'), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const empResult = await client.query(
@@ -257,7 +261,7 @@ router.put('/verifications/:employeeId/verify', requireAuth, async (req, res, ne
 });
 
 /* ── PUT /verifications/:employeeId/reject  —  HR rejects employee ── */
-router.put('/verifications/:employeeId/reject', requireAuth, async (req, res, next) => {
+router.put('/verifications/:employeeId/reject', requireRole('hr', 'admin'), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { reason, documentIds } = req.body;
@@ -313,7 +317,7 @@ router.put('/verifications/:employeeId/reject', requireAuth, async (req, res, ne
 });
 
 /* ── POST /  —  Upload document metadata (HR side) ── */
-router.post('/', requireAuth, async (req, res, next) => {
+router.post('/', requireRole('hr', 'admin'), async (req, res, next) => {
   try {
     const { employeeId, docType, fileName, fileSize } = req.body;
     if (!employeeId) return res.status(400).json({ message: 'Employee is required.' });
@@ -343,7 +347,7 @@ router.post('/', requireAuth, async (req, res, next) => {
 });
 
 /* ── PUT /:id/verify  —  Mark single document as verified (HR) ── */
-router.put('/:id/verify', requireAuth, async (req, res, next) => {
+router.put('/:id/verify', requireRole('hr', 'admin'), async (req, res, next) => {
   try {
     const current = await pool.query('SELECT * FROM employee_documents WHERE id = $1 LIMIT 1', [req.params.id]);
     if (current.rowCount === 0) return res.status(404).json({ message: 'Document not found.' });
@@ -363,7 +367,7 @@ router.put('/:id/verify', requireAuth, async (req, res, next) => {
 });
 
 /* ── DELETE /:id  —  Remove a document ── */
-router.delete('/:id', requireAuth, async (req, res, next) => {
+router.delete('/:id', requireRole('hr', 'admin'), async (req, res, next) => {
   try {
     const current = await pool.query('SELECT id FROM employee_documents WHERE id = $1 LIMIT 1', [req.params.id]);
     if (current.rowCount === 0) return res.status(404).json({ message: 'Document not found.' });

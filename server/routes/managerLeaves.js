@@ -1,11 +1,10 @@
 import express from 'express';
 import pool from '../config/db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { clearCache } from '../utils/cache.js';
 
 const router = express.Router();
 
-router.use(requireAuth);
 router.use(requireRole('manager'));
 
 const LEAVE_TYPE_COLUMN = {

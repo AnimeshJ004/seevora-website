@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logoIcon from '../../assets/logo-icon.png';
-import { logout, PERMISSIONS, ROLE_META, hasPermission } from '../../auth/roles';
+import { PERMISSIONS, ROLE_META, hasPermission } from '../../auth/roles';
+import { apiFetch } from '../../auth/api';
 import './Dashboard.css';
 
 // Admin views
@@ -20,7 +21,6 @@ import Reviews from './views/operations/Reviews';
 import AuditLogs from './views/admin/AuditLogs';
 import SecurityCenter from './views/system/SecurityCenter';
 import Analytics from './views/admin/Analytics';
-import Settings from './views/system/Settings';
 import EmailAgentDashboard from '../admin/EmailAgentDashboard';
 
 import CreateAccount from './views/admin/CreateAccount';
@@ -80,7 +80,6 @@ const NAVICONS = {
   'inbound-emails': <Ic d="M22 12h-6l-2 3h-4l-2-3H2 M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />,
   'email-ai-agent': <Ic d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6" />,
   analytics: <Ic d="M18 20V10 M12 20V4 M6 20v-6 M2 20h20" />,
-  settings: <Ic d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />,
   employees: <Ic d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" />,
   attendance: <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18 M8 14h.01 M12 14h.01 M16 14h.01" />,
   leave: <Ic d="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />,
@@ -104,20 +103,13 @@ const NAVICONS = {
 
 /* ── Nav structure ── */
 const NAV = {
-  super_admin: [
+  admin: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }] },
     { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }] },
     { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
-    { label: 'System', items: [{ id: 'audit-logs', label: 'Audit Logs' }, { id: 'security-center', label: 'Security Center' }, { id: 'settings', label: 'Settings' }] },
-    { label: 'HR Module', items: [{ id: 'employees', label: 'Employees' }, { id: 'attendance', label: 'Attendance' }, { id: 'payroll', label: 'Payroll' }] },
-  ],
-  admin: [
-    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }] },
-    { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }, { id: 'settings', label: 'Settings' }] },
-    { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
-    { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
-    { label: 'People', items: [{ id: 'employees', label: 'Employees' }] },
+    { label: 'System', items: [{ id: 'audit-logs', label: 'Audit Logs' }, { id: 'security-center', label: 'Security Center' }] },
+    { label: 'HR Module', items: [{ id: 'employees', label: 'Employees' }, { id: 'attendance', label: 'Attendance' }, { id: 'payroll', label: 'Payroll' }, { id: 'documents', label: 'Documents' }, { id: 'document-verifications', label: 'Doc Verifications' }] },
   ],
   hr: [
     { label: 'Overview', items: [{ id: 'dashboard', label: 'Dashboard' }] },
@@ -142,7 +134,7 @@ const NAV = {
 const TITLES = {
   dashboard: 'Dashboard', businesses: 'Businesses', users: 'Users & Roles', 'create-account': 'Create Account',
   'support-tickets': 'Support Tickets', leads: 'CRM / Leads', appointments: 'Appointments',
-  'ai-voice-logs': 'AI Voice Agent', 'whatsapp-logs': 'WhatsApp Marketing', reviews: 'Reputation', 'audit-logs': 'Audit Requests', 'security-center': 'Security Center', analytics: 'Analytics', settings: 'Settings',
+  'ai-voice-logs': 'AI Voice Agent', 'whatsapp-logs': 'WhatsApp Marketing', reviews: 'Reputation', 'audit-logs': 'Audit Requests', 'security-center': 'Security Center', analytics: 'Analytics',
   subscribers: 'Subscribers', campaigns: 'Email Campaigns', 'email-templates': 'Email Templates', 'inbound-emails': 'Email Inbox', 'email-ai-agent': 'Email AI Agent',
   employees: 'Employees', attendance: 'Attendance', leave: 'Leave Management',
   recruitment: 'Recruitment', payroll: 'Payroll', documents: 'Employee Documents',
@@ -154,7 +146,6 @@ const TITLES = {
 };
 
 const ACCENT = {
-  super_admin: { c: '#9e3cec', bg: 'rgba(158,60,236,0.15)' },
   admin: { c: '#4f8ef7', bg: 'rgba(79,142,247,0.15)' },
   hr: { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
   employee: { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
@@ -192,9 +183,9 @@ function getView(id, role, user, onNavigate, canNavigate) {
     businesses: <Businesses user={user} />, users: <Users user={user} />, 'create-account': <CreateAccount user={user} />, 'support-tickets': <SupportTickets />,
     leads: <CRMLeads user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
     'whatsapp-logs': <WhatsAppLogs />, subscribers: <Subscribers />, campaigns: <Campaigns />, 'email-templates': <EmailTemplates />, 'inbound-emails': <InboundEmails />,
-    'email-ai-agent': <EmailAgentDashboard token={user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token')} />,
+    'email-ai-agent': <EmailAgentDashboard />,
     reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
-    'security-center': <SecurityCenter user={user} />, analytics: <Analytics />, settings: <Settings user={user} />,
+    'security-center': <SecurityCenter user={user} />, analytics: <Analytics />,
     employees: <Employees user={user} />, attendance: <Attendance />, leave: <Leave />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
     'project-management': <ProjectManagement user={user} />, 'task-management': <TaskManagement user={user} />, 'time-tracking': <TimeTracking user={user} />
@@ -204,7 +195,6 @@ function getView(id, role, user, onNavigate, canNavigate) {
 
 function ManagerDashboard({ user, onNavigate, canNavigate }) {
   const name = user?.name || user?.username || 'Manager';
-  const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [summary, setSummary] = useState(null);
   const [leaveSummary, setLeaveSummary] = useState(null);
   const [error, setError] = useState('');
@@ -215,12 +205,8 @@ function ManagerDashboard({ user, onNavigate, canNavigate }) {
     async function loadSummary() {
       try {
         const [response, leaveResponse] = await Promise.all([
-          fetch('/api/analytics/manager', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch('/api/manager/leaves/summary', {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          apiFetch('/api/analytics/manager'),
+          apiFetch('/api/manager/leaves/summary'),
         ]);
         const result = await response.json().catch(() => ({}));
         const leaveResult = await leaveResponse.json().catch(() => ({}));
@@ -240,7 +226,7 @@ function ManagerDashboard({ user, onNavigate, canNavigate }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   const metrics = [
     { label: 'Leads', value: summary?.leadsTotal ?? '...', note: `${summary?.followUpsDue ?? 0} follow-ups due`, target: 'leads' },
@@ -298,7 +284,6 @@ function ManagerDashboard({ user, onNavigate, canNavigate }) {
 
 function EmployeeDashboard({ user, onNavigate }) {
   const name = user?.name || user?.username || 'Employee';
-  const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [tasks, setTasks] = useState([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [taskError, setTaskError] = useState('');
@@ -308,9 +293,7 @@ function EmployeeDashboard({ user, onNavigate }) {
 
     async function loadTasks() {
       try {
-        const response = await fetch('/api/productivity/tasks', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiFetch('/api/productivity/tasks');
         const data = await response.json().catch(() => []);
         if (!response.ok) {
           throw new Error(data.error || 'Failed to load tasks.');
@@ -329,16 +312,12 @@ function EmployeeDashboard({ user, onNavigate }) {
       }
     }
 
-    if (token) {
-      loadTasks();
-    } else {
-      setIsLoadingTasks(false);
-    }
+    loadTasks();
     
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   // Calculate task metrics
   const todoTasks = Array.isArray(tasks) ? tasks.filter(t => t.status === 'todo').length : 0;
@@ -602,7 +581,6 @@ const EMPLOYEE_LEAVE_STATUS = {
 };
 
 function EmployeeLeaveView({ user }) {
-  const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [leaves, setLeaves] = useState([]);
   const [policy, setPolicy] = useState(null);
   const [message, setMessage] = useState('');
@@ -620,9 +598,7 @@ function EmployeeLeaveView({ user }) {
   const loadLeaves = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/employee/leaves', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await apiFetch('/api/employee/leaves');
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || 'Unable to load leave details.');
       setLeaves(Array.isArray(data.leaves) ? data.leaves : []);
@@ -639,13 +615,8 @@ function EmployeeLeaveView({ user }) {
   };
 
   useEffect(() => {
-    if (token) {
-      loadLeaves();
-    } else {
-      setError('Please sign in again to view leave details.');
-      setIsLoading(false);
-    }
-  }, [token]);
+    loadLeaves();
+  }, []);
 
   const calculateDays = () => {
     if (!form.fromDate || !form.toDate) return 0;
@@ -671,11 +642,10 @@ function EmployeeLeaveView({ user }) {
 
     setIsSaving(true);
     try {
-      const response = await fetch('/api/employee/leaves', {
+      const response = await apiFetch('/api/employee/leaves', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(form),
       });
@@ -869,7 +839,6 @@ const EMPLOYEE_DOCUMENT_STATUS = {
 };
 
 function EmployeeDocumentsView({ user, onNavigate }) {
-  const token = user?.token || localStorage.getItem('seevoraAuthToken') || localStorage.getItem('seevora_token') || '';
   const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -880,9 +849,7 @@ function EmployeeDocumentsView({ user, onNavigate }) {
 
     async function loadDocuments() {
       try {
-        const response = await fetch('/api/employee/documents/my-documents', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await apiFetch('/api/employee/documents/my-documents');
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || 'Unable to load documents.');
         if (!cancelled) {
@@ -900,17 +867,12 @@ function EmployeeDocumentsView({ user, onNavigate }) {
       }
     }
 
-    if (token) {
-      loadDocuments();
-    } else {
-      setError('Please sign in again to view documents.');
-      setIsLoading(false);
-    }
+    loadDocuments();
 
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, []);
 
   const counts = documents.reduce((acc, doc) => {
     const status = doc.status || 'PENDING';
@@ -1135,7 +1097,7 @@ function AccessDenied({ id }) {
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><line x1="9" y1="9" x2="15" y2="15" /><line x1="15" y1="9" x2="9" y2="15" />
       </svg>
       <h2>Access Restricted</h2>
-      <p>You don't have permission to view <strong style={{ color: '#e2e8f0' }}>{TITLES[id]}</strong>.<br />Contact your Super Admin.</p>
+      <p>You don't have permission to view <strong style={{ color: '#e2e8f0' }}>{TITLES[id]}</strong>.<br />Contact your Admin.</p>
     </div>
   );
 }
@@ -1192,7 +1154,7 @@ function VerificationBanner({ status, onNavigate }) {
 }
 
 export default function DashboardShell({ user, onLogout }) {
-  const role = user?.role || 'admin';
+  const role = user?.role === 'super_admin' ? 'admin' : (user?.role || 'admin');
   const meta = ROLE_META[role] || ROLE_META.admin;
   const accent = ACCENT[role] || ACCENT.admin;
   const allowed = PERMISSIONS[role] || [];

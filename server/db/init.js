@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import pool from '../config/db.js';
+import { backfillManagerEmployeeProfiles } from '../services/hr/employeeProfileService.js';
+import { repairInboundEmailSecurity } from './secureInboundEmailMigration.js';
 
 export async function initDb() {
   await pool.query(`
@@ -78,10 +80,41 @@ export async function initDb() {
     ADD COLUMN IF NOT EXISTS verification_status VARCHAR(40) NOT NULL DEFAULT 'PENDING_VERIFICATION';
   `);
 
-  /* HR and super_admin users are always considered verified */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      id UUID PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash CHAR(64) NOT NULL UNIQUE,
+      csrf_token VARCHAR(86) NOT NULL,
+      remembered BOOLEAN NOT NULL DEFAULT false,
+      expires_at TIMESTAMPTZ NOT NULL,
+      revoked_at TIMESTAMPTZ,
+      revoked_reason VARCHAR(80),
+      last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS auth_sessions_user_idx
+    ON auth_sessions (user_id, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS auth_sessions_expiry_idx
+    ON auth_sessions (expires_at)
+    WHERE revoked_at IS NULL;
+  `);
+
+  await pool.query(`
+    UPDATE users SET role = 'admin'
+    WHERE role = 'super_admin';
+  `);
+
+  /* HR and admin users are always considered verified */
   await pool.query(`
     UPDATE users SET verification_status = 'VERIFIED'
-    WHERE role IN ('hr', 'super_admin', 'admin', 'manager', 'support')
+    WHERE role IN ('hr', 'admin', 'manager', 'support')
       AND verification_status = 'PENDING_VERIFICATION';
   `);
 
@@ -457,6 +490,7 @@ export async function initDb() {
       body TEXT NOT NULL,
       ai_reply TEXT,
       status VARCHAR(40) NOT NULL DEFAULT 'received',
+      quarantine_reason VARCHAR(80),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
@@ -622,7 +656,7 @@ Seevora — AI-Powered Growth`,
   );
 
   await pool.query(
-    `UPDATE users SET role = 'super_admin' WHERE LOWER(email) = LOWER($1)`,
+    `UPDATE users SET role = 'admin' WHERE LOWER(email) = LOWER($1)`,
     ['admin@seevora.in']
   );
 
@@ -917,6 +951,34 @@ Seevora — AI-Powered Growth`,
     `);
     console.log('[SalesAgent] ✓ leads table created/verified');
 
+    await pool.query(`
+      UPDATE sales_agent_sessions s
+      SET lead_id = NULL
+      WHERE lead_id IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM sales_agent_leads l WHERE l.id = s.lead_id
+        );
+    `);
+
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM information_schema.table_constraints
+          WHERE constraint_name = 'sales_agent_sessions_lead_id_fkey'
+            AND table_name = 'sales_agent_sessions'
+        ) THEN
+          ALTER TABLE sales_agent_sessions
+          ADD CONSTRAINT sales_agent_sessions_lead_id_fkey
+          FOREIGN KEY (lead_id)
+          REFERENCES sales_agent_leads(id)
+          ON DELETE SET NULL;
+        END IF;
+      END $$;
+    `);
+    console.log('[SalesAgent] ✓ session lead foreign key created/verified');
+
     // Lead indexes
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_email ON sales_agent_leads(LOWER(email));`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_status ON sales_agent_leads(status);`);
@@ -1158,6 +1220,8 @@ Keep responses concise (2-3 sentences typical, 4-5 maximum for complex topics).`
     ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS processing_duration_ms INTEGER;
   `).catch(e => console.log(e.message));
 
+  await repairInboundEmailSecurity(pool, { ownAddress: process.env.IMAP_USER || '' });
+
   // Task 1.3: Add indexes for inbound_emails
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_inbound_emails_thread_id ON inbound_emails(thread_id);
@@ -1253,4 +1317,6 @@ Use short sentences. Avoid jargon. Be direct and confident.`]).catch(e => consol
     CREATE INDEX IF NOT EXISTS audit_requests_status_created_at_idx ON audit_requests (status, created_at);
     CREATE INDEX IF NOT EXISTS system_audit_logs_created_at_idx ON system_audit_logs (created_at DESC);
   `).catch(e => console.error('Failed to create dashboard indexes:', e.message));
+
+  await backfillManagerEmployeeProfiles(pool);
 }

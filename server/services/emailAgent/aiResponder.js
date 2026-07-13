@@ -193,6 +193,7 @@ async function buildThreadHistory(threadId) {
     `SELECT 'user' AS sender, body AS text, created_at
      FROM inbound_emails
      WHERE thread_id = $1
+       AND status <> 'quarantined'
 
      UNION ALL
 

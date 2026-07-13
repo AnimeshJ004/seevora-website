@@ -1,52 +1,67 @@
-import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
-import { getCache, setCache } from '../utils/cache.js';
+import {
+  clearSessionCookies,
+  findActiveAuthSession,
+  hashSessionToken,
+  readSessionToken,
+} from '../services/auth/sessionService.js';
+import { validateAuthenticatedCsrf } from './security.js';
+
+export function normalizeRole(role) {
+  const value = String(role || '').toLowerCase();
+  return value === 'super_admin' ? 'admin' : value;
+}
+
+export function normalizeUser(user) {
+  if (!user) return user;
+  return { ...user, role: normalizeRole(user.role) };
+}
+
+export async function resolveAuthSession(req, res) {
+  const token = readSessionToken(req);
+
+  if (!token) return null;
+
+  const auth = await findActiveAuthSession(token);
+  if (!auth) {
+    clearSessionCookies(res);
+    console.warn(JSON.stringify({
+      event: 'auth_session_rejected',
+      fingerprint: hashSessionToken(token).slice(0, 12),
+      timestamp: new Date().toISOString(),
+    }));
+    return null;
+  }
+
+  req.user = normalizeUser(auth.user);
+  req.authSession = auth.session;
+  res.set('Cache-Control', 'no-store');
+  return auth;
+}
 
 export async function requireAuth(req, res, next) {
-  const header = req.get('authorization') || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-
-  if (token.startsWith('demo:')) {
-    const role = token.slice(5);
-    const demoUsers = {
-      super_admin: { id: '00000000-0000-0000-0000-000000000000', role: 'super_admin', email: 'admin@seevora.in', username: 'demo_admin' },
-      hr: { id: '00000000-0000-0000-0000-000000000003', role: 'hr', email: 'hr@seevora.in', username: 'demo_hr' },
-    };
-    req.user = demoUsers[role] || demoUsers.super_admin;
-    return next();
-  }
-
-  if (!token || token === 'undefined' || token === 'null') {
-    // Demo Mode Bypass: If token is missing/invalid due to demo login, use standard demo admin
-    req.user = { id: '00000000-0000-0000-0000-000000000000', role: 'super_admin', email: 'demo@seevora.com', username: 'demo_admin' };
-    return next();
-  }
-
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Check in-memory cache first to avoid a DB round-trip on every request.
-    // JWT is already cryptographically verified — DB lookup only guards against
-    // deleted accounts. Cache for 5 minutes for a large performance gain.
-    const cacheKey = `auth_user_${payload.id}`;
-    let user = getCache(cacheKey);
-
-    if (!user) {
-      const { rows } = await pool.query(
-        'SELECT id, username, email, phone, role, verification_status FROM users WHERE id = $1',
-        [payload.id]
-      );
-      if (rows.length === 0) {
-        return res.status(401).json({ message: 'User not found.' });
-      }
-      user = rows[0];
-      setCache(cacheKey, user, 300); // Cache for 5 minutes
+    const auth = await resolveAuthSession(req, res);
+    if (!auth) {
+      return res.status(401).json({ message: 'Authentication is required.' });
     }
 
-    req.user = user;
+    const csrf = validateAuthenticatedCsrf(req, auth.session);
+    if (!csrf.valid) {
+      console.warn(JSON.stringify({
+        event: 'csrf_request_rejected',
+        sessionId: auth.session.id,
+        reason: csrf.reason,
+        method: req.method,
+        path: req.originalUrl || req.url,
+        timestamp: new Date().toISOString(),
+      }));
+      return res.status(403).json({ message: 'CSRF validation failed.' });
+    }
+
     return next();
-  } catch {
-    return res.status(401).json({ message: 'Invalid or expired authentication token.' });
+  } catch (error) {
+    return next(error);
   }
 }
 
@@ -55,8 +70,8 @@ export function requireRole(...roles) {
   return [
     requireAuth,
     (req, res, next) => {
-      const flatRoles = roles.flat();
-      if (!flatRoles.includes(req.user?.role)) {
+      const flatRoles = roles.flat().map(normalizeRole);
+      if (!flatRoles.includes(normalizeRole(req.user?.role))) {
         return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
       }
       return next();
@@ -64,10 +79,8 @@ export function requireRole(...roles) {
   ];
 }
 
-/* Middleware: require HR or super_admin */
-export function requireHR(req, res, next) {
-  return requireRole('hr', 'super_admin', 'admin')(req, res, next);
-}
+/* Middleware: require HR or admin */
+export const requireHR = requireRole('hr', 'admin');
 
 /* Middleware: employee must be VERIFIED to access full dashboard APIs
    This is used on APIs that require a fully verified employee.

@@ -304,7 +304,7 @@ router.delete('/team/employee/:id', requireAuth, async (req, res, next) => {
 
 router.get('/today', requireAuth, async (req, res, next) => {
   try {
-    if (!['hr', 'super_admin'].includes(String(req.user?.role || '').toLowerCase())) {
+    if (!['hr', 'admin'].includes(String(req.user?.role || '').toLowerCase())) {
       return res.status(403).json({ message: 'HR access is required.' });
     }
 
@@ -396,7 +396,7 @@ router.get('/today', requireAuth, async (req, res, next) => {
 router.get('/employee/:userId/history', requireAuth, async (req, res, next) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
-    if (!['hr', 'manager', 'super_admin'].includes(role)) {
+    if (!['hr', 'manager', 'admin'].includes(role)) {
       return res.status(403).json({ message: 'Access denied.' });
     }
 

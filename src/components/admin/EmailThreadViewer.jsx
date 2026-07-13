@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { apiFetch } from '../../auth/api';
 
-export default function EmailThreadViewer({ threadId, token, onBack }) {
+export default function EmailThreadViewer({ threadId, onBack }) {
   const [thread, setThread]       = useState(null);
   const [messages, setMessages]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -11,14 +12,10 @@ export default function EmailThreadViewer({ threadId, token, onBack }) {
   const [converting, setConverting] = useState(false);
   const bottomRef = useRef(null);
 
-  const authHeader = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-
   const fetchThread = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/email-agent/threads/${threadId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/api/email-agent/threads/${threadId}`);
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
       setThread(data.thread);
@@ -29,7 +26,7 @@ export default function EmailThreadViewer({ threadId, token, onBack }) {
     } finally {
       setLoading(false);
     }
-  }, [threadId, token]);
+  }, [threadId]);
 
   useEffect(() => { fetchThread(); }, [fetchThread]);
 
@@ -38,9 +35,9 @@ export default function EmailThreadViewer({ threadId, token, onBack }) {
     setSending(true);
     setFeedback(null);
     try {
-      const res = await fetch(`/api/email-agent/threads/${threadId}/manual-reply`, {
+      const res = await apiFetch(`/api/email-agent/threads/${threadId}/manual-reply`, {
         method: 'POST',
-        headers: authHeader,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: manualReply }),
       });
       const data = await res.json();
@@ -62,9 +59,9 @@ export default function EmailThreadViewer({ threadId, token, onBack }) {
     if (!thread || toggling) return;
     setToggling(true);
     try {
-      await fetch(`/api/email-agent/threads/${threadId}/auto-reply`, {
+      await apiFetch(`/api/email-agent/threads/${threadId}/auto-reply`, {
         method: 'PUT',
-        headers: authHeader,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: !thread.auto_reply_enabled }),
       });
       fetchThread();
@@ -79,9 +76,9 @@ export default function EmailThreadViewer({ threadId, token, onBack }) {
     if (!thread || converting) return;
     setConverting(true);
     try {
-      await fetch(`/api/email-agent/threads/${threadId}/convert`, {
+      await apiFetch(`/api/email-agent/threads/${threadId}/convert`, {
         method: 'POST',
-        headers: authHeader,
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversion_type: type }),
       });
       fetchThread();

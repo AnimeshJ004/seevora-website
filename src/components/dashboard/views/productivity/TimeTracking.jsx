@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-export default function TimeTracking({ user }) {
+export default function TimeTracking() {
   const [logs, setLogs] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -15,9 +16,9 @@ export default function TimeTracking({ user }) {
   const fetchData = async () => {
     try {
       const [logsRes, tasksRes, empRes] = await Promise.all([
-        fetch('/api/productivity/time-logs', { headers: { 'Authorization': `Bearer ${user?.token}` } }),
-        fetch('/api/productivity/tasks', { headers: { 'Authorization': `Bearer ${user?.token}` } }),
-        fetch('/api/hr/employees', { headers: { 'Authorization': `Bearer ${user?.token}` } })
+        apiFetch('/api/productivity/time-logs'),
+        apiFetch('/api/productivity/tasks'),
+        apiFetch('/api/hr/employees')
       ]);
       
       if (logsRes.ok) {
@@ -48,11 +49,10 @@ export default function TimeTracking({ user }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/productivity/time-logs', {
+      const res = await apiFetch('/api/productivity/time-logs', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           ...newLog,
@@ -72,9 +72,8 @@ export default function TimeTracking({ user }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this time log?')) return;
     try {
-      await fetch(`/api/productivity/time-logs/${id}`, {
+      await apiFetch(`/api/productivity/time-logs/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${user?.token}` }
       });
       fetchData();
     } catch (err) {

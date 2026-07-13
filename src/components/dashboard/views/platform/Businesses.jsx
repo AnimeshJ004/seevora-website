@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../../../auth/api';
 
-export default function Businesses({ user }) {
+export default function Businesses() {
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newBusiness, setNewBusiness] = useState({ name: '', industry: '', website: '', contact_email: '', contact_phone: '', status: 'active' });
   const [error, setError] = useState(null);
   
-  const token = localStorage.getItem('seevoraAuthToken');
-
   useEffect(() => {
     fetchBusinesses();
   }, []);
 
   const fetchBusinesses = async () => {
     try {
-      const res = await fetch('/api/businesses', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await apiFetch('/api/businesses');
       if (res.ok) {
         setBusinesses(await res.json());
       }
@@ -32,11 +29,10 @@ export default function Businesses({ user }) {
     e.preventDefault();
     setError(null);
     try {
-      const res = await fetch('/api/businesses', {
+      const res = await apiFetch('/api/businesses', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(newBusiness)
       });
@@ -57,9 +53,8 @@ export default function Businesses({ user }) {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this business?')) return;
     try {
-      await fetch(`/api/businesses/${id}`, {
+      await apiFetch(`/api/businesses/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
       });
       fetchBusinesses();
     } catch (err) {

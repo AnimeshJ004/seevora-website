@@ -1,11 +1,13 @@
 import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.use(requireAuth);
+export const reviewAdminGuard = requireRole('admin');
+
+router.use(reviewAdminGuard);
 
 router.get('/', async (req, res) => {
   try {

@@ -1,7 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { getCache, setCache, clearCache } from '../utils/cache.js';
 
 const router = express.Router();
@@ -13,9 +13,7 @@ function bustBusinessesCache() {
   clearCache(CACHE_BUSINESSES_LIST);
 }
 
-// Temporarily disabled auth for testing Add Business form
-// router.use(requireAuth);
-// router.use(requireRole(['super_admin', 'admin']));
+router.use(requireRole('admin'));
 
 router.get('/', async (req, res) => {
   try {

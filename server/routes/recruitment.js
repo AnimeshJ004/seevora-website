@@ -1,8 +1,10 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
+import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
+router.use(requireRole('hr', 'admin'));
 
 const PIPELINE_STAGES = ['applied', 'screening', 'technical', 'hr_round', 'offer', 'hired', 'rejected'];
 

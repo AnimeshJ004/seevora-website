@@ -11,7 +11,7 @@ import { Helmet } from 'react-helmet-async';
  * @param {Object|Array} props.data - Schema.org structured data object(s)
  * @param {string} props.type - Optional schema type for validation
  */
-export default function StructuredData({ data, type }) {
+export default function StructuredData({ data }) {
   if (!data) {
     console.warn('StructuredData: No data provided');
     return null;
@@ -19,6 +19,7 @@ export default function StructuredData({ data, type }) {
 
   // Handle multiple schemas
   const schemas = Array.isArray(data) ? data : [data];
+  const cspNonce = document.querySelector('meta[property="csp-nonce"]')?.nonce || undefined;
 
   // Validate schema data (basic validation)
   const validSchemas = schemas.filter(schema => {
@@ -41,7 +42,7 @@ export default function StructuredData({ data, type }) {
   return (
     <Helmet>
       {validSchemas.map((schema, index) => (
-        <script key={index} type="application/ld+json">
+        <script key={index} type="application/ld+json" nonce={cspNonce}>
           {JSON.stringify(schema)}
         </script>
       ))}

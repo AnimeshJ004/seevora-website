@@ -1,147 +1,20 @@
 import React, { useState } from 'react';
 import logoIcon from '../../assets/logo-icon-clean.png';
-import {
-  login,
-  createDemoResetRequest,
-  consumeDemoResetRequest,
-} from '../../auth/roles';
-
-const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
-
-async function authFetch(endpoint, options = {}) {
-  const response = await fetch(endpoint, options);
-  if (response.status !== 502) return response;
-  return fetch(`${API_FALLBACK_ORIGIN}${endpoint}`, options);
-}
+import { loginSession } from '../../auth/api';
 
 export default function LoginPage({ onLogin }) {
-  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [resetCode, setResetCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resetInfo, setResetInfo] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
-
-    if (mode === 'forgot') {
-      if (!email.trim()) {
-        setError('Please enter your email or username.');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await authFetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: email.trim() }),
-        });
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          const result = createDemoResetRequest(email);
-          if (!result.success) {
-            setError(data.message || result.error || 'Unable to create a reset code.');
-            return;
-          }
-          setResetInfo(result);
-          setResetCode(result.resetCode);
-          setMessage('Reset code generated below for this demo account.');
-        } else {
-          setResetInfo({ resetCode: data.resetCode, expiresInMinutes: data.expiresInMinutes });
-          setResetCode(data.resetCode || '');
-          setMessage(data.message || 'Reset code generated below.');
-        }
-
-        setNewPassword('');
-        setConfirmPassword('');
-        setMode('reset');
-      } catch {
-        const result = createDemoResetRequest(email);
-        if (!result.success) {
-          setError(result.error || 'Unable to create a reset code.');
-          return;
-        }
-        setResetInfo(result);
-        setResetCode(result.resetCode);
-        setNewPassword('');
-        setConfirmPassword('');
-        setMode('reset');
-        setMessage('Reset code generated below for this demo account.');
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
-
-    if (mode === 'reset') {
-      if (!email.trim() || !resetCode.trim() || !newPassword || !confirmPassword) {
-        setError('Please fill in all reset fields.');
-        return;
-      }
-      if (newPassword.length < 8) {
-        setError('Password must be at least 8 characters.');
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        setError('Passwords do not match.');
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await authFetch('/api/auth/reset-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resetCode: resetCode.trim(), newPassword, confirmPassword }),
-        });
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          const result = consumeDemoResetRequest(email, resetCode, newPassword);
-          if (!result.success) {
-            setError(data.message || result.error || 'Unable to reset password.');
-            return;
-          }
-        }
-
-        setPassword(newPassword);
-        setMode('login');
-        setResetInfo(null);
-        setResetCode('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setShowPwd(false);
-        setMessage(data.message || 'Password reset successful. You can now sign in.');
-      } catch {
-        const result = consumeDemoResetRequest(email, resetCode, newPassword);
-        if (!result.success) {
-          setError(result.error || 'Unable to reset password.');
-          return;
-        }
-        setPassword(newPassword);
-        setMode('login');
-        setResetInfo(null);
-        setResetCode('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setShowPwd(false);
-        setMessage('Password reset successful. You can now sign in.');
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
 
     if (!email || !password) {
       setError('Please fill in both fields.');
@@ -151,32 +24,20 @@ export default function LoginPage({ onLogin }) {
     setLoading(true);
 
     try {
-      const response = await authFetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: email.trim(),
-          password,
-        }),
+      const { response, data } = await loginSession({
+        identifier: email.trim(),
+        password,
+        remember,
       });
-      const data = await response.json().catch(() => ({}));
 
       if (response.ok) {
-        sessionStorage.setItem('seevora_session', JSON.stringify(data.user));
-        localStorage.setItem('seevoraAuthToken', data.token);
-        localStorage.setItem('seevoraUser', JSON.stringify(data.user));
         onLogin(data.user);
         return;
       }
 
       setError(data.message || 'Invalid credentials. Please try again.');
     } catch {
-      const result = login(email, password);
-      if (result.success) {
-        onLogin(result.user);
-      } else {
-        setError('Unable to reach the authentication server.');
-      }
+      setError('Unable to reach the authentication server.');
     } finally {
       setLoading(false);
     }
@@ -219,25 +80,7 @@ export default function LoginPage({ onLogin }) {
                 </div>
 
                 <div className="form-group">
-                  <div className="dashboard-login-label-row">
-                    <label htmlFor="password">Password</label>
-                    <button
-                      type="button"
-                      className="dashboard-login-link"
-                      onClick={() => {
-                        setError('');
-                        setMessage('');
-                        setShowPwd(false);
-                        setResetInfo(null);
-                        setResetCode('');
-                        setNewPassword('');
-                        setConfirmPassword('');
-                        setMode(mode === 'reset' ? 'login' : 'forgot');
-                      }}
-                    >
-                      {mode === 'reset' ? 'Back to login' : 'Forgot password?'}
-                    </button>
-                  </div>
+                  <label htmlFor="password">Password</label>
                   <div className="password-input-wrapper">
                     <input
                       id="password"
@@ -261,65 +104,6 @@ export default function LoginPage({ onLogin }) {
                     </button>
                   </div>
                 </div>
-
-                {mode === 'forgot' && (
-                  <div className="dashboard-reset-note">
-                    Enter your email or username. We will generate a one-time reset code for this demo account.
-                  </div>
-                )}
-
-                {mode === 'reset' && resetInfo && (
-                  <div className="dashboard-reset-panel">
-                    <div className="dashboard-reset-panel__label">Reset code</div>
-                    <div className="dashboard-reset-panel__code">{resetInfo.resetCode}</div>
-                    <p className="dashboard-reset-panel__meta">
-                      Use this code to set a new password. It expires in {resetInfo.expiresInMinutes} minutes.
-                    </p>
-                  </div>
-                )}
-
-                {mode === 'reset' && (
-                  <>
-                    <div className="form-group">
-                      <label htmlFor="resetCode">Reset Code</label>
-                      <input
-                        id="resetCode"
-                        type="text"
-                        value={resetCode}
-                        onChange={(e) => { setResetCode(e.target.value); setError(''); }}
-                        placeholder="Enter reset code"
-                        className="form-input dashboard-login-input"
-                        disabled={loading}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="newPassword">New Password</label>
-                      <input
-                        id="newPassword"
-                        type={showPwd ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => { setNewPassword(e.target.value); setError(''); }}
-                        placeholder="Enter new password"
-                        className="form-input dashboard-login-input"
-                        disabled={loading}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="confirmPassword">Confirm Password</label>
-                      <input
-                        id="confirmPassword"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}
-                        placeholder="Re-enter new password"
-                        className="form-input dashboard-login-input"
-                        disabled={loading}
-                      />
-                    </div>
-                  </>
-                )}
 
                 <div className="dashboard-login-remember">
                   <input
@@ -345,7 +129,7 @@ export default function LoginPage({ onLogin }) {
                 )}
 
                 <button type="submit" disabled={loading} className="btn-primary form-submit dashboard-login-submit">
-                  {loading ? 'Please wait…' : mode === 'reset' ? 'Reset Password' : mode === 'forgot' ? 'Send Reset Code' : 'Sign In'}
+                  {loading ? 'Please wait…' : 'Sign In'}
                   {!loading && <ArrowIcon />}
                 </button>
               </form>
