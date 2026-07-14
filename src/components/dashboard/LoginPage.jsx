@@ -105,14 +105,28 @@ export default function LoginPage({ onLogin }) {
                   </div>
                 </div>
 
-                <div className="dashboard-login-remember">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                  />
-                  <label htmlFor="remember">Remember me for 30 days</label>
+                <div className="dashboard-login-remember" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      id="remember"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      disabled={loading}
+                      style={{ margin: 0, width: '16px', height: '16px' }}
+                    />
+                    <label htmlFor="remember" style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Remember me for 30 days</label>
+                  </div>
+                  <a 
+                    href="/forgot-password" 
+                    style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textDecoration: 'underline' }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      window.history.pushState({}, '', '/forgot-password');
+                    }}
+                  >
+                    Forgot Password?
+                  </a>
                 </div>
 
                 {error && (

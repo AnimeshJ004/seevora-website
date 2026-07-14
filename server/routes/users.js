@@ -64,9 +64,10 @@ router.get('/', async (req, res) => {
     const cacheKey = buildCacheKey(CACHE_NAMESPACES.users, { view: 'list' });
     const users = await getOrSetCache(cacheKey, 120, async () => {
       const { rows } = await pool.query(`
-        SELECT id, username, email, phone, role, created_at, updated_at
-        FROM users
-        ORDER BY created_at DESC
+        SELECT u.id, u.username, u.email, u.phone, u.role, u.created_at, u.updated_at, h.joined_on::text AS joined_on
+        FROM users u
+        LEFT JOIN hr_employees h ON u.id = h.user_id
+        ORDER BY u.created_at DESC
       `);
       return rows.map(normalizeUserRow);
     });
@@ -209,6 +210,19 @@ router.put('/:id', async (req, res) => {
     if (nextRole === 'manager') {
       await ensureManagerEmployeeProfile(client, rows[0]);
     }
+
+    // Sync updates to hr_employees if the user has an HR profile
+    const joinedOnDate = req.body.joined_on || null;
+    await client.query(
+      `UPDATE hr_employees 
+       SET name = $1, 
+           email = $2, 
+           phone = $3, 
+           joined_on = COALESCE($4, joined_on),
+           updated_at = NOW() 
+       WHERE user_id = $5`,
+      [nextUsername, nextEmail, nextPhone, joinedOnDate, id]
+    );
 
     const roleChanged = normalizeRole(current.role) !== nextRole;
     if (roleChanged || passwordChanged) {

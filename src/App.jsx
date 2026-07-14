@@ -17,6 +17,8 @@ const PrivacyPolicy = lazy(() => import('./components/landing-page/PrivacyPolicy
 const TermsConditions = lazy(() => import('./components/landing-page/TermsConditions'));
 const AuthPage = lazy(() => import('./components/landing-page/AuthPage'));
 const LoginPage = lazy(() => import('./components/dashboard/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./components/dashboard/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./components/dashboard/ResetPasswordPage'));
 const DashboardShell = lazy(() => import('./components/dashboard/DashboardShell'));
 const NotFoundPage = lazy(() => import('./components/landing-page/NotFoundPage'));
 
@@ -243,10 +245,10 @@ export default function App() {
     );
   }
 
-  const hideSiteChrome = ['/admin', '/dashboard', '/hr', '/login'].includes(path);
+  const hideSiteChrome = ['/admin', '/dashboard', '/hr', '/login', '/forgot-password', '/reset-password'].includes(path);
 
   // Define valid routes
-  const validRoutes = ['/', '/faqs', '/privacy-policy', '/terms-and-conditions', '/about', '/services', '/modules', '/impact', '/book-a-call', '/login'];
+  const validRoutes = ['/', '/faqs', '/privacy-policy', '/terms-and-conditions', '/about', '/services', '/modules', '/impact', '/book-a-call', '/login', '/forgot-password', '/reset-password'];
   const isValidRoute = validRoutes.includes(path);
 
   return (
@@ -272,6 +274,10 @@ export default function App() {
         <Contact />
       ) : path === '/login' ? (
         <AuthPage />
+      ) : path === '/forgot-password' ? (
+        <ForgotPasswordPage />
+      ) : path === '/reset-password' ? (
+        <ResetPasswordPage />
       ) : (
         <HomePage />
       )}

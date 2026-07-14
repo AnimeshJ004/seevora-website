@@ -1,9 +1,10 @@
 import pool from '../../config/db.js';
 import { randomUUID } from 'crypto';
+import { anonymizeMetadata } from '../../utils/privacy.js';
 
 /**
  * Create a new chat session.
- * Generates a unique session_id (UUID) and stores visitor metadata.
+ * Generates a unique session_id (UUID) and stores hashed visitor metadata.
  * 
  * @param {object} opts
  * @param {string} [opts.visitorId] - Optional visitor tracking ID (cookie/fingerprint)
@@ -21,9 +22,9 @@ export async function createSession({ visitorId, ipAddress, userAgent } = {}) {
      RETURNING *`,
     [
       sessionId,
-      visitorId || null,
-      ipAddress || null,
-      userAgent || null,
+      anonymizeMetadata(visitorId) || null,
+      anonymizeMetadata(ipAddress) || null,
+      anonymizeMetadata(userAgent) || null,
     ]
   );
   

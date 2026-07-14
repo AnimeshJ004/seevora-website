@@ -145,26 +145,15 @@ router.post('/', publicSubmitLimiter, async (req, res, next) => {
 
     const requestId = result.rows[0].id;
     bustAuditRequestCache();
-    const emailResult = await sendEnquiryBotEmails(requestId, data);
-    const updatedRequest = {
-      ...result.rows[0],
-      email_status: emailResult.status,
-      email_error: emailResult.error,
-    };
-    bustAuditRequestCache();
+
+    // Dispatch the email generation/sending as a background task
+    sendEnquiryBotEmails(requestId, data)
+      .then(() => bustAuditRequestCache())
+      .catch((err) => console.error('[Audit Request Background Email] Error:', err.message));
 
     return res.status(201).json({
-      message: emailResult.customer.success
-        ? 'Message received. The auto-reply bot sent a confirmation email.'
-        : `Message received, but the auto-reply email failed: ${emailResult.error}. Check SMTP account settings.`,
-      email: {
-        autoReply: emailResult.status,
-        adminNotification: emailResult.admin
-          ? (emailResult.admin.success ? 'sent' : 'failed')
-          : 'not_configured',
-        error: emailResult.error,
-      },
-      request: normalizeRequest(updatedRequest),
+      message: 'Message received. We will get back to you shortly.',
+      request: normalizeRequest(result.rows[0]),
     });
   } catch (error) {
     console.error('[Audit Request] Error:', error);
@@ -324,6 +313,58 @@ router.post('/:id/respond', adminGuard, async (req, res, next) => {
         : 'Response saved. Configure SMTP to send emails automatically.',
       request: normalizeRequest(updated.rows[0]),
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/:id/thread', adminGuard, async (req, res, next) => {
+  try {
+    const requestResult = await pool.query('SELECT * FROM audit_requests WHERE id = $1', [req.params.id]);
+    const request = requestResult.rows[0];
+    if (!request) return res.status(404).json({ message: 'Audit request not found.' });
+
+    // Keep only the first message (from the user)
+    const currentThread = request.thread || [];
+    const firstMessage = currentThread.find(m => m.sender === 'user') || {
+      id: crypto.randomUUID(),
+      sender: 'user',
+      text: request.message,
+      timestamp: request.created_at
+    };
+
+    const updated = await pool.query(
+      `UPDATE audit_requests
+       SET thread = $2::jsonb,
+           status = 'new',
+           response_body = NULL,
+           email_status = NULL,
+           email_error = NULL,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [request.id, JSON.stringify([firstMessage])]
+    );
+
+    bustAuditRequestCache();
+    return res.json({
+      message: 'Conversation history cleared.',
+      request: normalizeRequest(updated.rows[0]),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/:id', adminGuard, async (req, res, next) => {
+  try {
+    const requestResult = await pool.query('SELECT * FROM audit_requests WHERE id = $1', [req.params.id]);
+    if (requestResult.rows.length === 0) return res.status(404).json({ message: 'Audit request not found.' });
+
+    await pool.query('DELETE FROM audit_requests WHERE id = $1', [req.params.id]);
+    bustAuditRequestCache();
+    
+    return res.json({ message: 'Audit request deleted successfully.' });
   } catch (error) {
     return next(error);
   }

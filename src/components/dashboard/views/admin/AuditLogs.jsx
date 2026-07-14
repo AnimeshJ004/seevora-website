@@ -118,6 +118,57 @@ export default function AuditLogs() {
     }
   };
 
+  const handleClearHistory = async () => {
+    if (!selected || !window.confirm('Are you sure you want to clear the conversation history? This cannot be undone.')) return;
+    setStatus(null);
+    try {
+      const response = await apiFetch(`/api/audit-requests/${selected.id}/thread`, {
+        method: 'DELETE',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus({ type: 'error', text: data.message || 'Unable to clear history.' });
+        return;
+      }
+      setRequests((current) => current.map((req) => (req.id === data.request.id ? data.request : req)));
+      setSelectedMode('active');
+      setSelectedId(data.request.id);
+      setStatus({ type: 'success', text: 'Conversation history cleared.' });
+    } catch {
+      setStatus({ type: 'error', text: 'Unable to reach the server.' });
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!selected || !window.confirm('Are you sure you want to permanently delete this audit request? This cannot be undone.')) return;
+    setStatus(null);
+    try {
+      const response = await apiFetch(`/api/audit-requests/${selected.id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus({ type: 'error', text: data.message || 'Unable to delete audit request.' });
+        return;
+      }
+      setRequests((current) => {
+        const filtered = current.filter((req) => req.id !== selected.id);
+        const firstActive = filtered.find((req) => !req.responseBody);
+        const firstHistory = filtered.find((req) => req.responseBody);
+        if (firstActive || firstHistory) {
+          setSelectedMode(firstActive ? 'active' : 'history');
+          setSelectedId((firstActive || firstHistory).id);
+        } else {
+          setSelectedId(null);
+        }
+        return filtered;
+      });
+      setStatus({ type: 'success', text: 'Audit request deleted successfully.' });
+    } catch {
+      setStatus({ type: 'error', text: 'Unable to reach the server.' });
+    }
+  };
+
   return (
     <div>
       <Panel
@@ -225,7 +276,7 @@ export default function AuditLogs() {
                         setStatus(null);
                       }}
                     />
-                    <div style={{ marginTop: 12 }}>
+                    <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -245,6 +296,41 @@ export default function AuditLogs() {
                         }}
                       >
                         Reply
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={handleClearHistory}
+                        style={{
+                          background: '#fff',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--glass-border)',
+                          borderRadius: 8,
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        Clear History
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDeleteRequest}
+                        style={{
+                          background: '#fff',
+                          color: '#dc2626',
+                          border: '1px solid rgba(220,38,38,0.3)',
+                          borderRadius: 8,
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          marginLeft: 'auto'
+                        }}
+                      >
+                        Delete Request
                       </button>
                     </div>
                   </>
@@ -313,6 +399,26 @@ export default function AuditLogs() {
                         Cancel
                       </button>
                     )}
+                    
+                    <button
+                      type="button"
+                      onClick={handleDeleteRequest}
+                      style={{
+                        marginTop: 12,
+                        marginLeft: editingResponse ? 10 : 10,
+                        padding: '10px 18px',
+                        border: '1px solid rgba(220,38,38,0.3)',
+                        borderRadius: 999,
+                        background: '#fff',
+                        color: '#dc2626',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        float: 'right'
+                      }}
+                    >
+                      Delete Request
+                    </button>
+                    <div style={{ clear: 'both' }} />
                   </form>
                 )}
               </div>

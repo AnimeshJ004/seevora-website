@@ -893,7 +893,7 @@ Seevora — AI-Powered Growth`,
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         session_id VARCHAR(100) UNIQUE NOT NULL,
         visitor_id VARCHAR(100),
-        ip_address VARCHAR(45),
+        ip_address VARCHAR(100),
         user_agent TEXT,
         status VARCHAR(40) NOT NULL DEFAULT 'active',
         lead_captured BOOLEAN NOT NULL DEFAULT false,
@@ -906,6 +906,13 @@ Seevora — AI-Powered Growth`,
         archived_at TIMESTAMPTZ
       );
     `);
+    
+    // Ensure existing tables are updated to VARCHAR(100) for privacy hashes
+    await pool.query(`
+      ALTER TABLE sales_agent_sessions
+      ALTER COLUMN ip_address TYPE VARCHAR(100);
+    `).catch(e => console.log('[SalesAgent] Alter column error (safe to ignore if new):', e.message));
+
     console.log('[SalesAgent] ✓ sessions table created/verified');
 
     // Session indexes

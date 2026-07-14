@@ -9,9 +9,9 @@ import {
 } from "../../utils/schemaGenerators";
 
 import img1 from "../../assets/services/img1.jpg";
-import img2 from "../../assets/services/img2.jpg";
+import img2 from "../../assets/services/img-handshake.jpg";
 import img3 from "../../assets/services/img3.jpg";
-import img4 from "../../assets/services/img4.jpg";
+import img4 from "../../assets/services/img-office.jpg";
 import img5 from "../../assets/services/img5.jpg";
 import healthFitnessToolsImg from "../../assets/health_fitness_tools_service.webp";
 import diagnosticMicroscopeImg from "../../assets/diagnostic_microscope_service.webp";

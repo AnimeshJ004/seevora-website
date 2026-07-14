@@ -152,7 +152,7 @@ export default function Users({ user: currentUser }) {
                     {getRoleBadge(u.role)}
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#64748b' }}>
-                    {new Date(u.created_at).toLocaleDateString()}
+                    {u.joined_on ? new Date(u.joined_on).toLocaleDateString() : new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <button onClick={() => setEditingUser({ ...u, password: '' })} style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: '0.85rem', marginRight: 10 }}>Edit</button>
@@ -284,10 +284,20 @@ export default function Users({ user: currentUser }) {
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Phone</label>
                   <input 
                     type="tel" 
-                    value={editingUser.phone} onChange={e => setEditingUser({...editingUser, phone: e.target.value})}
+                    value={editingUser.phone || ''} onChange={e => setEditingUser({...editingUser, phone: e.target.value})}
                     style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
                   />
                 </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Joining Date (Optional)</label>
+                <input 
+                  type="date" 
+                  value={editingUser.joined_on ? editingUser.joined_on.split('T')[0] : ''} 
+                  onChange={e => setEditingUser({...editingUser, joined_on: e.target.value})}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                />
               </div>
 
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>

@@ -8,6 +8,7 @@ import { logEvent, trackEvent, calculateMetrics, trackServiceDiscussion, getDash
 import { rateLimitMiddleware } from '../utils/rateLimiter.js';
 import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
 import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
+import { anonymizeMetadata } from '../utils/privacy.js';
 
 const router = express.Router();
 
@@ -58,8 +59,8 @@ router.get('/session', async (req, res) => {
       session = await sessionManager.createSession({ ipAddress, userAgent });
       bustSalesAdminCache();
       await trackEvent(session.id, 'session_start', {
-        ipAddress,
-        userAgent: userAgent?.substring(0, 200),
+        ipAddress: anonymizeMetadata(ipAddress),
+        userAgent: anonymizeMetadata(userAgent?.substring(0, 200)),
       });
     }
 
