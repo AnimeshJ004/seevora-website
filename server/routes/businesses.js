@@ -2,7 +2,8 @@ import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
-import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
@@ -10,23 +11,22 @@ const CACHE_BUSINESSES_LIST = 'admin_businesses_list';
 const BUSINESSES_TTL = 60;
 
 function bustBusinessesCache() {
-  clearCache(CACHE_BUSINESSES_LIST);
+  invalidateCacheNamespaces(CACHE_NAMESPACES.businesses, CACHE_NAMESPACES.dashboard);
 }
 
 router.use(requireRole('admin'));
 
 router.get('/', async (req, res) => {
   try {
-    const cached = getCache(CACHE_BUSINESSES_LIST);
-    if (cached) return res.json(cached);
-
-    const { rows } = await pool.query(`
-      SELECT * FROM businesses 
-      ORDER BY created_at DESC
-    `);
-    
-    setCache(CACHE_BUSINESSES_LIST, rows, BUSINESSES_TTL);
-    res.json(rows);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.businesses, { view: CACHE_BUSINESSES_LIST });
+    const businesses = await getOrSetCache(cacheKey, BUSINESSES_TTL, async () => {
+      const { rows } = await pool.query(`
+        SELECT * FROM businesses
+        ORDER BY created_at DESC
+      `);
+      return rows;
+    });
+    res.json(businesses);
   } catch (error) {
     console.error('Error fetching businesses:', error);
     res.status(500).json({ error: 'Server error' });

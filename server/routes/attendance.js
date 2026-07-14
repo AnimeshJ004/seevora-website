@@ -1,7 +1,8 @@
 import express from 'express';
 import pool from '../config/db.js';
-import { requireAuth } from '../middleware/auth.js';
-import { getCache, setCache } from '../utils/cache.js';
+import { requireAuth, requireRole } from '../middleware/auth.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import {
   computeDayStatus,
   computeWorkedMinutes,
@@ -14,6 +15,9 @@ import {
 } from '../utils/attendance.js';
 
 const router = express.Router();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const attendanceHistoryGuard = requireRole('hr', 'manager', 'admin');
 
 export async function recordLoginAttendance(client, user) {
   if (!isTrackedAttendanceRole(user?.role)) return null;
@@ -35,6 +39,8 @@ export async function recordLoginAttendance(client, user) {
      RETURNING *`,
     [generateAttendanceId(), user.id, OFFICE_START_TIME, OFFICE_END_TIME]
   );
+
+  invalidateCacheNamespaces(CACHE_NAMESPACES.attendanceToday, CACHE_NAMESPACES.dashboard);
 
   return result.rows[0] || null;
 }
@@ -90,6 +96,8 @@ router.post('/clock-out', requireAuth, async (req, res, next) => {
        RETURNING *`,
       [current.id, status, totalMinutes]
     );
+
+    invalidateCacheNamespaces(CACHE_NAMESPACES.attendanceToday, CACHE_NAMESPACES.dashboard);
 
     return res.json({
       message: status === 'full_day'
@@ -296,6 +304,15 @@ router.delete('/team/employee/:id', requireAuth, async (req, res, next) => {
       client.release();
     }
 
+    invalidateCacheNamespaces(
+      CACHE_NAMESPACES.hrEmployees,
+      CACHE_NAMESPACES.users,
+      CACHE_NAMESPACES.attendanceToday,
+      CACHE_NAMESPACES.productivity,
+      CACHE_NAMESPACES.dashboard,
+      CACHE_NAMESPACES.payroll
+    );
+
     return res.json({ message: 'Employee removed successfully.', removedId: id });
   } catch (error) {
     return next(error);
@@ -308,13 +325,9 @@ router.get('/today', requireAuth, async (req, res, next) => {
       return res.status(403).json({ message: 'HR access is required.' });
     }
 
-    // Cache attendance for 30 seconds — short TTL since clock-ins happen frequently
-    const today = new Date().toISOString().slice(0, 10);
-    const cacheKey = `attendance_today_${today}`;
-    const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query(`
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.attendanceToday, { view: 'today' });
+    const payload = await getOrSetCache(cacheKey, 30, async () => {
+      const result = await pool.query(`
       SELECT
         e.id,
         e.employee_code,
@@ -343,11 +356,11 @@ router.get('/today', requireAuth, async (req, res, next) => {
       ORDER BY e.created_at DESC
     `);
 
-    const now = new Date();
-    const isPast6PM = now.getHours() >= 18;
-    const isSunday = now.getDay() === 0;
+      const now = new Date();
+      const isPast6PM = now.getHours() >= 18;
+      const isSunday = now.getDay() === 0;
 
-    const attendance = result.rows.map((row) => {
+      const attendance = result.rows.map((row) => {
       let finalStatus = row.attendance_id ? row.status : (isSunday ? 'leave' : 'absent');
       
       if (!isPast6PM && finalStatus !== 'leave') {
@@ -365,7 +378,7 @@ router.get('/today', requireAuth, async (req, res, next) => {
       });
     });
 
-    const summary = attendance.reduce((acc, item) => {
+      const summary = attendance.reduce((acc, item) => {
       acc.total += 1;
       if (item.status === 'present') acc.present += 1;
       if (item.status === 'full_day') acc.fullDay += 1;
@@ -376,40 +389,73 @@ router.get('/today', requireAuth, async (req, res, next) => {
       return acc;
     }, { total: 0, present: 0, fullDay: 0, halfDay: 0, absent: 0, leave: 0, pending: 0 });
 
-    const payload = {
-      officeHours: {
-        start: OFFICE_START_TIME,
-        end: OFFICE_END_TIME,
-        startLabel: '10:00 AM',
-        endLabel: '6:00 PM',
-      },
-      summary,
-      attendance,
-    };
-    setCache(cacheKey, payload, 30); // 30-second TTL
+      return {
+        officeHours: {
+          start: OFFICE_START_TIME,
+          end: OFFICE_END_TIME,
+          startLabel: '10:00 AM',
+          endLabel: '6:00 PM',
+        },
+        summary,
+        attendance,
+      };
+    });
     return res.json(payload);
   } catch (error) {
     return next(error);
   }
 });
 
-router.get('/employee/:userId/history', requireAuth, async (req, res, next) => {
+router.get('/employee/:userId/history', attendanceHistoryGuard, async (req, res, next) => {
   try {
     const role = String(req.user?.role || '').toLowerCase();
-    if (!['hr', 'manager', 'admin'].includes(role)) {
-      return res.status(403).json({ message: 'Access denied.' });
+    const { userId } = req.params;
+    if (!UUID_PATTERN.test(String(userId || ''))) {
+      return res.status(400).json({ message: 'A valid employee user ID is required.' });
     }
 
-    const { userId } = req.params;
+    let historyRows;
+    if (role === 'manager') {
+      const scopedResult = await pool.query(
+        `WITH authorized_target AS (
+           SELECT employee.user_id
+           FROM hr_employees employee
+           JOIN hr_employees manager ON manager.id = employee.manager_id
+           WHERE employee.user_id = $1
+             AND manager.user_id = $2
+             AND employee.status IN ('active', 'probation')
+           LIMIT 1
+         )
+         SELECT attendance.*
+         FROM authorized_target target
+         LEFT JOIN attendance_records attendance ON attendance.user_id = target.user_id
+         ORDER BY attendance.work_date DESC`,
+        [userId, req.user.id]
+      );
 
-    const historyResult = await pool.query(
-      `SELECT * FROM attendance_records
-       WHERE user_id = $1
-       ORDER BY work_date DESC`,
-      [userId]
-    );
+      if (scopedResult.rows.length === 0) {
+        console.warn(JSON.stringify({
+          event: 'attendance_history_scope_denied',
+          managerUserId: req.user.id,
+          targetUserId: userId,
+          path: req.originalUrl || req.url,
+          timestamp: new Date().toISOString(),
+        }));
+        return res.status(404).json({ message: 'Employee attendance not found for your team.' });
+      }
 
-    const history = historyResult.rows.map((row) => normalizeAttendanceRow(row));
+      historyRows = scopedResult.rows.filter((row) => row.id);
+    } else {
+      const historyResult = await pool.query(
+        `SELECT * FROM attendance_records
+         WHERE user_id = $1
+         ORDER BY work_date DESC`,
+        [userId]
+      );
+      historyRows = historyResult.rows;
+    }
+
+    const history = historyRows.map((row) => normalizeAttendanceRow(row));
 
     let totalFullDays = 0;
     history.forEach((record) => {

@@ -1,14 +1,23 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
-import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
 import { requireRole } from '../middleware/auth.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 router.use(requireRole('hr', 'admin'));
 
 const CACHE_LEAVE_SUMMARY = 'hr_leave_summary';
 const LEAVE_SUMMARY_TTL = 60;
+
+function bustLeaveCaches() {
+  invalidateCacheNamespaces(
+    CACHE_NAMESPACES.hrLeaves,
+    CACHE_NAMESPACES.adminLeaves,
+    CACHE_NAMESPACES.managerLeaves
+  );
+}
 
 const LEAVE_TYPES = ['casual', 'sick', 'annual', 'comp_off'];
 const LEAVE_TYPE_COLUMN = {
@@ -86,10 +95,9 @@ router.get('/', async (req, res, next) => {
 /* ── GET /summary  —  Leave stats ── */
 router.get('/summary', async (_req, res, next) => {
   try {
-    const cached = getCache(CACHE_LEAVE_SUMMARY);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query(`
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.hrLeaves, { view: CACHE_LEAVE_SUMMARY });
+    const payload = await getOrSetCache(cacheKey, LEAVE_SUMMARY_TTL, async () => {
+      const result = await pool.query(`
       SELECT
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE lr.status = 'pending')::int AS pending,
@@ -100,9 +108,9 @@ router.get('/summary', async (_req, res, next) => {
       JOIN users u ON u.id = e.user_id
       WHERE u.role NOT IN ('admin', 'super_admin')
     `);
-    const counts = result.rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0 };
+      const counts = result.rows[0] || { total: 0, pending: 0, approved: 0, rejected: 0 };
 
-    const todayResult = await pool.query(`
+      const todayResult = await pool.query(`
       SELECT COUNT(*)::int AS on_leave_today
       FROM leave_requests lr
       JOIN hr_employees e ON e.id = lr.employee_id
@@ -111,16 +119,16 @@ router.get('/summary', async (_req, res, next) => {
         AND u.role NOT IN ('admin', 'super_admin')
         AND CURRENT_DATE BETWEEN lr.from_date AND lr.to_date
     `);
-    const onLeaveToday = Number(todayResult.rows[0]?.on_leave_today || 0);
+      const onLeaveToday = Number(todayResult.rows[0]?.on_leave_today || 0);
 
-    const payload = {
-      total: Number(counts.total),
-      pending: Number(counts.pending),
-      approved: Number(counts.approved),
-      rejected: Number(counts.rejected),
-      onLeaveToday,
-    };
-    setCache(CACHE_LEAVE_SUMMARY, payload, LEAVE_SUMMARY_TTL);
+      return {
+        total: Number(counts.total),
+        pending: Number(counts.pending),
+        approved: Number(counts.approved),
+        rejected: Number(counts.rejected),
+        onLeaveToday,
+      };
+    });
     return res.json(payload);
   } catch (error) {
     return next(error);
@@ -245,6 +253,7 @@ router.post('/', async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+    bustLeaveCaches();
     return res.status(201).json({ message: 'Leave request submitted.', id: leaveId });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -280,7 +289,7 @@ router.put('/:id/approve', async (req, res, next) => {
     );
 
     await client.query('COMMIT');
-    clearCache(CACHE_LEAVE_SUMMARY);
+    bustLeaveCaches();
     return res.json({ message: 'Leave approved.' });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -320,7 +329,7 @@ router.put('/:id/reject', async (req, res, next) => {
     );
 
     await client.query('COMMIT');
-    clearCache(CACHE_LEAVE_SUMMARY);
+    bustLeaveCaches();
     return res.json({ message: 'Leave rejected and balance refunded.' });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}

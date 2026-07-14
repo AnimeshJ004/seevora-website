@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import express from 'express';
 import {
+  configuredOrigins,
+  configureTrustedProxy,
   hasTrustedOrigin,
+  isTrustedOrigin,
   requireTrustedOrigin,
   securityHeaders,
   validateAuthenticatedCsrf,
@@ -9,6 +13,7 @@ import {
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalClientOrigin = process.env.CLIENT_ORIGIN;
+const originalVercelUrl = process.env.VERCEL_URL;
 
 function makeRequest({ method = 'POST', origin = '', referer = '', csrf = '' } = {}) {
   const headers = { origin, referer, 'x-csrf-token': csrf };
@@ -53,12 +58,39 @@ afterEach(() => {
   else process.env.NODE_ENV = originalNodeEnv;
   if (originalClientOrigin === undefined) delete process.env.CLIENT_ORIGIN;
   else process.env.CLIENT_ORIGIN = originalClientOrigin;
+  if (originalVercelUrl === undefined) delete process.env.VERCEL_URL;
+  else process.env.VERCEL_URL = originalVercelUrl;
 });
 
 describe('CSRF request validation', () => {
   it('accepts only the exact configured browser origin', () => {
     assert.equal(hasTrustedOrigin(makeRequest({ origin: 'http://localhost:5173' })), true);
     assert.equal(hasTrustedOrigin(makeRequest({ origin: 'https://attacker.example' })), false);
+  });
+
+  it('normalizes configured origins with trailing slashes and paths', () => {
+    process.env.CLIENT_ORIGIN = 'https://seevora.in/, https://www.seevora.in/login';
+
+    assert.deepEqual(Array.from(configuredOrigins()).sort(), [
+      'http://127.0.0.1:5173',
+      'http://localhost:5173',
+      'https://seevora.in',
+      'https://www.seevora.in',
+    ]);
+    assert.equal(hasTrustedOrigin(makeRequest({ origin: 'https://seevora.in' })), true);
+    assert.equal(hasTrustedOrigin(makeRequest({ origin: 'https://www.seevora.in' })), true);
+  });
+
+  it('trusts the exact Vercel deployment URL when VERCEL_URL is present', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.CLIENT_ORIGIN = 'https://seevora.in';
+    process.env.VERCEL_URL = 'seevora-app-git-main-seevo.vercel.app';
+
+    assert.equal(isTrustedOrigin('https://seevora-app-git-main-seevo.vercel.app'), true);
+    assert.equal(hasTrustedOrigin(makeRequest({
+      origin: 'https://seevora-app-git-main-seevo.vercel.app',
+    })), true);
+    assert.equal(isTrustedOrigin('https://attacker.vercel.app'), false);
   });
 
   it('rejects login requests with a missing or untrusted origin', () => {
@@ -114,5 +146,45 @@ describe('production content security policy', () => {
     assert.doesNotMatch(policy.split(';')[1], /unsafe-inline/);
     assert.match(policy, /object-src 'none'/);
     assert.match(policy, /base-uri 'self'/);
+  });
+});
+
+describe('trusted reverse proxy configuration', () => {
+  it('trusts only loopback proxy connections', () => {
+    const app = express();
+    configureTrustedProxy(app);
+    const trust = app.get('trust proxy fn');
+
+    assert.equal(trust('127.0.0.1'), true);
+    assert.equal(trust('::1'), true);
+    assert.equal(trust('10.0.0.5'), false);
+    assert.equal(trust('203.0.113.5'), false);
+  });
+
+  it('ignores a spoofed leftmost forwarded address', async () => {
+    const app = express();
+    configureTrustedProxy(app);
+    app.get('/ip', (req, res) => res.json({ ip: req.ip, ips: req.ips }));
+
+    const server = await new Promise((resolve) => {
+      const listening = app.listen(0, '127.0.0.1', () => resolve(listening));
+    });
+
+    try {
+      const { port } = server.address();
+      const response = await fetch(`http://127.0.0.1:${port}/ip`, {
+        headers: {
+          'X-Forwarded-For': '198.51.100.99, 203.0.113.20',
+        },
+      });
+      const body = await response.json();
+
+      assert.equal(body.ip, '203.0.113.20');
+      assert.deepEqual(body.ips, ['203.0.113.20']);
+    } finally {
+      await new Promise((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+      });
+    }
   });
 });

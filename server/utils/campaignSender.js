@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from './cacheNamespaces.js';
 import pool from '../config/db.js';
 import { sendMail } from './mailer.js';
 
@@ -163,6 +164,8 @@ export async function sendCampaign(campaignId) {
           [campaignId, lead.id]
         ).catch(() => {});
       }
+
+      invalidateCacheNamespaces(CACHE_NAMESPACES.analytics);
       
       // Delay 8 seconds to prevent Groq API rate limits (6000 TPM limit on free tier)
       await new Promise(resolve => setTimeout(resolve, 8000));
@@ -175,10 +178,17 @@ export async function sendCampaign(campaignId) {
       [campaignId, sent, failed]
     );
 
+    invalidateCacheNamespaces(
+      CACHE_NAMESPACES.analytics,
+      CACHE_NAMESPACES.leads,
+      `${CACHE_NAMESPACES.emailBot}:campaigns`
+    );
+
     return { success: true, sent, failed };
   } catch (err) {
     console.error(`[CampaignSender] Failed sending campaign ${campaignId}:`, err.message);
     await pool.query("UPDATE email_campaigns SET status = 'failed' WHERE id = $1", [campaignId]).catch(() => {});
+    invalidateCacheNamespaces(`${CACHE_NAMESPACES.emailBot}:campaigns`);
     return { success: false, error: err.message };
   }
 }

@@ -19,6 +19,11 @@ export function getSessionCookieName() {
     : DEVELOPMENT_SESSION_COOKIE;
 }
 
+function configuredSameSite() {
+  const value = String(process.env.SESSION_COOKIE_SAMESITE || 'strict').toLowerCase();
+  return ['strict', 'lax', 'none'].includes(value) ? value : 'strict';
+}
+
 export function hashSessionToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
@@ -29,10 +34,11 @@ export function readSessionToken(req) {
 }
 
 function sessionCookieOptions(maxAge) {
+  const sameSite = configuredSameSite();
   const options = {
     httpOnly: true,
-    secure: usesSecureSessionCookie(),
-    sameSite: 'strict',
+    secure: sameSite === 'none' ? true : usesSecureSessionCookie(),
+    sameSite,
     path: '/',
   };
 
@@ -45,7 +51,8 @@ export function setSessionCookie(res, token, maxAge) {
 }
 
 export function clearSessionCookies(res) {
-  const common = { httpOnly: true, sameSite: 'strict', path: '/' };
+  const sameSite = configuredSameSite();
+  const common = { httpOnly: true, sameSite, path: '/' };
   res.clearCookie(PRODUCTION_SESSION_COOKIE, { ...common, secure: true });
   res.clearCookie(DEVELOPMENT_SESSION_COOKIE, { ...common, secure: false });
 }

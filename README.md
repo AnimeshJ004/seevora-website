@@ -16,7 +16,7 @@ CREATE DATABASE seevora_app;
 cp .env.example .env
 ```
 
-Set `JWT_SECRET` to a long random value and update `DATABASE_URL` if your PostgreSQL username, password, host, port, or database name is different.
+Set `JWT_SECRET` and `RATE_LIMIT_KEY_SECRET` to different, high-entropy values of at least 32 characters. Update `DATABASE_URL` if your PostgreSQL username, password, host, port, or database name is different.
 
 3. Start the backend API:
 
@@ -37,6 +37,46 @@ npm run dev
 ```
 
 Vite proxies `/api/*` requests to the Express backend.
+
+## Production Proxy and Rate Limiting
+
+Run Express behind a same-host Nginx proxy and keep the Node port bound to loopback with `HOST=127.0.0.1`. Port 4000 must not be publicly reachable.
+
+The proxy must enforce the coarse IP quota from the TCP peer address and overwrite client-supplied forwarding headers. A complete merge-ready example is available in `deploy/nginx-seevora.conf.example`; the important API directives are:
+
+```nginx
+location ^~ /api/ {
+    limit_req zone=seevora_api_per_ip burst=50 nodelay;
+    proxy_pass http://127.0.0.1:4000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $remote_addr;
+}
+```
+
+Define the shared Nginx zone in the `http` context with `limit_req_zone $binary_remote_addr zone=seevora_api_per_ip:10m rate=300r/m;`. Do not use `$proxy_add_x_forwarded_for` for this single-proxy deployment because it preserves an incoming client-supplied value.
+
+Sensitive endpoint counters are stored atomically in PostgreSQL using HMAC-SHA256 subject identifiers. Raw login identifiers, email addresses, user IDs, and sales-session IDs are never stored in the rate-limit table. These counters are shared across Node processes and survive application restarts.
+
+When PostgreSQL is unavailable, protected routes fail closed with HTTP 503 and `Retry-After: 5`. `GET /api/health` returns HTTP 503 with a degraded PostgreSQL status until the dependency recovers.
+
+Current policies are:
+
+- Nginx API edge: 300 requests per minute per TCP client IP, with a burst of 50.
+- Login: 20 requests per 15 minutes per normalized login identifier.
+- Public audit submission: 10 requests per 15 minutes per normalized email.
+- Email sending actions: 20 requests per minute per authenticated user and policy.
+- Sales-agent messages: 20 requests per minute per public session ID.
+
+## Caching
+
+Application query caching uses a bounded, single-process `node-cache` store. Entries are performance-only: PostgreSQL remains authoritative, and losing the cache during a restart is safe. Cache keys are SHA-256 digests of canonical descriptors, private API responses use `Cache-Control: private, no-store`, and write routes invalidate affected namespaces after successful database changes.
+
+The cache is limited to 2,000 entries and 1 MB per entry. `GET /api/system/cache-stats` exposes hit, miss, size, and in-flight-load counts to administrators without exposing keys or values.
+
+The Nginx example caches Vite fingerprinted `/assets/` files for one year with `immutable`, unfingerprinted public images and fonts for one day, and leaves SPA HTML non-cacheable because it contains a per-response CSP nonce. This design targets one Node process; use a shared cache before horizontally scaling to multiple Node instances.
 
 ## Auth API
 

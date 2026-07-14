@@ -71,10 +71,15 @@ function DashboardRoute() {
   };
 
   const handleLogout = async () => {
-    await finalizeAttendanceSession();
-    await logoutSession();
-    setSession(null);
-    window.history.pushState({}, '', '/login');
+    try {
+      await finalizeAttendanceSession();
+      await logoutSession();
+    } catch (e) {
+      // Ignore errors on logout (e.g. 401 if already expired)
+    } finally {
+      setSession(null);
+      window.history.pushState({}, '', '/login');
+    }
   };
 
   if (isRestoringSession) return <div className="page-loader" aria-label="Loading" />;
@@ -169,22 +174,29 @@ export default function App() {
     document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el));
 
     // 2. Set up MutationObserver to catch lazy-loaded elements
+    let timeout;
     const mutationObserver = new MutationObserver((mutations) => {
-      mutations.forEach(mutation => {
-        mutation.addedNodes.forEach(node => {
-          if (node.nodeType === 1) { // Element node
-            if (node.hasAttribute('data-animate')) {
-              observer.observe(node);
-            }
-            node.querySelectorAll('[data-animate]').forEach(el => observer.observe(el));
-          }
-        });
-      });
+      let shouldScan = false;
+      for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+          shouldScan = true;
+          break;
+        }
+      }
+      if (shouldScan) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          document.querySelectorAll('[data-animate]:not(.visible)').forEach(el => {
+            observer.observe(el);
+          });
+        }, 100);
+      }
     });
 
     mutationObserver.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      clearTimeout(timeout);
       observer.disconnect();
       mutationObserver.disconnect();
     };

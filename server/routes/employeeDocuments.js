@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from '../config/db.js';
 import { normalizeRole, requireAuth } from '../middleware/auth.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -219,6 +220,7 @@ router.post(
       }
 
       await client.query('COMMIT');
+      invalidateCacheNamespaces(CACHE_NAMESPACES.documents);
 
       return res.status(201).json({
         message: 'Your documents have been submitted successfully. Please wait for HR verification.',
@@ -279,6 +281,8 @@ router.put('/documents/submit', requireAuth, async (req, res, next) => {
     if (result.rowCount === 0) {
       return res.status(400).json({ message: 'Unable to submit documents. Account may already be submitted or verified.' });
     }
+
+    invalidateCacheNamespaces(CACHE_NAMESPACES.documents);
 
     return res.json({
       message: 'Documents submitted for HR review. You can upload any remaining documents at any time.',

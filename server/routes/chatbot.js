@@ -1,6 +1,6 @@
 import express from 'express';
-import pool from '../config/db.js';
 import { generateAIReply } from '../utils/ai.js';
+import { getSalesSystemPrompt } from '../services/ai/systemPromptCache.js';
 
 const router = express.Router();
 
@@ -102,38 +102,10 @@ function normalizeHistory(history = []) {
     .filter((item) => item.text.trim());
 }
 
-// Cache the custom system prompt from DB (5-min TTL)
-let cachedCustomPrompt = null;
-let promptCachedAt = null;
-const PROMPT_CACHE_TTL = 5 * 60 * 1000;
-
 async function getSystemPrompt(context) {
-  if (context === 'email_marketing') {
-    return EMAIL_SYSTEM_PROMPT;
-  }
-
-  // Return cached if still fresh
-  const now = Date.now();
-  if (cachedCustomPrompt && promptCachedAt && now - promptCachedAt < PROMPT_CACHE_TTL) {
-    return cachedCustomPrompt;
-  }
-
-  // Try to load custom prompt from DB
-  try {
-    const result = await pool.query(
-      "SELECT value FROM system_settings WHERE key = 'ai_sales_agent_prompt' LIMIT 1"
-    );
-    if (result.rowCount > 0 && result.rows[0].value) {
-      cachedCustomPrompt = result.rows[0].value;
-      promptCachedAt = now;
-      return cachedCustomPrompt;
-    }
-  } catch (err) {
-    console.warn('[Chatbot] Could not read custom system prompt from DB:', err.message);
-  }
-
-  // Fall back to the master prompt
-  return SEEVORA_SYSTEM_PROMPT;
+  return context === 'email_marketing'
+    ? EMAIL_SYSTEM_PROMPT
+    : getSalesSystemPrompt(SEEVORA_SYSTEM_PROMPT);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

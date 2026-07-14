@@ -5,11 +5,24 @@ import { sendMail } from '../utils/mailer.js';
 import { callBookingConfirmation, contactAdminNotification, contactThreadReply, aiContactReply } from '../utils/emailTemplates.js';
 import { generateAIReply } from '../utils/ai.js';
 import { requireRole } from '../middleware/auth.js';
-import { createRateLimiter } from '../middleware/security.js';
+import { createPostgresRateLimiter } from '../middleware/rateLimit.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
-const publicSubmitLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'audit_submit' });
+const publicSubmitLimiter = createPostgresRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  policy: 'audit_submit',
+  subject: (req) => String(req.body?.email || '').trim().toLowerCase() || 'missing',
+});
 const adminGuard = requireRole('admin');
+
+function bustAuditRequestCache({ leadsChanged = false } = {}) {
+  const namespaces = [CACHE_NAMESPACES.auditRequests, CACHE_NAMESPACES.dashboard];
+  if (leadsChanged) namespaces.push(CACHE_NAMESPACES.leads, CACHE_NAMESPACES.analytics);
+  invalidateCacheNamespaces(...namespaces);
+}
 
 function normalizeRequest(row) {
   return {
@@ -131,12 +144,14 @@ router.post('/', publicSubmitLimiter, async (req, res, next) => {
     );
 
     const requestId = result.rows[0].id;
+    bustAuditRequestCache();
     const emailResult = await sendEnquiryBotEmails(requestId, data);
     const updatedRequest = {
       ...result.rows[0],
       email_status: emailResult.status,
       email_error: emailResult.error,
     };
+    bustAuditRequestCache();
 
     return res.status(201).json({
       message: emailResult.customer.success
@@ -162,8 +177,12 @@ router.post('/', publicSubmitLimiter, async (req, res, next) => {
 
 router.get('/', adminGuard, async (_req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM audit_requests ORDER BY created_at DESC');
-    return res.json({ requests: result.rows.map(normalizeRequest) });
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.auditRequests, { view: 'admin-list' });
+    const payload = await getOrSetCache(cacheKey, 30, async () => {
+      const result = await pool.query('SELECT * FROM audit_requests ORDER BY created_at DESC');
+      return { requests: result.rows.map(normalizeRequest) };
+    });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -215,6 +234,8 @@ router.post('/:id/convert-to-lead', adminGuard, async (req, res, next) => {
       lead = insertedLead.rows[0];
     }
 
+    bustAuditRequestCache({ leadsChanged: true });
+
     const updatedRequest = await pool.query(
       `UPDATE audit_requests
        SET status = 'converted', updated_at = NOW()
@@ -222,6 +243,7 @@ router.post('/:id/convert-to-lead', adminGuard, async (req, res, next) => {
        RETURNING *`,
       [auditRequest.id]
     );
+    bustAuditRequestCache({ leadsChanged: true });
 
     return res.json({
       message: 'Audit request converted to lead.',
@@ -294,6 +316,7 @@ router.post('/:id/respond', adminGuard, async (req, res, next) => {
         JSON.stringify(updatedThread)
       ]
     );
+    bustAuditRequestCache();
 
     return res.json({
       message: emailResult.status === 'sent'

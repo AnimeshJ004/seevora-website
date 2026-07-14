@@ -2,18 +2,28 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
-import { getCache, setCache, clearCachePrefix } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { requireRole } from '../middleware/auth.js';
-import { createRateLimiter } from '../middleware/security.js';
+import { createPostgresRateLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
-const emailSendLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: 'leads_email' });
+const emailSendLimiter = createPostgresRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  policy: 'leads_email',
+  subject: (req) => req.user?.id,
+});
 
 const CACHE_LEADS_PREFIX = 'admin_leads_list_';
 const LEADS_TTL = 60;
 
 function bustLeadsCache() {
-  clearCachePrefix(CACHE_LEADS_PREFIX);
+  invalidateCacheNamespaces(
+    CACHE_NAMESPACES.leads,
+    CACHE_NAMESPACES.dashboard,
+    CACHE_NAMESPACES.analytics
+  );
 }
 
 const guard = requireRole('admin', 'manager');
@@ -62,36 +72,38 @@ router.get('/', guard, async (req, res, next) => {
   try {
     const { stage, source, search } = req.query;
 
-    // Cache key includes query parameters to isolate filtered views
-    const cacheKey = `${CACHE_LEADS_PREFIX}${JSON.stringify(req.query)}`;
-    const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.leads, {
+      view: CACHE_LEADS_PREFIX,
+      stage: String(stage || ''),
+      source: String(source || ''),
+      search: String(search || '').toLowerCase(),
+    });
+    const payload = await getOrSetCache(cacheKey, LEADS_TTL, async () => {
+      const conditions = [];
+      const values = [];
 
-    const conditions = [];
-    const values = [];
+      if (stage) {
+        values.push(stage);
+        conditions.push(`pipeline_stage = $${values.length}`);
+      }
+      if (source) {
+        values.push(source);
+        conditions.push(`source = $${values.length}`);
+      }
+      if (search) {
+        values.push(`%${search.toLowerCase()}%`);
+        conditions.push(
+          `(LOWER(name) LIKE $${values.length} OR LOWER(email) LIKE $${values.length} OR LOWER(company) LIKE $${values.length})`
+        );
+      }
 
-    if (stage) {
-      values.push(stage);
-      conditions.push(`pipeline_stage = $${values.length}`);
-    }
-    if (source) {
-      values.push(source);
-      conditions.push(`source = $${values.length}`);
-    }
-    if (search) {
-      values.push(`%${search.toLowerCase()}%`);
-      conditions.push(
-        `(LOWER(name) LIKE $${values.length} OR LOWER(email) LIKE $${values.length} OR LOWER(company) LIKE $${values.length})`
+      const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+      const result = await pool.query(
+        `SELECT * FROM leads ${where} ORDER BY created_at DESC`,
+        values
       );
-    }
-
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await pool.query(
-      `SELECT * FROM leads ${where} ORDER BY created_at DESC`,
-      values
-    );
-    const payload = { leads: result.rows.map(normalizeLead) };
-    setCache(cacheKey, payload, LEADS_TTL);
+      return { leads: result.rows.map(normalizeLead) };
+    });
     res.json(payload);
   } catch (err) {
     next(err);
@@ -105,7 +117,6 @@ router.get('/:id', guard, async (req, res, next) => {
     const result = await pool.query('SELECT * FROM leads WHERE id = $1', [req.params.id]);
     if (!result.rowCount) return res.status(404).json({ message: 'Lead not found.' });
     res.json({ lead: normalizeLead(result.rows[0]) });
-    bustLeadsCache();
   } catch (err) {
     next(err);
   }
@@ -219,6 +230,7 @@ router.post('/bulk', guard, async (req, res, next) => {
         ]
       );
       inserted.push(normalizeLead(r.rows[0]));
+      bustLeadsCache();
     }
 
     res.status(201).json({ message: `${inserted.length} leads imported.`, leads: inserted });
@@ -326,6 +338,7 @@ router.post('/bulk-email', guard, emailSendLimiter, async (req, res, next) => {
 
     const sent = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
+    if (sent > 0) bustLeadsCache();
 
     if (sent === 0) {
       const firstError = results.find(r => r.error)?.error || 'SMTP error. Check your SMTP settings in .env';
@@ -354,6 +367,7 @@ router.post('/:id/send-email', guard, emailSendLimiter, async (req, res, next) =
     if (result.success) {
       // Update last_contacted_at
       await pool.query('UPDATE leads SET last_contacted_at = NOW(), updated_at = NOW() WHERE id = $1', [lead.id]);
+      bustLeadsCache();
       return res.json({ success: true, message: `Email sent to ${lead.email}` });
     } else {
       return res.status(503).json({ success: false, message: result.error || 'Failed to send email.' });

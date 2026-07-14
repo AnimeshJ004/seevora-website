@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
@@ -196,6 +197,11 @@ router.post('/', requireAuth, async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+    invalidateCacheNamespaces(
+      CACHE_NAMESPACES.hrLeaves,
+      CACHE_NAMESPACES.adminLeaves,
+      CACHE_NAMESPACES.managerLeaves
+    );
     return res.status(201).json({ message: 'Leave request submitted successfully.', id: leaveId });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}

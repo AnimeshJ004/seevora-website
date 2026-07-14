@@ -4,8 +4,7 @@ import StructuredData from '../common/StructuredData';
 import { pagesSEO } from '../../config/seo';
 import { generateContactPageSchema, generateOrganizationSchema } from '../../utils/schemaGenerators';
 import logoIcon from '../../assets/logo-icon-clean.png';
-
-const API_FALLBACK_ORIGIN = 'http://127.0.0.1:4000';
+import { apiUrl } from '../../utils/apiUrl';
 
 async function postAuditRequest(payload) {
   const requestOptions = {
@@ -14,10 +13,7 @@ async function postAuditRequest(payload) {
     body: JSON.stringify(payload),
   };
 
-  const response = await fetch('/api/audit-requests', requestOptions);
-  if (response.status !== 502) return response;
-
-  return fetch(`${API_FALLBACK_ORIGIN}/api/audit-requests`, requestOptions);
+  return fetch(apiUrl('/api/audit-requests'), requestOptions);
 }
 
 export default function Contact() {

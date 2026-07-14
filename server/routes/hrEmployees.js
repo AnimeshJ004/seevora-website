@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { normalizeRole, requireRole } from '../middleware/auth.js';
-import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { revokeUserSessions } from '../services/auth/sessionService.js';
 import { createEmployeeCode } from '../services/hr/employeeProfileService.js';
 
@@ -15,9 +16,18 @@ const CACHE_EMPLOYEES_SUMMARY = 'hr_employees_summary';
 const EMPLOYEES_TTL = 60; // 60 seconds
 
 function bustEmployeeCache() {
-  clearCache(CACHE_EMPLOYEES_LIST);
-  clearCache(CACHE_EMPLOYEES_SUMMARY);
-  clearCache('users_list');
+  invalidateCacheNamespaces(
+    CACHE_NAMESPACES.hrEmployees,
+    CACHE_NAMESPACES.users,
+    CACHE_NAMESPACES.dashboard,
+    CACHE_NAMESPACES.payroll,
+    CACHE_NAMESPACES.attendanceToday,
+    CACHE_NAMESPACES.documents,
+    CACHE_NAMESPACES.productivity,
+    CACHE_NAMESPACES.hrLeaves,
+    CACHE_NAMESPACES.adminLeaves,
+    CACHE_NAMESPACES.managerLeaves
+  );
 }
 
 const DEFAULT_PASSWORD = 'Seevora@123';
@@ -152,21 +162,19 @@ router.use(requireRole('hr', 'admin'));
 
 router.get('/', async (_req, res, next) => {
   try {
-    const cached = getCache(CACHE_EMPLOYEES_LIST);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query(`
-      SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
-             e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
-             e.manager_id, m.name AS manager_name, u.username, u.role AS account_role
-      FROM hr_employees e
-      LEFT JOIN hr_employees m ON m.id = e.manager_id
-      LEFT JOIN users u ON u.id = e.user_id
-      ORDER BY e.created_at DESC
-    `);
-
-    const payload = { employees: result.rows.map(toEmployee) };
-    setCache(CACHE_EMPLOYEES_LIST, payload, EMPLOYEES_TTL);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.hrEmployees, { view: CACHE_EMPLOYEES_LIST });
+    const payload = await getOrSetCache(cacheKey, EMPLOYEES_TTL, async () => {
+      const result = await pool.query(`
+        SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
+               e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
+               e.manager_id, m.name AS manager_name, u.username, u.role AS account_role
+        FROM hr_employees e
+        LEFT JOIN hr_employees m ON m.id = e.manager_id
+        LEFT JOIN users u ON u.id = e.user_id
+        ORDER BY e.created_at DESC
+      `);
+      return { employees: result.rows.map(toEmployee) };
+    });
     return res.json(payload);
   } catch (error) {
     return next(error);
@@ -175,41 +183,39 @@ router.get('/', async (_req, res, next) => {
 
 router.get('/summary', async (_req, res, next) => {
   try {
-    const cached = getCache(CACHE_EMPLOYEES_SUMMARY);
-    if (cached) return res.json(cached);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.hrEmployees, { view: CACHE_EMPLOYEES_SUMMARY });
+    const payload = await getOrSetCache(cacheKey, EMPLOYEES_TTL, async () => {
+      const [countsResult, departmentResult] = await Promise.all([
+        pool.query(`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+            COUNT(*) FILTER (WHERE status = 'inactive')::int AS inactive,
+            COUNT(*) FILTER (WHERE status = 'probation')::int AS probation
+          FROM hr_employees
+        `),
+        pool.query(`
+          SELECT department, COUNT(*)::int AS count
+          FROM hr_employees
+          GROUP BY department
+          ORDER BY count DESC, department ASC
+        `),
+      ]);
 
-    const [countsResult, departmentResult] = await Promise.all([
-      pool.query(`
-        SELECT
-          COUNT(*)::int AS total,
-          COUNT(*) FILTER (WHERE status = 'active')::int AS active,
-          COUNT(*) FILTER (WHERE status = 'inactive')::int AS inactive,
-          COUNT(*) FILTER (WHERE status = 'probation')::int AS probation
-        FROM hr_employees
-      `),
-      pool.query(`
-        SELECT department, COUNT(*)::int AS count
-        FROM hr_employees
-        GROUP BY department
-        ORDER BY count DESC, department ASC
-      `),
-    ]);
-
-    const counts = countsResult.rows[0] || { total: 0, active: 0, inactive: 0, probation: 0 };
-    const total = Number(counts.total || 0);
-
-    const payload = {
-      total,
-      active: Number(counts.active || 0),
-      inactive: Number(counts.inactive || 0),
-      probation: Number(counts.probation || 0),
-      byDepartment: departmentResult.rows.map((row) => ({
-        dept: row.department,
-        count: Number(row.count || 0),
-        pct: total ? Math.round((Number(row.count || 0) / total) * 100) : 0,
-      })),
-    };
-    setCache(CACHE_EMPLOYEES_SUMMARY, payload, EMPLOYEES_TTL);
+      const counts = countsResult.rows[0] || { total: 0, active: 0, inactive: 0, probation: 0 };
+      const total = Number(counts.total || 0);
+      return {
+        total,
+        active: Number(counts.active || 0),
+        inactive: Number(counts.inactive || 0),
+        probation: Number(counts.probation || 0),
+        byDepartment: departmentResult.rows.map((row) => ({
+          dept: row.department,
+          count: Number(row.count || 0),
+          pct: total ? Math.round((Number(row.count || 0) / total) * 100) : 0,
+        })),
+      };
+    });
     return res.json(payload);
   } catch (error) {
     return next(error);

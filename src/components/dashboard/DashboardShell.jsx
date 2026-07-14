@@ -1164,6 +1164,7 @@ export default function DashboardShell({ user, onLogout }) {
 
   const defaultView = allowed[0] || 'dashboard';
   const [active, setActive] = useState(defaultView);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -1275,11 +1276,28 @@ export default function DashboardShell({ user, onLogout }) {
             </div>
           </div>
 
-          <button className="ds-logout-btn" onClick={onLogout}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Sign out
+          <button 
+            className="ds-logout-btn" 
+            disabled={isLoggingOut}
+            style={{ opacity: isLoggingOut ? 0.7 : 1, cursor: isLoggingOut ? 'not-allowed' : 'pointer' }}
+            onClick={async (e) => {
+              if (isLoggingOut) return;
+              setIsLoggingOut(true);
+              try {
+                await onLogout();
+              } finally {
+                setIsLoggingOut(false);
+              }
+            }}
+          >
+            {isLoggingOut ? (
+              <span style={{ display: 'inline-block', width: 15, height: 15, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#4f46e5', borderRadius: '50%', animation: 'spin3d 1s linear infinite' }} />
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="15" height="15">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            )}
+            {isLoggingOut ? 'Signing out...' : 'Sign out'}
           </button>
         </div>
       </aside>

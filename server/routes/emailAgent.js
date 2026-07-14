@@ -3,7 +3,8 @@ import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
 import { sendMail } from '../utils/mailer.js';
 import { writeLog, detectModelUsed } from '../services/emailAgent/replyLogger.js';
-import { getCache, setCache, clearCache, clearCachePrefix } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
@@ -13,9 +14,7 @@ const CACHE_EMAIL_AGENT_LOGS_PREFIX = 'email_agent_logs_';
 const EMAIL_AGENT_TTL = 60;
 
 function bustEmailAgentCache() {
-  clearCache(CACHE_EMAIL_AGENT_METRICS);
-  clearCachePrefix(CACHE_EMAIL_AGENT_THREADS_PREFIX);
-  clearCachePrefix(CACHE_EMAIL_AGENT_LOGS_PREFIX);
+  invalidateCacheNamespaces(CACHE_NAMESPACES.emailAgent);
 }
 
 // All routes require admin or manager role
@@ -25,13 +24,18 @@ const guard = requireRole('admin', 'manager');
 // Paginated thread list with optional filters
 router.get('/threads', guard, async (req, res) => {
   try {
-    const cacheKey = `${CACHE_EMAIL_AGENT_THREADS_PREFIX}${JSON.stringify(req.query)}`;
-    const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
-
     const page  = Math.max(1, parseInt(req.query.page  || '1', 10));
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '20', 10)));
-    const offset = (page - 1) * limit;
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.emailAgent, {
+      view: CACHE_EMAIL_AGENT_THREADS_PREFIX,
+      page,
+      limit,
+      escalated: req.query.escalated,
+      converted: req.query.converted,
+      source: String(req.query.source || ''),
+    });
+    const payload = await getOrSetCache(cacheKey, EMAIL_AGENT_TTL, async () => {
+      const offset = (page - 1) * limit;
 
     const conditions = [];
     const values = [];
@@ -71,8 +75,8 @@ router.get('/threads', guard, async (req, res) => {
       values
     );
 
-    const payload = { threads: rows.rows, total, page, limit };
-    setCache(cacheKey, payload, EMAIL_AGENT_TTL);
+      return { threads: rows.rows, total, page, limit };
+    });
     return res.json(payload);
   } catch (err) {
     console.error('[emailAgent] GET /threads error:', err.message);
@@ -275,10 +279,9 @@ router.post('/threads/:thread_id/convert', guard, async (req, res) => {
 // Aggregate dashboard metrics
 router.get('/metrics', guard, async (req, res) => {
   try {
-    const cached = getCache(CACHE_EMAIL_AGENT_METRICS);
-    if (cached) return res.json(cached);
-
-    const [threadsResult, repliesResult, threadsBySourceResult] = await Promise.all([
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.emailAgent, { view: CACHE_EMAIL_AGENT_METRICS });
+    const payload = await getOrSetCache(cacheKey, EMAIL_AGENT_TTL, async () => {
+      const [threadsResult, repliesResult, threadsBySourceResult] = await Promise.all([
       pool.query(`
         SELECT
           COUNT(*)                                          AS total_threads,
@@ -316,7 +319,7 @@ router.get('/metrics', guard, async (req, res) => {
       threadsBySource[row.source] = parseInt(row.count, 10);
     }
 
-    const payload = {
+      return {
       totalThreads:        parseInt(t.total_threads, 10),
       totalAiReplies:      parseInt(r.total_ai_replies, 10),
       escalations:         parseInt(t.escalations, 10),
@@ -324,8 +327,8 @@ router.get('/metrics', guard, async (req, res) => {
       aiReplySuccessRate,
       avgRepliesPerThread: parseFloat(parseFloat(t.avg_replies_per_thread).toFixed(1)),
       threadsBySource,
-    };
-    setCache(CACHE_EMAIL_AGENT_METRICS, payload, EMAIL_AGENT_TTL);
+      };
+    });
     return res.json(payload);
   } catch (err) {
     console.error('[emailAgent] GET /metrics error:', err.message);
@@ -337,13 +340,20 @@ router.get('/metrics', guard, async (req, res) => {
 // Paginated reply logs with filters
 router.get('/logs', guard, async (req, res) => {
   try {
-    const cacheKey = `${CACHE_EMAIL_AGENT_LOGS_PREFIX}${JSON.stringify(req.query)}`;
-    const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
-
     const page   = Math.max(1, parseInt(req.query.page  || '1', 10));
     const limit  = Math.min(100, Math.max(1, parseInt(req.query.limit || '50', 10)));
-    const offset = (page - 1) * limit;
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.emailAgent, {
+      view: CACHE_EMAIL_AGENT_LOGS_PREFIX,
+      page,
+      limit,
+      threadId: String(req.query.thread_id || ''),
+      toEmail: String(req.query.to_email || '').toLowerCase(),
+      status: String(req.query.status || ''),
+      fromDate: String(req.query.from_date || ''),
+      toDate: String(req.query.to_date || ''),
+    });
+    const payload = await getOrSetCache(cacheKey, EMAIL_AGENT_TTL, async () => {
+      const offset = (page - 1) * limit;
 
     const conditions = [];
     const values = [];
@@ -390,8 +400,8 @@ router.get('/logs', guard, async (req, res) => {
       values
     );
 
-    const payload = { logs: logsResult.rows, total, page, limit };
-    setCache(cacheKey, payload, EMAIL_AGENT_TTL);
+      return { logs: logsResult.rows, total, page, limit };
+    });
     return res.json(payload);
   } catch (err) {
     console.error('[emailAgent] GET /logs error:', err.message);

@@ -11,10 +11,15 @@ import pool from '../config/db.js';
 import { sendMail, sendBulk } from '../utils/mailer.js';
 import { crmOutboundEmail } from '../utils/emailTemplates.js';
 import { requireRole } from '../middleware/auth.js';
-import { createRateLimiter } from '../middleware/security.js';
+import { createPostgresRateLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
-const emailSendLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: 'email_outreach_send' });
+const emailSendLimiter = createPostgresRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  policy: 'email_outreach_send',
+  subject: (req) => req.user?.id,
+});
 router.use(requireRole('admin', 'manager'));
 
 /* ── POST /api/email-outreach/send ─────────────────────────

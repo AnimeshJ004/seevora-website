@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "node --watch server/index.js",
+    "dev:all": "node scripts/dev.mjs",
     "start": "node server/index.js",
     "server": "node server/index.js",
-    "dev:server": "node --watch server/index.js",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",

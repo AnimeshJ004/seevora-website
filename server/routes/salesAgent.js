@@ -5,11 +5,33 @@ import * as sessionManager from '../services/salesAgent/sessionManager.js';
 import { generateResponse, shouldOfferLeadCapture, extractMentionedServices, invalidatePromptCache } from '../services/salesAgent/responseGenerator.js';
 import { validateLeadData, leadExistsForSession, createLead, linkLeadToSession } from '../services/salesAgent/leadProcessor.js';
 import { logEvent, trackEvent, calculateMetrics, trackServiceDiscussion, getDashboardMetrics } from '../services/salesAgent/analyticsTracker.js';
-import { checkRateLimit } from '../utils/rateLimiter.js';
+import { rateLimitMiddleware } from '../utils/rateLimiter.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
 const WELCOME_MESSAGE = "Hi! 👋 I'm Seevora's AI assistant. I can help you learn about our AI automation solutions for your business. What brings you here today?";
+
+function bustSalesAdminCache() {
+  invalidateCacheNamespaces(CACHE_NAMESPACES.salesAdmin);
+}
+
+function validateMessageRequest(req, res, next) {
+  const { sessionId, message } = req.body;
+
+  if (!sessionId || typeof sessionId !== 'string') {
+    return res.status(400).json({ error: 'Bad Request', code: 'MISSING_SESSION_ID', message: 'sessionId is required.' });
+  }
+  if (!message || typeof message !== 'string' || message.trim().length === 0) {
+    return res.status(400).json({ error: 'Bad Request', code: 'MISSING_MESSAGE', message: 'Message is required.' });
+  }
+  if (message.length > 500) {
+    return res.status(400).json({ error: 'Bad Request', code: 'MESSAGE_TOO_LONG', message: 'Message exceeds maximum length of 500 characters.' });
+  }
+
+  return next();
+}
 
 // ─── GET /api/sales-agent/session ──────────────────────────────────────────
 // Create or restore a chat session.
@@ -34,6 +56,7 @@ router.get('/session', async (req, res) => {
     if (!session) {
       // Create new session
       session = await sessionManager.createSession({ ipAddress, userAgent });
+      bustSalesAdminCache();
       await trackEvent(session.id, 'session_start', {
         ipAddress,
         userAgent: userAgent?.substring(0, 200),
@@ -58,31 +81,9 @@ router.get('/session', async (req, res) => {
 
 // ─── POST /api/sales-agent/message ─────────────────────────────────────────
 // Send a user message and receive an AI response.
-router.post('/message', async (req, res) => {
+router.post('/message', validateMessageRequest, rateLimitMiddleware, async (req, res) => {
   try {
     const { sessionId, message } = req.body;
-
-    // Validate input
-    if (!sessionId || typeof sessionId !== 'string') {
-      return res.status(400).json({ error: 'Bad Request', code: 'MISSING_SESSION_ID', message: 'sessionId is required.' });
-    }
-    if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      return res.status(400).json({ error: 'Bad Request', code: 'MISSING_MESSAGE', message: 'Message is required.' });
-    }
-    if (message.length > 500) {
-      return res.status(400).json({ error: 'Bad Request', code: 'MESSAGE_TOO_LONG', message: 'Message exceeds maximum length of 500 characters.' });
-    }
-
-    // Rate limit check
-    const rateCheck = checkRateLimit(sessionId);
-    if (!rateCheck.allowed) {
-      return res.status(429).json({
-        error: 'Too Many Requests',
-        code: 'RATE_LIMIT_EXCEEDED',
-        message: 'Rate limit exceeded. Please slow down.',
-        retryAfter: rateCheck.retryAfter,
-      });
-    }
 
     // Get session
     const session = await sessionManager.getSessionBySessionId(sessionId);
@@ -147,6 +148,8 @@ router.post('/message', async (req, res) => {
       await trackEvent(session.id, 'lead_capture_offered', {});
     }
 
+    bustSalesAdminCache();
+
     return res.json({
       messageId: agentMsg ? agentMsg.id : `fallback-${Date.now()}`,
       agentResponse: agentText,
@@ -194,6 +197,7 @@ router.post('/lead', async (req, res) => {
     // Update session
     await sessionManager.markLeadCaptured(session.id, lead.id);
     await trackEvent(session.id, 'lead_captured', { leadId: lead.id, serviceInterest });
+    bustSalesAdminCache();
 
     return res.json({
       leadId: lead.id,
@@ -222,6 +226,7 @@ router.post('/session/end', async (req, res) => {
 
     await sessionManager.endSession(session.id);
     await trackEvent(session.id, 'session_end', { messageCount: session.message_count });
+    bustSalesAdminCache();
 
     return res.json({ success: true, message: 'Session ended.' });
   } catch (err) {
@@ -236,7 +241,16 @@ router.post('/session/end', async (req, res) => {
 router.get('/admin/dashboard', requireRole('admin'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    const metrics = await getDashboardMetrics({ startDate, endDate });
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.salesAdmin, {
+      view: 'dashboard',
+      startDate: String(startDate || ''),
+      endDate: String(endDate || ''),
+    });
+    const metrics = await getOrSetCache(
+      cacheKey,
+      30,
+      () => getDashboardMetrics({ startDate, endDate })
+    );
     return res.json(metrics);
   } catch (err) {
     console.error('[SalesAgent] GET /admin/dashboard error:', err);
@@ -292,25 +306,28 @@ router.get('/admin/conversations', requireRole('admin'), async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || 1));
     const limit = Math.min(50, parseInt(req.query.limit || 20));
-    const offset = (page - 1) * limit;
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.salesAdmin, { view: 'conversations', page, limit });
+    const payload = await getOrSetCache(cacheKey, 30, async () => {
+      const offset = (page - 1) * limit;
+      const { rows } = await pool.query(
+        `SELECT session_id, status, lead_captured, message_count,
+                services_discussed, created_at, ended_at, last_activity_at
+         FROM sales_agent_sessions
+         ORDER BY created_at DESC
+         LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
 
-    const { rows } = await pool.query(
-      `SELECT session_id, status, lead_captured, message_count,
-              services_discussed, created_at, ended_at, last_activity_at
-       FROM sales_agent_sessions
-       ORDER BY created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
-
-    const { rows: countRows } = await pool.query(`SELECT COUNT(*) FROM sales_agent_sessions`);
-
-    return res.json({
-      conversations: rows,
-      total: parseInt(countRows[0].count),
-      page,
-      limit,
+      const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM sales_agent_sessions');
+      return {
+        conversations: rows,
+        total: parseInt(countRows[0].count),
+        page,
+        limit,
+      };
     });
+
+    return res.json(payload);
   } catch (err) {
     console.error('[SalesAgent] GET /admin/conversations error:', err);
     return res.status(500).json({ error: 'Internal Server Error', code: 'INTERNAL_ERROR' });

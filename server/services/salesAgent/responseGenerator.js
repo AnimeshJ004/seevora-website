@@ -1,44 +1,16 @@
-import pool from '../../config/db.js';
 import { generateAIReply } from '../../utils/ai.js';
+import {
+  getSalesSystemPrompt,
+  invalidateSalesSystemPromptCache,
+} from '../ai/systemPromptCache.js';
 
-// Cache the system prompt in memory to avoid repeated DB queries
-let cachedSystemPrompt = null;
-let promptCachedAt = null;
-const PROMPT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Fetch the system prompt from the database (with in-memory caching).
- * @returns {Promise<string>}
- */
-async function getSystemPrompt() {
-  const now = Date.now();
-  if (cachedSystemPrompt && promptCachedAt && now - promptCachedAt < PROMPT_CACHE_TTL_MS) {
-    return cachedSystemPrompt;
-  }
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT value FROM system_settings WHERE key = 'ai_sales_agent_prompt' LIMIT 1`
-    );
-    if (rows.length > 0) {
-      cachedSystemPrompt = rows[0].value;
-      promptCachedAt = now;
-      return cachedSystemPrompt;
-    }
-  } catch (err) {
-    console.error('[ResponseGenerator] Failed to load system prompt:', err.message);
-  }
-
-  // Fallback minimal prompt
-  return `You are a helpful AI Sales Agent for Seevora, an Indian AI automation company based in Indore, Madhya Pradesh. Help visitors learn about our services and book consultations. Keep responses concise and professional.`;
-}
+const FALLBACK_SYSTEM_PROMPT = 'You are a helpful AI Sales Agent for Seevora, an Indian AI automation company based in Indore, Madhya Pradesh. Help visitors learn about our services and book consultations. Keep responses concise and professional.';
 
 /**
  * Invalidate the system prompt cache so next call fetches fresh from DB.
  */
 export function invalidatePromptCache() {
-  cachedSystemPrompt = null;
-  promptCachedAt = null;
+  invalidateSalesSystemPromptCache();
 }
 
 /**
@@ -80,7 +52,7 @@ export async function generateResponse({ userMessage, history = [], timeoutMs = 
     return fallbackResponse;
   }
 
-  const systemPrompt = await getSystemPrompt();
+  const systemPrompt = await getSalesSystemPrompt(FALLBACK_SYSTEM_PROMPT);
 
   // Build thread in the format expected by generateAIReply
   const thread = history.map(msg => ({

@@ -87,7 +87,7 @@ describe('manager profile account mutations', () => {
         email: 'New.Manager@Seevora.in',
         phone: '+91 90000 00003',
         role: 'manager',
-        password: 'temporary-password',
+        password: 'Temporary@123',
       },
     }, response);
 
@@ -129,7 +129,7 @@ describe('manager profile account mutations', () => {
           username: 'Conflicting Manager',
           email: 'conflict@seevora.in',
           role: 'manager',
-          password: 'temporary-password',
+          password: 'Temporary@123',
         },
       }, response);
     } finally {
@@ -140,6 +140,58 @@ describe('manager profile account mutations', () => {
     assert.match(response.body.error, /already linked/);
     assert.equal(client.calls.at(-1).sql, 'ROLLBACK');
     assert.equal(client.calls.some(({ sql }) => sql === 'COMMIT'), false);
+    assert.equal(client.wasReleased(), true);
+  });
+
+  it('rejects creating a user with a weak password before opening a transaction', async () => {
+    let connected = false;
+    pool.connect = async () => {
+      connected = true;
+      throw new Error('pool.connect should not be called');
+    };
+    const response = makeResponse();
+
+    await routeHandler('post', '/')({
+      body: {
+        username: 'Weak User',
+        email: 'weak@seevora.in',
+        role: 'employee',
+        password: 'password',
+      },
+    }, response);
+
+    assert.equal(response.statusCode, 400);
+    assert.match(response.body.error, /uppercase/i);
+    assert.equal(connected, false);
+  });
+
+  it('rejects updating a user to a weak password and rolls back', async () => {
+    const client = makeClient((sql) => {
+      if (sql === 'BEGIN' || sql === 'ROLLBACK') return { rows: [], rowCount: 0 };
+      if (sql.includes('FROM users') && sql.includes('FOR UPDATE')) {
+        return {
+          rows: [{
+            id: 'user-1', username: 'User', email: 'user@seevora.in',
+            phone: null, role: 'employee', verification_status: 'PENDING_VERIFICATION',
+            created_at: '2026-07-13T00:00:00.000Z',
+          }],
+          rowCount: 1,
+        };
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    pool.connect = async () => client;
+    const response = makeResponse();
+
+    await routeHandler('put', '/:id')({
+      params: { id: 'user-1' },
+      body: { password: 'password' },
+    }, response);
+
+    assert.equal(response.statusCode, 400);
+    assert.match(response.body.error, /uppercase/i);
+    assert.equal(client.calls.at(-1).sql, 'ROLLBACK');
+    assert.equal(client.calls.some(({ sql }) => sql.includes('UPDATE users')), false);
     assert.equal(client.wasReleased(), true);
   });
 

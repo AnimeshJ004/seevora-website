@@ -5,6 +5,7 @@ export default function Users({ user: currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [newUser, setNewUser] = useState({ username: '', email: '', phone: '', role: 'employee', password: '' });
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -44,6 +45,31 @@ export default function Users({ user: currentUser }) {
       } else {
         const err = await res.json();
         setErrorMsg(err.error || 'Failed to create user');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('An unexpected error occurred');
+    }
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    try {
+      const res = await apiFetch(`/api/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editingUser)
+      });
+      if (res.ok) {
+        setEditingUser(null);
+        fetchUsers();
+        window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
+      } else {
+        const err = await res.json();
+        setErrorMsg(err.error || 'Failed to update user');
       }
     } catch (err) {
       console.error(err);
@@ -129,6 +155,7 @@ export default function Users({ user: currentUser }) {
                     {new Date(u.created_at).toLocaleDateString()}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                    <button onClick={() => setEditingUser({ ...u, password: '' })} style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontSize: '0.85rem', marginRight: 10 }}>Edit</button>
                     {u.id !== currentUser?.id && (
                       <button onClick={() => handleDelete(u.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>Delete</button>
                     )}
@@ -207,6 +234,65 @@ export default function Users({ user: currentUser }) {
               <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                 <button type="submit" style={{ flex: 1, background: '#4f46e5', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Create User</button>
                 <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div style={{ background: '#fff', padding: 30, borderRadius: 16, width: 450, maxWidth: '90%' }}>
+            <h3 style={{ marginTop: 0, marginBottom: 20, fontFamily: "'Outfit', sans-serif" }}>Edit User</h3>
+            {errorMsg && <div style={{ background: '#fef2f2', color: '#ef4444', padding: '10px', borderRadius: 8, marginBottom: 16, fontSize: '0.85rem' }}>{errorMsg}</div>}
+            
+            <form onSubmit={handleUpdate}>
+              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Username *</label>
+                  <input 
+                    type="text" required 
+                    value={editingUser.username} onChange={e => setEditingUser({...editingUser, username: e.target.value})}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Role *</label>
+                  <select 
+                    required value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value})}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="hr">HR</option>
+                    <option value="manager">Manager</option>
+                    <option value="support">Support</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Email *</label>
+                  <input 
+                    type="email" required 
+                    value={editingUser.email} onChange={e => setEditingUser({...editingUser, email: e.target.value})}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Phone</label>
+                  <input 
+                    type="tel" 
+                    value={editingUser.phone} onChange={e => setEditingUser({...editingUser, phone: e.target.value})}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+                <button type="submit" style={{ flex: 1, background: '#4f46e5', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
+                <button type="button" onClick={() => { setEditingUser(null); setErrorMsg(''); }} style={{ flex: 1, background: '#f1f5f9', color: '#475569', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
               </div>
             </form>
           </div>

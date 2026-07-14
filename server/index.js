@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './config/db.js';
 import { initDb } from './db/init.js';
+import { cleanupExpiredRateLimits, ensureRateLimitSchema } from './db/rateLimitMigration.js';
 import { assertInboundEmailSecuritySchema } from './db/secureInboundEmailMigration.js';
 import auditRequestRoutes from './routes/auditRequests.js';
 import attendanceRoutes from './routes/attendance.js';
@@ -40,16 +41,30 @@ import { startImapPoller } from './services/emailAgent/imapPoller.js';
 import { startContactFormProcessor } from './services/emailAgent/contactFormProcessor.js';
 import sitemapHandler from './routes/sitemap.js';
 import robotsHandler from './routes/robots.js';
-import { createRateLimiter, securityHeaders } from './middleware/security.js';
+import {
+  configuredOrigins,
+  configureTrustedProxy,
+  isTrustedOrigin,
+  securityHeaders,
+} from './middleware/security.js';
+import { assertRateLimitConfiguration } from './middleware/rateLimit.js';
 import { cleanupAuthSessions } from './services/auth/sessionService.js';
+import {
+  preventApiResponseCaching,
+  preventSpaHtmlCaching,
+  setStaticCacheHeaders,
+} from './middleware/cacheControl.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistPath = path.join(__dirname, '../dist');
 const clientIndexPath = path.join(clientDistPath, 'index.html');
 
-if (process.env.NODE_ENV === 'production'
-    && !String(process.env.CLIENT_ORIGIN || '').startsWith('https://')) {
-  throw new Error('CLIENT_ORIGIN must use HTTPS in production.');
+if (process.env.NODE_ENV === 'production') {
+  const insecureOrigins = Array.from(configuredOrigins())
+    .filter((origin) => !origin.startsWith('https://'));
+  if (insecureOrigins.length > 0) {
+    throw new Error(`CLIENT_ORIGIN must use HTTPS in production. Insecure origins: ${insecureOrigins.join(', ')}`);
+  }
 }
 
 // ── API Key validation ────────────────────────────────────────────────────────
@@ -73,24 +88,30 @@ if (aiProvider === 'anthropic') {
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
+const host = String(process.env.HOST || '127.0.0.1');
 
-app.set('trust proxy', 1);
+configureTrustedProxy(app);
 app.disable('x-powered-by');
 app.use(securityHeaders);
-const allowedOrigins = process.env.CLIENT_ORIGIN 
-  ? process.env.CLIENT_ORIGIN.split(',') 
-  : ['http://localhost:5173'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin(origin, callback) {
+    if (!origin || isTrustedOrigin(origin)) return callback(null, true);
+    return callback(new Error('Request origin could not be verified by CORS.'));
+  },
   credentials: true,
 }));
+app.use('/api', preventApiResponseCaching);
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
-app.use('/api', createRateLimiter({ windowMs: 60 * 1000, max: 300, keyPrefix: 'api' }));
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    return res.json({ status: 'ok', dependencies: { postgres: 'up' } });
+  } catch {
+    return res.status(503).json({ status: 'degraded', dependencies: { postgres: 'down' } });
+  }
 });
 
 app.use('/api/auth', authRoutes);
@@ -127,9 +148,10 @@ app.get('/robots.txt', robotsHandler);
 
 if (fs.existsSync(clientIndexPath)) {
   const clientIndex = fs.readFileSync(clientIndexPath, 'utf8');
-  app.use(express.static(clientDistPath, { index: false }));
+  app.use(express.static(clientDistPath, { index: false, setHeaders: setStaticCacheHeaders }));
   app.get(/^\/(?!api\/).*/, (_req, res) => {
     const html = clientIndex.replaceAll('__CSP_NONCE__', res.locals.cspNonce || '');
+    preventSpaHtmlCaching(res);
     res.type('html').send(html);
   });
 }
@@ -170,17 +192,31 @@ function startBackgroundJobs() {
       console.error('[Auth] Session cleanup failed:', error.message);
     });
   }, 60 * 60 * 1000);
+  const rateLimitCleanupInterval = setInterval(() => {
+    cleanupExpiredRateLimits().catch((error) => {
+      console.error('[RateLimit] Bucket cleanup failed:', error.message);
+    });
+  }, 60 * 60 * 1000);
 
   campaignInterval.unref?.();
   salesCleanupInterval.unref?.();
   authCleanupInterval.unref?.();
-  backgroundIntervals.push(campaignInterval, salesCleanupInterval, authCleanupInterval);
+  rateLimitCleanupInterval.unref?.();
+  backgroundIntervals.push(
+    campaignInterval,
+    salesCleanupInterval,
+    authCleanupInterval,
+    rateLimitCleanupInterval
+  );
 }
 
 async function startServer() {
+  assertRateLimitConfiguration();
   await initDb();
+  await ensureRateLimitSchema(pool);
   await assertInboundEmailSecuritySchema(pool);
   await cleanupAuthSessions();
+  await cleanupExpiredRateLimits(pool);
   console.log('Database initialized successfully.');
 
   await runSessionCleanup();
@@ -188,8 +224,8 @@ async function startServer() {
   startContactFormProcessor();
   startBackgroundJobs();
 
-  server = app.listen(port, () => {
-    console.log(`Seevora API running on http://localhost:${port}`);
+  server = app.listen(port, host, () => {
+    console.log(`Seevora API running on http://${host}:${port}`);
   });
 }
 

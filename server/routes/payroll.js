@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
-import { getCache, setCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -70,7 +71,8 @@ function toPayroll(row) {
 router.get('/', async (req, res, next) => {
   try {
     const month = req.query.month || new Date().toISOString().slice(0, 7);
-    await resetAutomaticDeductions(pool, month);
+    const resetResult = await resetAutomaticDeductions(pool, month);
+    if (resetResult.rowCount > 0) invalidateCacheNamespaces(CACHE_NAMESPACES.payroll);
 
     const result = await pool.query(`
       SELECT pr.*, e.name AS emp_name, e.employee_code, e.salary AS monthly_salary
@@ -91,14 +93,11 @@ router.get('/summary', async (req, res, next) => {
   try {
     const month = req.query.month || new Date().toISOString().slice(0, 7);
 
-    // Cache payroll summary per-month for 60 seconds
-    const cacheKey = `hr_payroll_summary_${month}`;
-    const cached = getCache(cacheKey);
-    if (cached) return res.json(cached);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.payroll, { view: 'summary', month });
+    const payload = await getOrSetCache(cacheKey, 60, async () => {
+      await resetAutomaticDeductions(pool, month);
 
-    await resetAutomaticDeductions(pool, month);
-
-    const result = await pool.query(`
+      const result = await pool.query(`
       SELECT
         COUNT(*)::int AS total_records,
         COUNT(*) FILTER (WHERE status = 'paid')::int AS paid,
@@ -110,29 +109,29 @@ router.get('/summary', async (req, res, next) => {
       WHERE month = $1
     `, [month]);
 
-    const row = result.rows[0] || {};
-    const totalPayroll = Number(row.total_payroll || 0);
-    const avgSalary = Number(row.avg_salary || 0);
+      const row = result.rows[0] || {};
+      const totalPayroll = Number(row.total_payroll || 0);
+      const avgSalary = Number(row.avg_salary || 0);
 
     // Format Indian currency
-    const formatIndian = (num) => {
-      if (num >= 100000) return `₹${(num / 100000).toFixed(2)}L`;
-      if (num >= 1000) return `₹${(num / 1000).toFixed(0)}K`;
-      return `₹${num.toLocaleString('en-IN')}`;
-    };
+      const formatIndian = (num) => {
+        if (num >= 100000) return `₹${(num / 100000).toFixed(2)}L`;
+        if (num >= 1000) return `₹${(num / 1000).toFixed(0)}K`;
+        return `₹${num.toLocaleString('en-IN')}`;
+      };
 
-    const payload = {
-      month,
-      totalRecords: Number(row.total_records || 0),
-      paid: Number(row.paid || 0),
-      processing: Number(row.processing || 0),
-      draft: Number(row.draft || 0),
-      totalPayroll: formatIndian(totalPayroll),
-      totalPayrollRaw: totalPayroll,
-      avgSalary: formatIndian(avgSalary),
-      avgSalaryRaw: avgSalary,
-    };
-    setCache(cacheKey, payload, 60);
+      return {
+        month,
+        totalRecords: Number(row.total_records || 0),
+        paid: Number(row.paid || 0),
+        processing: Number(row.processing || 0),
+        draft: Number(row.draft || 0),
+        totalPayroll: formatIndian(totalPayroll),
+        totalPayrollRaw: totalPayroll,
+        avgSalary: formatIndian(avgSalary),
+        avgSalaryRaw: avgSalary,
+      };
+    });
     return res.json(payload);
   } catch (error) {
     return next(error);
@@ -179,6 +178,7 @@ router.post('/generate', async (req, res, next) => {
     }
 
     await client.query('COMMIT');
+    invalidateCacheNamespaces(CACHE_NAMESPACES.payroll);
 
     return res.status(201).json({
       message: `Payroll generated for ${month}. Created: ${created}, Reset unpaid: ${reset}, Skipped (already exists): ${skipped}.`,
@@ -212,6 +212,7 @@ router.put('/:id/process', async (req, res, next) => {
        WHERE id = $1`,
       [req.params.id, newStatus]
     );
+    invalidateCacheNamespaces(CACHE_NAMESPACES.payroll);
 
     return res.json({ message: `Payroll ${newStatus === 'paid' ? 'marked as paid' : 'set to processing'}.`, status: newStatus });
   } catch (error) {
@@ -259,6 +260,7 @@ router.put('/:id/deduction', async (req, res, next) => {
        RETURNING *`,
       [req.params.id, parts.deductions, parts.basic, parts.hra, parts.allowance, parts.netPay]
     );
+    invalidateCacheNamespaces(CACHE_NAMESPACES.payroll);
 
     return res.json({
       message: 'Deduction updated.',

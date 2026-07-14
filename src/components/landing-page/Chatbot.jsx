@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiUrl } from '../../utils/apiUrl';
 
 // Seevora knowledge base — used as offline fallback when server is unavailable
 const SEEVORA_KNOWLEDGE = [
@@ -135,32 +136,20 @@ const SUGGESTED_QUESTIONS = [
   "What industries do you serve?"
 ];
 
-const API_FALLBACK_ORIGIN = import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000';
-
-function buildFallbackUrl(endpoint) {
-  const base = API_FALLBACK_ORIGIN.replace(/\/$/, '');
-  if (base.endsWith('/api') && endpoint.startsWith('/api/')) {
-    return `${base}${endpoint.slice(4)}`;
-  }
-  return `${base}${endpoint}`;
-}
-
 async function chatbotFetch(endpoint, options) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 9000);
   const requestOptions = { ...options, signal: controller.signal };
 
   try {
-    const response = await fetch(endpoint, requestOptions);
+    const response = await fetch(apiUrl(endpoint), requestOptions);
     if (response.ok) return response;
   } catch {
-    // Try the configured API origin below, then fall back to local canned replies.
+    // Fall back to local canned replies.
   } finally {
     window.clearTimeout(timeout);
   }
 
-  const fallbackResponse = await fetch(buildFallbackUrl(endpoint), options);
-  if (fallbackResponse.ok) return fallbackResponse;
   throw new Error('Chatbot API unavailable');
 }
 

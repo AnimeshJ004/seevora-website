@@ -4,7 +4,8 @@ import pool from '../config/db.js';
 import { requireAuth, resolveAuthSession } from '../middleware/auth.js';
 import { recordLoginAttendance } from './attendance.js';
 import { validateLogin } from '../utils/validation.js';
-import { createRateLimiter, requireTrustedOrigin } from '../middleware/security.js';
+import { requireTrustedOrigin } from '../middleware/security.js';
+import { createPostgresRateLimiter } from '../middleware/rateLimit.js';
 import { normalizeRole } from '../middleware/auth.js';
 import {
   clearSessionCookies,
@@ -16,7 +17,12 @@ import {
 } from '../services/auth/sessionService.js';
 
 const router = express.Router();
-const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'auth_login' });
+const loginLimiter = createPostgresRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  policy: 'auth_login',
+  subject: (req) => String(req.body?.identifier || '').trim().toLowerCase() || 'missing',
+});
 
 function toSafeUser(user) {
   const name = user.name || user.username;

@@ -2,10 +2,30 @@ import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
 router.use(requireAuth);
+
+const PRODUCTIVITY_TTL = 30;
+
+function bustProductivityCache() {
+  invalidateCacheNamespaces(
+    CACHE_NAMESPACES.productivity,
+    CACHE_NAMESPACES.dashboard,
+    CACHE_NAMESPACES.analytics
+  );
+}
+
+function scopedCacheDescriptor(req, view) {
+  return {
+    view,
+    userId: req.user?.id || '',
+    role: req.user?.role || '',
+  };
+}
 
 function realUserId(req) {
   return req.user?.id === '00000000-0000-0000-0000-000000000000'
@@ -82,6 +102,7 @@ async function resolveProjectId({ project_id, project_name, req }) {
         [crypto.randomUUID(), cleanProjectName, realUserId(req)]
       );
       resolvedProjectId = projectResult.rows[0].id;
+      bustProductivityCache();
     }
   }
   return resolvedProjectId;
@@ -91,15 +112,19 @@ async function resolveProjectId({ project_id, project_name, req }) {
 
 router.get('/projects', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT p.*, 
-             u.username as created_by_name,
-             (SELECT count(*) FROM tasks WHERE project_id = p.id) as task_count
-      FROM projects p
-      LEFT JOIN users u ON p.created_by = u.id
-      ORDER BY p.created_at DESC
-    `);
-    res.json(rows);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.productivity, scopedCacheDescriptor(req, 'projects'));
+    const projects = await getOrSetCache(cacheKey, PRODUCTIVITY_TTL, async () => {
+      const { rows } = await pool.query(`
+        SELECT p.*,
+               u.username as created_by_name,
+               (SELECT count(*) FROM tasks WHERE project_id = p.id) as task_count
+        FROM projects p
+        LEFT JOIN users u ON p.created_by = u.id
+        ORDER BY p.created_at DESC
+      `);
+      return rows;
+    });
+    res.json(projects);
   } catch (error) {
     console.error('Error fetching projects:', error);
     res.status(500).json({ error: 'Server error fetching projects' });
@@ -118,6 +143,7 @@ router.post('/projects', async (req, res) => {
       RETURNING *
     `, [id, name, description, status || 'active', realUserId(req)]);
 
+    bustProductivityCache();
     res.status(201).json(rows[0]);
   } catch (error) {
     console.error('Error creating project:', error);
@@ -141,6 +167,7 @@ router.put('/projects/:id', async (req, res) => {
     `, [name, description, status, id]);
     
     if (rows.length === 0) return res.status(404).json({ error: 'Project not found' });
+    bustProductivityCache();
     res.json(rows[0]);
   } catch (error) {
     console.error('Error updating project:', error);
@@ -153,6 +180,7 @@ router.delete('/projects/:id', async (req, res) => {
     const { id } = req.params;
     const { rowCount } = await pool.query('DELETE FROM projects WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Project not found' });
+    bustProductivityCache();
     res.json({ message: 'Project deleted successfully' });
   } catch (error) {
     console.error('Error deleting project:', error);
@@ -168,33 +196,37 @@ router.get('/my-team', async (req, res) => {
       return res.status(403).json({ error: 'Only managers can view direct reports.' });
     }
 
-    if (isAdminRole(req.user?.role)) {
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.productivity, scopedCacheDescriptor(req, 'my-team'));
+    const team = await getOrSetCache(cacheKey, PRODUCTIVITY_TTL, async () => {
+      if (isAdminRole(req.user?.role)) {
+        const { rows } = await pool.query(`
+          SELECT e.id, e.employee_code, e.name, e.email, e.department, e.job_title,
+                 u.role AS account_role
+          FROM hr_employees e
+          LEFT JOIN users u ON u.id = e.user_id
+          WHERE e.status IN ('active', 'probation')
+          ORDER BY e.name ASC
+        `);
+        return rows;
+      }
+
+      const managerEmployeeId = await resolveEmployeeId(req.user?.id);
+      if (!managerEmployeeId) return [];
+
       const { rows } = await pool.query(`
         SELECT e.id, e.employee_code, e.name, e.email, e.department, e.job_title,
                u.role AS account_role
         FROM hr_employees e
         LEFT JOIN users u ON u.id = e.user_id
-        WHERE e.status IN ('active', 'probation')
+        WHERE e.id <> $1
+          AND e.status IN ('active', 'probation')
+          AND e.manager_id = $1
         ORDER BY e.name ASC
-      `);
-      return res.json(rows);
-    }
+      `, [managerEmployeeId]);
+      return rows;
+    });
 
-    const managerEmployeeId = await resolveEmployeeId(req.user?.id);
-    if (!managerEmployeeId) return res.json([]);
-
-    const { rows } = await pool.query(`
-      SELECT e.id, e.employee_code, e.name, e.email, e.department, e.job_title,
-             u.role AS account_role
-      FROM hr_employees e
-      LEFT JOIN users u ON u.id = e.user_id
-      WHERE e.id <> $1
-        AND e.status IN ('active', 'probation')
-        AND e.manager_id = $1
-      ORDER BY e.name ASC
-    `, [managerEmployeeId]);
-
-    return res.json(rows);
+    return res.json(team);
   } catch (error) {
     console.error('Error fetching team:', error);
     return res.status(500).json({ error: 'Server error fetching team' });
@@ -203,42 +235,46 @@ router.get('/my-team', async (req, res) => {
 
 router.get('/tasks', async (req, res) => {
   try {
-    const role = req.user?.role;
-    const values = [];
-    let where = '';
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.productivity, scopedCacheDescriptor(req, 'tasks'));
+    const tasks = await getOrSetCache(cacheKey, PRODUCTIVITY_TTL, async () => {
+      const role = req.user?.role;
+      const values = [];
+      let where = '';
 
-    if (role === 'employee') {
-      const employeeId = await resolveEmployeeId(req.user?.id);
-      if (!employeeId) return res.json([]);
-      values.push(employeeId);
-      where = 'WHERE t.assigned_to = $1';
-    } else if (role === 'manager') {
-      const managerEmployeeId = await resolveEmployeeId(req.user?.id);
-      if (managerEmployeeId) {
-        values.push(managerEmployeeId);
-        where = `WHERE (t.assigned_to = $1 OR t.assigned_to IN (
-          SELECT e.id
-          FROM hr_employees e
-          WHERE e.id <> $1
-            AND e.status IN ('active', 'probation')
-            AND e.manager_id = $1
-        ))`;
-      } else {
-        where = `WHERE 1=0`;
+      if (role === 'employee') {
+        const employeeId = await resolveEmployeeId(req.user?.id);
+        if (!employeeId) return [];
+        values.push(employeeId);
+        where = 'WHERE t.assigned_to = $1';
+      } else if (role === 'manager') {
+        const managerEmployeeId = await resolveEmployeeId(req.user?.id);
+        if (managerEmployeeId) {
+          values.push(managerEmployeeId);
+          where = `WHERE (t.assigned_to = $1 OR t.assigned_to IN (
+            SELECT e.id
+            FROM hr_employees e
+            WHERE e.id <> $1
+              AND e.status IN ('active', 'probation')
+              AND e.manager_id = $1
+          ))`;
+        } else {
+          where = 'WHERE 1=0';
+        }
       }
-    }
 
-    const { rows } = await pool.query(`
-      SELECT t.*, 
-             p.name as project_name,
-             e.name as assigned_to_name
-      FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
-      LEFT JOIN hr_employees e ON t.assigned_to = e.id
-      ${where}
-      ORDER BY t.created_at DESC
-    `, values);
-    res.json(rows);
+      const { rows } = await pool.query(`
+        SELECT t.*,
+               p.name as project_name,
+               e.name as assigned_to_name
+        FROM tasks t
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN hr_employees e ON t.assigned_to = e.id
+        ${where}
+        ORDER BY t.created_at DESC
+      `, values);
+      return rows;
+    });
+    res.json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
     res.status(500).json({ error: 'Server error fetching tasks' });
@@ -277,6 +313,7 @@ router.post('/tasks', async (req, res) => {
       nextAssignee, due_date || null, realUserId(req)
     ]);
 
+    bustProductivityCache();
     res.status(201).json(rows[0]);
   } catch (error) {
     console.error('Error creating task:', error);
@@ -301,6 +338,7 @@ router.put('/tasks/:id', async (req, res) => {
         WHERE id = $2
         RETURNING *
       `, [req.body.status, id]);
+      bustProductivityCache();
       return res.json(rows[0]);
     }
 
@@ -331,6 +369,7 @@ router.put('/tasks/:id', async (req, res) => {
     `, [title, description, resolvedProjectId, status, priority, category, nextAssignee, due_date, id]);
     
     if (rows.length === 0) return res.status(404).json({ error: 'Task not found' });
+    bustProductivityCache();
     res.json(rows[0]);
   } catch (error) {
     console.error('Error updating task:', error);
@@ -352,6 +391,7 @@ router.delete('/tasks/:id', async (req, res) => {
 
     const { rowCount } = await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Task not found' });
+    bustProductivityCache();
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
@@ -415,18 +455,22 @@ router.post('/tasks/:id/comments', async (req, res) => {
 
 router.get('/time-logs', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      SELECT tl.*, 
-             t.title as task_title,
-             p.name as project_name,
-             e.name as employee_name
-      FROM time_logs tl
-      LEFT JOIN tasks t ON tl.task_id = t.id
-      LEFT JOIN projects p ON t.project_id = p.id
-      LEFT JOIN hr_employees e ON tl.employee_id = e.id
-      ORDER BY tl.date DESC, tl.created_at DESC
-    `);
-    res.json(rows);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.productivity, scopedCacheDescriptor(req, 'time-logs'));
+    const logs = await getOrSetCache(cacheKey, PRODUCTIVITY_TTL, async () => {
+      const { rows } = await pool.query(`
+        SELECT tl.*,
+               t.title as task_title,
+               p.name as project_name,
+               e.name as employee_name
+        FROM time_logs tl
+        LEFT JOIN tasks t ON tl.task_id = t.id
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN hr_employees e ON tl.employee_id = e.id
+        ORDER BY tl.date DESC, tl.created_at DESC
+      `);
+      return rows;
+    });
+    res.json(logs);
   } catch (error) {
     console.error('Error fetching time logs:', error);
     res.status(500).json({ error: 'Server error fetching time logs' });
@@ -446,6 +490,7 @@ router.post('/time-logs', async (req, res) => {
       RETURNING *
     `, [id, task_id, employee_id || null, hours, date || new Date().toISOString(), description]);
 
+    bustProductivityCache();
     res.status(201).json(rows[0]);
   } catch (error) {
     console.error('Error creating time log:', error);
@@ -458,6 +503,7 @@ router.delete('/time-logs/:id', async (req, res) => {
     const { id } = req.params;
     const { rowCount } = await pool.query('DELETE FROM time_logs WHERE id = $1', [id]);
     if (rowCount === 0) return res.status(404).json({ error: 'Time log not found' });
+    bustProductivityCache();
     res.json({ message: 'Time log deleted successfully' });
   } catch (error) {
     console.error('Error deleting time log:', error);

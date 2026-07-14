@@ -2,11 +2,18 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 router.use(requireRole('hr', 'admin'));
 
 const PIPELINE_STAGES = ['applied', 'screening', 'technical', 'hr_round', 'offer', 'hired', 'rejected'];
+const RECRUITMENT_TTL = 60;
+
+function bustRecruitmentCache() {
+  invalidateCacheNamespaces(CACHE_NAMESPACES.recruitment);
+}
 
 function toJob(row) {
   return {
@@ -43,14 +50,18 @@ function toCandidate(row) {
 /* ── GET /jobs  —  List all job openings ── */
 router.get('/jobs', async (_req, res, next) => {
   try {
-    const result = await pool.query(`
-      SELECT j.*, COUNT(c.id)::int AS applicant_count
-      FROM job_openings j
-      LEFT JOIN candidates c ON c.job_id = j.id
-      GROUP BY j.id
-      ORDER BY j.posted_at DESC
-    `);
-    return res.json({ jobs: result.rows.map(toJob) });
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.recruitment, { view: 'jobs' });
+    const payload = await getOrSetCache(cacheKey, RECRUITMENT_TTL, async () => {
+      const result = await pool.query(`
+        SELECT j.*, COUNT(c.id)::int AS applicant_count
+        FROM job_openings j
+        LEFT JOIN candidates c ON c.job_id = j.id
+        GROUP BY j.id
+        ORDER BY j.posted_at DESC
+      `);
+      return { jobs: result.rows.map(toJob) };
+    });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -71,6 +82,7 @@ router.post('/jobs', async (req, res, next) => {
       [id, title.trim(), department.trim(), type || 'full-time', experience || '', description || '']
     );
 
+    bustRecruitmentCache();
     return res.status(201).json({ message: 'Job posted successfully.', job: toJob({ ...result.rows[0], applicant_count: 0 }) });
   } catch (error) {
     return next(error);
@@ -101,6 +113,7 @@ router.put('/jobs/:id', async (req, res, next) => {
       [req.params.id, title || null, department || null, type || null, experience || null, description || null, status || null]
     );
 
+    bustRecruitmentCache();
     return res.json({ message: 'Job updated.', job: toJob({ ...result.rows[0], applicant_count: 0 }) });
   } catch (error) {
     return next(error);
@@ -111,21 +124,30 @@ router.put('/jobs/:id', async (req, res, next) => {
 router.get('/candidates', async (req, res, next) => {
   try {
     const { jobId, stage } = req.query;
-    let sql = `
-      SELECT c.*, j.title AS job_title
-      FROM candidates c
-      JOIN job_openings j ON j.id = c.job_id
-    `;
-    const params = [];
-    const conditions = [];
+    const validStage = PIPELINE_STAGES.includes(stage) ? stage : '';
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.recruitment, {
+      view: 'candidates',
+      jobId: String(jobId || ''),
+      stage: validStage,
+    });
+    const payload = await getOrSetCache(cacheKey, RECRUITMENT_TTL, async () => {
+      let sql = `
+        SELECT c.*, j.title AS job_title
+        FROM candidates c
+        JOIN job_openings j ON j.id = c.job_id
+      `;
+      const params = [];
+      const conditions = [];
 
-    if (jobId) { conditions.push(`c.job_id = $${params.length + 1}`); params.push(jobId); }
-    if (stage && PIPELINE_STAGES.includes(stage)) { conditions.push(`c.current_stage = $${params.length + 1}`); params.push(stage); }
-    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ' ORDER BY c.applied_at DESC';
+      if (jobId) { conditions.push(`c.job_id = $${params.length + 1}`); params.push(jobId); }
+      if (validStage) { conditions.push(`c.current_stage = $${params.length + 1}`); params.push(validStage); }
+      if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+      sql += ' ORDER BY c.applied_at DESC';
 
-    const result = await pool.query(sql, params);
-    return res.json({ candidates: result.rows.map(toCandidate) });
+      const result = await pool.query(sql, params);
+      return { candidates: result.rows.map(toCandidate) };
+    });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -150,6 +172,7 @@ router.post('/candidates', async (req, res, next) => {
       [id, jobId, name.trim(), email.trim().toLowerCase(), phone || '', experience || '', source || 'direct']
     );
 
+    bustRecruitmentCache();
     const jobTitle = await pool.query('SELECT title FROM job_openings WHERE id = $1', [jobId]);
     return res.status(201).json({
       message: 'Candidate added.',
@@ -176,6 +199,7 @@ router.put('/candidates/:id/stage', async (req, res, next) => {
       [req.params.id, stage]
     );
 
+    bustRecruitmentCache();
     const jobTitle = await pool.query('SELECT title FROM job_openings WHERE id = $1', [result.rows[0].job_id]);
     return res.json({
       message: `Candidate moved to ${stage.replace(/_/g, ' ')}.`,
@@ -189,7 +213,9 @@ router.put('/candidates/:id/stage', async (req, res, next) => {
 /* ── GET /summary  —  Recruitment summary ── */
 router.get('/summary', async (_req, res, next) => {
   try {
-    const [jobResult, candidateResult, pipelineResult] = await Promise.all([
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.recruitment, { view: 'summary' });
+    const payload = await getOrSetCache(cacheKey, RECRUITMENT_TTL, async () => {
+      const [jobResult, candidateResult, pipelineResult] = await Promise.all([
       pool.query(`
         SELECT
           COUNT(*) FILTER (WHERE status = 'open')::int AS open_positions,
@@ -220,21 +246,23 @@ router.get('/summary', async (_req, res, next) => {
       `),
     ]);
 
-    const jobs = jobResult.rows[0] || {};
-    const cands = candidateResult.rows[0] || {};
+      const jobs = jobResult.rows[0] || {};
+      const cands = candidateResult.rows[0] || {};
 
-    return res.json({
-      openPositions: Number(jobs.open_positions || 0),
-      totalJobs: Number(jobs.total_jobs || 0),
-      totalApplicants: Number(cands.total_applicants || 0),
-      shortlisted: Number(cands.shortlisted || 0),
-      hired: Number(cands.hired || 0),
-      pipeline: pipelineResult.rows.map(r => ({
-        stage: r.stage.replace(/_/g, ' '),
-        stageKey: r.stage,
-        count: Number(r.count || 0),
-      })),
+      return {
+        openPositions: Number(jobs.open_positions || 0),
+        totalJobs: Number(jobs.total_jobs || 0),
+        totalApplicants: Number(cands.total_applicants || 0),
+        shortlisted: Number(cands.shortlisted || 0),
+        hired: Number(cands.hired || 0),
+        pipeline: pipelineResult.rows.map(r => ({
+          stage: r.stage.replace(/_/g, ' '),
+          stageKey: r.stage,
+          count: Number(r.count || 0),
+        })),
+      };
     });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }

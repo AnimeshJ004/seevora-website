@@ -3,6 +3,7 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import LeadCaptureForm from './LeadCaptureForm';
 import logoIcon from '../../assets/logo-icon.png';
+import { apiUrl } from '../../utils/apiUrl';
 
 const API_BASE = '/api/sales-agent';
 
@@ -39,7 +40,7 @@ export default function ChatWindow({ isOpen, onClose, onUnread }) {
         ? `${API_BASE}/session?sessionId=${encodeURIComponent(storedId)}&restore=true`
         : `${API_BASE}/session`;
 
-      const res = await fetch(url);
+      const res = await fetch(apiUrl(url));
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.message || 'Failed to start session');
@@ -91,7 +92,7 @@ export default function ChatWindow({ isOpen, onClose, onUnread }) {
     slowTimer.current = setTimeout(() => setSlowWarning(true), 4000);
 
     try {
-      const res = await fetch(`${API_BASE}/message`, {
+      const res = await fetch(apiUrl(`${API_BASE}/message`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, message: text }),
@@ -140,7 +141,7 @@ export default function ChatWindow({ isOpen, onClose, onUnread }) {
 
   const submitLead = useCallback(async (formData) => {
     if (!sessionId) return;
-    const res = await fetch(`${API_BASE}/lead`, {
+    const res = await fetch(apiUrl(`${API_BASE}/lead`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId, ...formData }),
@@ -166,7 +167,7 @@ export default function ChatWindow({ isOpen, onClose, onUnread }) {
   // End session on window close
   const handleClose = useCallback(() => {
     if (sessionId) {
-      fetch(`${API_BASE}/session/end`, {
+      fetch(apiUrl(`${API_BASE}/session/end`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
@@ -177,7 +178,7 @@ export default function ChatWindow({ isOpen, onClose, onUnread }) {
 
   const handleClearChat = useCallback(async () => {
     if (sessionId) {
-      fetch(`${API_BASE}/session/end`, {
+      fetch(apiUrl(`${API_BASE}/session/end`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),

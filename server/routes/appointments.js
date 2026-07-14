@@ -2,7 +2,8 @@ import express from 'express';
 import crypto from 'crypto';
 import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
-import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
@@ -10,7 +11,11 @@ const CACHE_APPOINTMENTS_LIST = 'admin_appointments_list';
 const APPOINTMENTS_TTL = 60;
 
 function bustAppointmentsCache() {
-  clearCache(CACHE_APPOINTMENTS_LIST);
+  invalidateCacheNamespaces(
+    CACHE_NAMESPACES.appointments,
+    CACHE_NAMESPACES.dashboard,
+    CACHE_NAMESPACES.analytics
+  );
 }
 
 export const appointmentManagerGuard = requireRole('admin', 'manager');
@@ -18,17 +23,16 @@ export const appointmentAdminGuard = requireRole('admin');
 
 router.get('/', appointmentManagerGuard, async (req, res) => {
   try {
-    const cached = getCache(CACHE_APPOINTMENTS_LIST);
-    if (cached) return res.json(cached);
-
-    const { rows } = await pool.query(`
-      SELECT *
-      FROM appointments
-      ORDER BY scheduled_at ASC
-    `);
-
-    setCache(CACHE_APPOINTMENTS_LIST, rows, APPOINTMENTS_TTL);
-    res.json(rows);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.appointments, { view: CACHE_APPOINTMENTS_LIST });
+    const appointments = await getOrSetCache(cacheKey, APPOINTMENTS_TTL, async () => {
+      const { rows } = await pool.query(`
+        SELECT *
+        FROM appointments
+        ORDER BY scheduled_at ASC
+      `);
+      return rows;
+    });
+    res.json(appointments);
   } catch (error) {
     console.error('Error fetching appointments:', error);
     res.status(500).json({ error: 'Server error' });

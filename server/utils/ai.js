@@ -1,6 +1,3 @@
-import crypto from 'crypto';
-import { getCache, setCache } from './cache.js';
-
 /**
  * Generate a reply using OpenAI based on configured environment variables.
  * @param {object} params
@@ -10,13 +7,6 @@ import { getCache, setCache } from './cache.js';
  * @returns {Promise<string>} Generated text reply.
  */
 export async function generateAIReply({ prompt, systemPrompt = '', thread = [], maxTokens = 500, context = 'chatbot' }) {
-  const payloadStr = JSON.stringify({ prompt, systemPrompt, thread, maxTokens, context });
-  const hash = crypto.createHash('sha256').update(payloadStr).digest('hex');
-  const cacheKey = `ai_reply_${hash}`;
-
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
-
   const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
 
   if (provider === 'anthropic' && process.env.ANTHROPIC_CHATBOT_API_KEY) {
@@ -51,7 +41,6 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [], 
       if (response.ok) {
         const payload = await response.json();
         const resultText = payload.content?.[0]?.text || '';
-        if (resultText) setCache(cacheKey, resultText, 3600 * 24);
         return resultText;
       } else {
         const errorText = await response.text();
@@ -99,7 +88,6 @@ export async function generateAIReply({ prompt, systemPrompt = '', thread = [], 
       if (response.ok) {
         const payload = await response.json();
         const resultText = payload.choices?.[0]?.message?.content || '';
-        if (resultText) setCache(cacheKey, resultText, 3600 * 24); // Cache for 24 hours
         return resultText;
       } else {
         const errorText = await response.text();

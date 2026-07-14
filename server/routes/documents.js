@@ -2,12 +2,17 @@ import crypto from 'crypto';
 import express from 'express';
 import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
-import { getCache, setCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 
 const CACHE_DOC_SUMMARY = 'hr_documents_summary';
 const DOC_SUMMARY_TTL = 60;
+
+function bustDocumentCache() {
+  invalidateCacheNamespaces(CACHE_NAMESPACES.documents);
+}
 
 const DOC_TYPES = ['aadhaar', 'pan', 'offer_letter', 'payslip', 'resume', 'experience_letter', 'bank_details', 'qualification_certificate', 'other'];
 
@@ -39,13 +44,17 @@ function toDocument(row) {
 /* ── GET /  —  List all documents (HR) ── */
 router.get('/', requireRole('hr', 'admin'), async (_req, res, next) => {
   try {
-    const result = await pool.query(`
-      SELECT d.*, e.name AS emp_name, e.employee_code
-      FROM employee_documents d
-      JOIN hr_employees e ON e.id = d.employee_id
-      ORDER BY d.uploaded_at DESC
-    `);
-    return res.json({ documents: result.rows.map(toDocument) });
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.documents, { view: 'list' });
+    const payload = await getOrSetCache(cacheKey, 30, async () => {
+      const result = await pool.query(`
+        SELECT d.*, e.name AS emp_name, e.employee_code
+        FROM employee_documents d
+        JOIN hr_employees e ON e.id = d.employee_id
+        ORDER BY d.uploaded_at DESC
+      `);
+      return { documents: result.rows.map(toDocument) };
+    });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -54,25 +63,24 @@ router.get('/', requireRole('hr', 'admin'), async (_req, res, next) => {
 /* ── GET /summary  —  Document stats ── */
 router.get('/summary', requireRole('hr', 'admin'), async (_req, res, next) => {
   try {
-    const cached = getCache(CACHE_DOC_SUMMARY);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query(`
-      SELECT
-        COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE doc_status = 'VERIFIED' OR verified = true)::int AS verified,
-        COUNT(*) FILTER (WHERE doc_status = 'PENDING' AND verified = false)::int AS pending,
-        COUNT(DISTINCT employee_id)::int AS employees_with_docs
-      FROM employee_documents
-    `);
-    const row = result.rows[0] || {};
-    const payload = {
-      total: Number(row.total || 0),
-      verified: Number(row.verified || 0),
-      pending: Number(row.pending || 0),
-      employeesWithDocs: Number(row.employees_with_docs || 0),
-    };
-    setCache(CACHE_DOC_SUMMARY, payload, DOC_SUMMARY_TTL);
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.documents, { view: CACHE_DOC_SUMMARY });
+    const payload = await getOrSetCache(cacheKey, DOC_SUMMARY_TTL, async () => {
+      const result = await pool.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE doc_status = 'VERIFIED' OR verified = true)::int AS verified,
+          COUNT(*) FILTER (WHERE doc_status = 'PENDING' AND verified = false)::int AS pending,
+          COUNT(DISTINCT employee_id)::int AS employees_with_docs
+        FROM employee_documents
+      `);
+      const row = result.rows[0] || {};
+      return {
+        total: Number(row.total || 0),
+        verified: Number(row.verified || 0),
+        pending: Number(row.pending || 0),
+        employeesWithDocs: Number(row.employees_with_docs || 0),
+      };
+    });
     return res.json(payload);
   } catch (error) {
     return next(error);
@@ -82,6 +90,8 @@ router.get('/summary', requireRole('hr', 'admin'), async (_req, res, next) => {
 /* ── GET /verifications  —  List ALL employees with their verification status ── */
 router.get('/verifications', requireRole('hr', 'admin'), async (_req, res, next) => {
   try {
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.documents, { view: 'verifications' });
+    const payload = await getOrSetCache(cacheKey, 30, async () => {
     /* No WHERE filter on role — show every hr_employees row */
     const result = await pool.query(`
       SELECT
@@ -146,15 +156,17 @@ router.get('/verifications', requireRole('hr', 'admin'), async (_req, res, next)
 
     const s = statsResult.rows[0] || {};
 
-    return res.json({
+      return {
       employees,
       stats: {
         pendingVerification: Number(s.pending_verification || 0),
         documentSubmitted:   Number(s.document_submitted   || 0),
         verified:            Number(s.verified              || 0),
         rejected:            Number(s.rejected              || 0),
-      },
+        },
+      };
     });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -251,6 +263,7 @@ router.put('/verifications/:employeeId/verify', requireRole('hr', 'admin'), asyn
     }
 
     await client.query('COMMIT');
+    bustDocumentCache();
     return res.json({ message: 'Employee verified successfully.' });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -307,6 +320,7 @@ router.put('/verifications/:employeeId/reject', requireRole('hr', 'admin'), asyn
     }
 
     await client.query('COMMIT');
+    bustDocumentCache();
     return res.json({ message: 'Employee documents rejected. The employee will be notified to re-upload.' });
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch {}
@@ -336,6 +350,7 @@ router.post('/', requireRole('hr', 'admin'), async (req, res, next) => {
       [id, employeeId, type, fileName.trim(), fileSize || '']
     );
 
+    bustDocumentCache();
     const empInfo = await pool.query('SELECT name, employee_code FROM hr_employees WHERE id = $1', [employeeId]);
     return res.status(201).json({
       message: 'Document uploaded.',
@@ -360,6 +375,7 @@ router.put('/:id/verify', requireRole('hr', 'admin'), async (req, res, next) => 
       [req.params.id, req.user.id]
     );
 
+    bustDocumentCache();
     return res.json({ message: 'Document verified.' });
   } catch (error) {
     return next(error);
@@ -373,6 +389,7 @@ router.delete('/:id', requireRole('hr', 'admin'), async (req, res, next) => {
     if (current.rowCount === 0) return res.status(404).json({ message: 'Document not found.' });
 
     await pool.query('DELETE FROM employee_documents WHERE id = $1', [req.params.id]);
+    bustDocumentCache();
     return res.json({ message: 'Document removed.' });
   } catch (error) {
     return next(error);

@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../config/db.js';
 import { normalizeRole, requireRole } from '../middleware/auth.js';
-import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { revokeUserSessions } from '../services/auth/sessionService.js';
 import { ensureManagerEmployeeProfile } from '../services/hr/employeeProfileService.js';
 
@@ -18,9 +19,13 @@ function normalizeUserRow(row) {
 }
 
 function clearUserAndEmployeeCaches() {
-  clearCache('users_list');
-  clearCache('hr_employees_list');
-  clearCache('hr_employees_summary');
+  invalidateCacheNamespaces(
+    CACHE_NAMESPACES.users,
+    CACHE_NAMESPACES.hrEmployees,
+    CACHE_NAMESPACES.productivity,
+    CACHE_NAMESPACES.dashboard,
+    CACHE_NAMESPACES.payroll
+  );
 }
 
 async function directReportCount(client, userId) {
@@ -40,19 +45,32 @@ function directReportsConflict(res, action) {
   });
 }
 
+function validatePassword(password) {
+  const value = String(password || '');
+
+  if (value !== value.trim()) return 'Password must not start or end with spaces.';
+  if (value.length < 8) return 'Password must be at least 8 characters.';
+  if (value.length > 128) return 'Password must be 128 characters or fewer.';
+  if (!/[A-Z]/.test(value)) return 'Password must include an uppercase letter.';
+  if (!/[a-z]/.test(value)) return 'Password must include a lowercase letter.';
+  if (!/[0-9]/.test(value)) return 'Password must include a number.';
+  if (!/[^A-Za-z0-9]/.test(value)) return 'Password must include a special character.';
+
+  return '';
+}
+
 router.get('/', async (req, res) => {
   try {
-    const cachedUsers = getCache('users_list');
-    if (cachedUsers) return res.json(cachedUsers);
-
-    const { rows } = await pool.query(`
-      SELECT id, username, email, phone, role, created_at, updated_at 
-      FROM users 
-      ORDER BY created_at DESC
-    `);
-    
-    setCache('users_list', rows, 120); // Cache for 2 minutes
-    res.json(rows.map(normalizeUserRow));
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.users, { view: 'list' });
+    const users = await getOrSetCache(cacheKey, 120, async () => {
+      const { rows } = await pool.query(`
+        SELECT id, username, email, phone, role, created_at, updated_at
+        FROM users
+        ORDER BY created_at DESC
+      `);
+      return rows.map(normalizeUserRow);
+    });
+    res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Server error' });
@@ -64,6 +82,9 @@ router.post('/', async (req, res) => {
   try {
     const { username, email, phone, role, password } = req.body;
     if (!username || !email || !password) return res.status(400).json({ error: 'Username, email and password are required' });
+
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ error: passwordError });
 
     const nextRole = normalizeRole(role || 'employee');
     if (!USER_ROLES.has(nextRole)) {
@@ -153,12 +174,20 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Username and email are required' });
     }
 
+    const passwordChanged = typeof password === 'string' && password.length > 0;
+    if (passwordChanged) {
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: passwordError });
+      }
+    }
+
     if (nextRole !== 'manager' && (await directReportCount(client, id)) > 0) {
       await client.query('ROLLBACK');
       return directReportsConflict(res, 'changing their role');
     }
 
-    const passwordChanged = typeof password === 'string' && password.length > 0;
     const passwordHash = passwordChanged ? await bcrypt.hash(password, 12) : null;
     const verificationStatus = PREVERIFIED_ROLES.has(nextRole)
       ? 'VERIFIED'

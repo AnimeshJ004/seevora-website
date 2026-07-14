@@ -3,22 +3,29 @@ import express from 'express';
 import pool from '../config/db.js';
 import { sendMail } from '../utils/mailer.js';
 import { sendCampaign } from '../utils/campaignSender.js';
-import { getCache, setCache, clearCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { requireRole } from '../middleware/auth.js';
-import { createRateLimiter } from '../middleware/security.js';
+import { createPostgresRateLimiter } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 const [authenticateEmailBot, authorizeEmailBot] = requireRole('admin', 'manager');
-const emailSendLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 20, keyPrefix: 'email_bot_send' });
+const emailSendLimiter = createPostgresRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  policy: 'email_bot_send',
+  subject: (req) => req.user?.id,
+});
 
 const CACHE_EMAIL_TEMPLATES = 'email_templates_list';
 const CACHE_EMAIL_SUBSCRIBERS = 'email_subscribers_list';
 const CACHE_EMAIL_CAMPAIGNS = 'email_campaigns_list';
 const EMAIL_BOT_TTL = 60;
 
-function bustTemplatesCache() { clearCache(CACHE_EMAIL_TEMPLATES); }
-function bustSubscribersCache() { clearCache(CACHE_EMAIL_SUBSCRIBERS); }
-function bustCampaignsCache() { clearCache(CACHE_EMAIL_CAMPAIGNS); }
+function emailBotNamespace(group) { return `${CACHE_NAMESPACES.emailBot}:${group}`; }
+function bustTemplatesCache() { invalidateCacheNamespaces(emailBotNamespace('templates')); }
+function bustSubscribersCache() { invalidateCacheNamespaces(emailBotNamespace('subscribers')); }
+function bustCampaignsCache() { invalidateCacheNamespaces(emailBotNamespace('campaigns')); }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -62,12 +69,12 @@ const getUserId = (req) => {
    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 router.get('/templates', async (req, res, next) => {
   try {
-    const cached = getCache(CACHE_EMAIL_TEMPLATES);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query('SELECT * FROM email_templates ORDER BY created_at DESC');
-    const payload = { templates: result.rows };
-    setCache(CACHE_EMAIL_TEMPLATES, payload, EMAIL_BOT_TTL);
+    const namespace = emailBotNamespace('templates');
+    const cacheKey = buildCacheKey(namespace, { view: CACHE_EMAIL_TEMPLATES });
+    const payload = await getOrSetCache(cacheKey, EMAIL_BOT_TTL, async () => {
+      const result = await pool.query('SELECT * FROM email_templates ORDER BY created_at DESC');
+      return { templates: result.rows };
+    });
     res.json(payload);
   } catch (err) {
     next(err);
@@ -140,12 +147,12 @@ router.delete('/templates/:id', async (req, res, next) => {
    â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 router.get('/subscribers', async (req, res, next) => {
   try {
-    const cached = getCache(CACHE_EMAIL_SUBSCRIBERS);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query('SELECT * FROM subscribers ORDER BY created_at DESC');
-    const payload = { subscribers: result.rows };
-    setCache(CACHE_EMAIL_SUBSCRIBERS, payload, EMAIL_BOT_TTL);
+    const namespace = emailBotNamespace('subscribers');
+    const cacheKey = buildCacheKey(namespace, { view: CACHE_EMAIL_SUBSCRIBERS });
+    const payload = await getOrSetCache(cacheKey, EMAIL_BOT_TTL, async () => {
+      const result = await pool.query('SELECT * FROM subscribers ORDER BY created_at DESC');
+      return { subscribers: result.rows };
+    });
     res.json(payload);
   } catch (err) {
     next(err);
@@ -316,17 +323,17 @@ router.post('/subscribers/:id/send-email', emailSendLimiter, async (req, res, ne
    ────────────────────────────────────────────────────────────────────────── */
 router.get('/campaigns', async (req, res, next) => {
   try {
-    const cached = getCache(CACHE_EMAIL_CAMPAIGNS);
-    if (cached) return res.json(cached);
-
-    const result = await pool.query(`
-      SELECT ec.*, et.name as template_name
-      FROM email_campaigns ec
-      LEFT JOIN email_templates et ON ec.template_id = et.id
-      ORDER BY ec.created_at DESC
-    `);
-    const payload = { campaigns: result.rows };
-    setCache(CACHE_EMAIL_CAMPAIGNS, payload, EMAIL_BOT_TTL);
+    const namespace = emailBotNamespace('campaigns');
+    const cacheKey = buildCacheKey(namespace, { view: CACHE_EMAIL_CAMPAIGNS });
+    const payload = await getOrSetCache(cacheKey, EMAIL_BOT_TTL, async () => {
+      const result = await pool.query(`
+        SELECT ec.*, et.name as template_name
+        FROM email_campaigns ec
+        LEFT JOIN email_templates et ON ec.template_id = et.id
+        ORDER BY ec.created_at DESC
+      `);
+      return { campaigns: result.rows };
+    });
     res.json(payload);
   } catch (err) {
     next(err);
@@ -750,8 +757,10 @@ router.post('/send-single', emailSendLimiter, async (req, res, next) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7, 'sent', NOW())`,
         [logId, lead.id, template.id, lead.email, lead.name, subject, body]
       );
+      invalidateCacheNamespaces(CACHE_NAMESPACES.analytics);
       // Update last contacted time
       await pool.query('UPDATE leads SET last_contacted_at = NOW() WHERE id = $1', [lead.id]).catch(() => { });
+      invalidateCacheNamespaces(CACHE_NAMESPACES.leads);
       res.json({ message: 'Email sent successfully!', subject, body, aiUsed });
     } else {
       await pool.query(
@@ -759,6 +768,7 @@ router.post('/send-single', emailSendLimiter, async (req, res, next) => {
          VALUES ($1, $2, $3, $4, $5, $6, $7, 'failed', $8, NOW())`,
         [logId, lead.id, template.id, lead.email, lead.name, subject, body, r.error]
       );
+      invalidateCacheNamespaces(CACHE_NAMESPACES.analytics);
       res.status(503).json({ message: `Failed to send email: ${r.error}`, subject, body, aiUsed: false });
     }
   } catch (err) {

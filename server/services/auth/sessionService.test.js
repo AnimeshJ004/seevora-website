@@ -29,6 +29,7 @@ function makeDatabase(results = []) {
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalClientOrigin = process.env.CLIENT_ORIGIN;
+const originalSessionCookieSameSite = process.env.SESSION_COOKIE_SAMESITE;
 
 beforeEach(() => {
   process.env.NODE_ENV = 'test';
@@ -40,6 +41,8 @@ afterEach(() => {
   else process.env.NODE_ENV = originalNodeEnv;
   if (originalClientOrigin === undefined) delete process.env.CLIENT_ORIGIN;
   else process.env.CLIENT_ORIGIN = originalClientOrigin;
+  if (originalSessionCookieSameSite === undefined) delete process.env.SESSION_COOKIE_SAMESITE;
+  else process.env.SESSION_COOKIE_SAMESITE = originalSessionCookieSameSite;
 });
 
 describe('server-side auth sessions', () => {
@@ -152,6 +155,19 @@ describe('session cookie policy', () => {
     assert.equal(calls[0][2].sameSite, 'strict');
     assert.equal(calls[0][2].path, '/');
     assert.equal('domain' in calls[0][2], false);
+  });
+
+  it('supports SameSite=None secure cookies for cross-site frontend/backend deployments', () => {
+    process.env.CLIENT_ORIGIN = 'https://seevora.in';
+    process.env.SESSION_COOKIE_SAMESITE = 'none';
+    const calls = [];
+    const response = { cookie: (...args) => calls.push(args) };
+    setSessionCookie(response, 'token', NORMAL_SESSION_MS);
+
+    assert.equal(calls[0][0], PRODUCTION_SESSION_COOKIE);
+    assert.equal(calls[0][2].secure, true);
+    assert.equal(calls[0][2].sameSite, 'none');
+    assert.equal(calls[0][2].httpOnly, true);
   });
 
   it('clears both production and development cookie names', () => {

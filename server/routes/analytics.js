@@ -1,7 +1,8 @@
 import express from 'express';
 import pool from '../config/db.js';
 import { requireRole } from '../middleware/auth.js';
-import { getCache, setCache } from '../utils/cache.js';
+import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
+import { CACHE_NAMESPACES } from '../utils/cacheNamespaces.js';
 
 const router = express.Router();
 const ANALYTICS_ROLES = ['admin', 'manager'];
@@ -21,10 +22,8 @@ async function count(query, params = []) {
 
 router.get('/manager', requireRole(ANALYTICS_ROLES), async (_req, res, next) => {
   try {
-    const cachedData = getCache('analytics_manager');
-    if (cachedData) {
-      return res.json(cachedData);
-    }
+    const cacheKey = buildCacheKey(CACHE_NAMESPACES.analytics, { view: 'manager' });
+    const payload = await getOrSetCache(cacheKey, 60, async () => {
 
     const [
       totals,
@@ -142,7 +141,7 @@ router.get('/manager', requireRole(ANALYTICS_ROLES), async (_req, res, next) => 
       ? Math.round((toInt(email.replied) / toInt(email.sent)) * 100)
       : 0;
 
-    const payload = {
+    const data = {
       summary: {
         leadsTotal,
         leadsClosed,
@@ -193,7 +192,8 @@ router.get('/manager', requireRole(ANALYTICS_ROLES), async (_req, res, next) => 
       })),
     };
 
-    setCache('analytics_manager', payload, 60); // Cache for 60 seconds
+      return data;
+    });
     res.json(payload);
   } catch (err) {
     next(err);

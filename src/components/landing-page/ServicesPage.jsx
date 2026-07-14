@@ -13,11 +13,11 @@ import img2 from "../../assets/services/img2.jpg";
 import img3 from "../../assets/services/img3.jpg";
 import img4 from "../../assets/services/img4.jpg";
 import img5 from "../../assets/services/img5.jpg";
-import healthFitnessToolsImg from "../../assets/health_fitness_tools_service.png";
-import diagnosticMicroscopeImg from "../../assets/diagnostic_microscope_service.png";
-import educationAcademyImg from "../../assets/education_academy_classroom_service.png";
-import personalCareWellnessImg from "../../assets/personal_care_reputation_service.png";
-import healthcareDocivoImg from "../../assets/healthcare_docivo_analytics_service.png";
+import healthFitnessToolsImg from "../../assets/health_fitness_tools_service.webp";
+import diagnosticMicroscopeImg from "../../assets/diagnostic_microscope_service.webp";
+import educationAcademyImg from "../../assets/education_academy_classroom_service.webp";
+import personalCareWellnessImg from "../../assets/personal_care_reputation_service.webp";
+import healthcareDocivoImg from "../../assets/healthcare_docivo_analytics_service.webp";
 
 const sectors = [
   {

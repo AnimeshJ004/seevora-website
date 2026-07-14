@@ -1,17 +1,66 @@
 import crypto from 'node:crypto';
 
-const buckets = new Map();
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-function configuredOrigins() {
-  const origins = new Set(
-    String(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
+function normalizeOrigin(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'null') return '';
+
+  try {
+    return new URL(raw.includes('://') ? raw : `https://${raw}`).origin;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Given a normalized origin string, return both www and non-www variants.
+ * e.g. "https://seevora.in"     → ["https://seevora.in", "https://www.seevora.in"]
+ *      "https://www.seevora.in" → ["https://www.seevora.in", "https://seevora.in"]
+ */
+function wwwAliases(origin) {
+  if (!origin) return [];
+  try {
+    const url = new URL(origin);
+    const aliases = [origin];
+    if (url.hostname.startsWith('www.')) {
+      url.hostname = url.hostname.slice(4);
+      aliases.push(url.origin);
+    } else {
+      url.hostname = `www.${url.hostname}`;
+      aliases.push(url.origin);
+    }
+    return aliases;
+  } catch {
+    return [origin];
+  }
+}
+
+function originValuesFromEnv() {
+  const values = String(process.env.CLIENT_ORIGIN || 'http://localhost:5173')
       .split(',')
       .map((origin) => origin.trim())
-      .filter(Boolean)
-  );
+      .filter(Boolean);
+
+  if (process.env.VERCEL_URL) values.push(process.env.VERCEL_URL);
+  return values;
+}
+
+export function configuredOrigins() {
+  const base = originValuesFromEnv()
+    .map(normalizeOrigin)
+    .filter(Boolean);
+
+  // Auto-expand each entry to include both www and non-www variants
+  const origins = new Set();
+  for (const origin of base) {
+    for (const alias of wwwAliases(origin)) {
+      origins.add(alias);
+    }
+  }
 
   if (process.env.NODE_ENV !== 'production') {
+    // Add explicitly, though the isTrustedOrigin check will also pass any localhost port.
     origins.add('http://localhost:5173');
     origins.add('http://127.0.0.1:5173');
   }
@@ -21,27 +70,60 @@ function configuredOrigins() {
 
 function requestOrigin(req) {
   const origin = String(req.get('origin') || '').trim();
-  if (origin && origin !== 'null') return origin;
+  if (origin && origin !== 'null') return normalizeOrigin(origin);
 
   const referer = String(req.get('referer') || '').trim();
   if (!referer) return '';
-  try {
-    return new URL(referer).origin;
-  } catch {
-    return '';
-  }
+  return normalizeOrigin(referer);
+}
+
+/**
+ * When a reverse proxy (e.g. Nginx, Hostinger, Vercel) terminates TLS and
+ * forwards the request, the Origin header is sometimes stripped or absent.
+ * In that case fall back to Host / X-Forwarded-Host to determine the request
+ * origin so legitimate same-site requests are never rejected.
+ */
+function resolveRequestOrigin(req) {
+  const direct = requestOrigin(req);
+  if (direct) return direct;
+
+  // Fallback: reconstruct origin from forwarded host headers
+  const forwardedHost = req.get('x-forwarded-host') || req.get('host') || '';
+  if (!forwardedHost) return '';
+
+  // Use x-forwarded-proto if available; otherwise check req.secure
+  const proto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+  return normalizeOrigin(`${proto}://${forwardedHost.split(',')[0].trim()}`);
 }
 
 export function hasTrustedOrigin(req) {
-  return configuredOrigins().has(requestOrigin(req));
+  const origin = resolveRequestOrigin(req);
+  if (process.env.NODE_ENV !== 'production' && origin) {
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+  }
+  return configuredOrigins().has(origin);
+}
+
+export function isTrustedOrigin(origin) {
+  const normalized = normalizeOrigin(origin);
+  if (process.env.NODE_ENV !== 'production' && normalized) {
+    if (normalized.startsWith('http://localhost:') || normalized.startsWith('http://127.0.0.1:')) return true;
+  }
+  return Boolean(normalized && configuredOrigins().has(normalized));
 }
 
 export function requireTrustedOrigin(req, res, next) {
   if (!hasTrustedOrigin(req)) {
+    const origin = resolveRequestOrigin(req);
     console.warn(JSON.stringify({
       event: 'csrf_origin_rejected',
       method: req.method,
       path: req.originalUrl || req.url,
+      resolvedOrigin: origin || null,
+      directOrigin: requestOrigin(req) || null,
+      host: req.get('host') || null,
+      forwardedHost: req.get('x-forwarded-host') || null,
+      configuredOrigins: Array.from(configuredOrigins()),
       timestamp: new Date().toISOString(),
     }));
     return res.status(403).json({ message: 'Request origin could not be verified.' });
@@ -67,41 +149,9 @@ export function validateAuthenticatedCsrf(req, session) {
     : { valid: false, reason: 'token' };
 }
 
-function getClientKey(req) {
-  return req.ip || req.socket?.remoteAddress || 'unknown';
+export function configureTrustedProxy(app) {
+  app.set('trust proxy', 'loopback');
 }
-
-export function createRateLimiter({ windowMs = 60_000, max = 60, keyPrefix = 'global' } = {}) {
-  return (req, res, next) => {
-    const key = `${keyPrefix}:${getClientKey(req)}`;
-    const now = Date.now();
-    const entry = buckets.get(key);
-
-    if (!entry || now - entry.startedAt >= windowMs) {
-      buckets.set(key, { count: 1, startedAt: now });
-      return next();
-    }
-
-    if (entry.count >= max) {
-      const retryAfter = Math.ceil((windowMs - (now - entry.startedAt)) / 1000);
-      res.set('Retry-After', String(retryAfter));
-      return res.status(429).json({
-        message: 'Too many requests. Please try again shortly.',
-        retryAfter,
-      });
-    }
-
-    entry.count += 1;
-    return next();
-  };
-}
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of buckets.entries()) {
-    if (now - entry.startedAt > 60 * 60 * 1000) buckets.delete(key);
-  }
-}, 10 * 60 * 1000).unref?.();
 
 export function securityHeaders(req, res, next) {
   const nonce = crypto.randomBytes(16).toString('base64');

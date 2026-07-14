@@ -17,7 +17,6 @@ import { randomUUID } from 'node:crypto';
 
 // ─── Import pure/logic utilities ─────────────────────────────────────────────
 import { validateLeadData } from '../services/salesAgent/leadProcessor.js';
-import { checkRateLimit, resetRateLimit } from '../utils/rateLimiter.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -256,92 +255,6 @@ describe('POST /message — input validation', () => {
   it('returns null (valid) for normal input', () => {
     const result = validateMessageInput(uid(), 'Tell me about your services');
     assert.equal(result, null);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 3. Rate limiter integration (uses real checkRateLimit / resetRateLimit)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-describe('Rate limiter — 20 message window enforcement', () => {
-  it('allows first 20 calls and blocks the 21st', () => {
-    const sessionId = uid();
-
-    // Make 20 allowed calls
-    for (let i = 0; i < 20; i++) {
-      const result = checkRateLimit(sessionId);
-      assert.equal(result.allowed, true, `Call ${i + 1} should be allowed`);
-    }
-
-    // 21st call should be blocked
-    const blocked = checkRateLimit(sessionId);
-    assert.equal(blocked.allowed, false, '21st call should be rate-limited');
-    assert.equal(blocked.remaining, 0);
-    assert.ok(blocked.retryAfter > 0, 'retryAfter should be a positive number');
-
-    resetRateLimit(sessionId);
-  });
-
-  it('allows calls again after resetRateLimit', () => {
-    const sessionId = uid();
-
-    for (let i = 0; i < 20; i++) checkRateLimit(sessionId);
-    assert.equal(checkRateLimit(sessionId).allowed, false);
-
-    resetRateLimit(sessionId);
-
-    const afterReset = checkRateLimit(sessionId);
-    assert.equal(afterReset.allowed, true, 'should be allowed after reset');
-
-    resetRateLimit(sessionId);
-  });
-
-  it('tracks different sessions independently', () => {
-    const sessionA = uid();
-    const sessionB = uid();
-
-    // Exhaust session A
-    for (let i = 0; i < 20; i++) checkRateLimit(sessionA);
-    assert.equal(checkRateLimit(sessionA).allowed, false, 'session A should be blocked');
-
-    // Session B should still be fine
-    const bResult = checkRateLimit(sessionB);
-    assert.equal(bResult.allowed, true, 'session B should be unaffected');
-
-    resetRateLimit(sessionA);
-    resetRateLimit(sessionB);
-  });
-
-  it('returns correct remaining count as messages are sent', () => {
-    const sessionId = uid();
-
-    const first = checkRateLimit(sessionId);
-    assert.equal(first.remaining, 19, 'after first call, 19 remaining');
-
-    const second = checkRateLimit(sessionId);
-    assert.equal(second.remaining, 18, 'after second call, 18 remaining');
-
-    resetRateLimit(sessionId);
-  });
-
-  it('route returns 429 error shape on rate limit exceeded', () => {
-    // Mirror the route response shape when rate limit fires
-    const rateCheck = { allowed: false, retryAfter: 55 };
-    const res = makeRes();
-
-    if (!rateCheck.allowed) {
-      res.status(429).json({
-        error: 'Too Many Requests',
-        code: 'RATE_LIMIT_EXCEEDED',
-        message: 'Rate limit exceeded. Please slow down.',
-        retryAfter: rateCheck.retryAfter,
-      });
-    }
-
-    assert.equal(res._status, 429);
-    assert.equal(res._body.code, 'RATE_LIMIT_EXCEEDED');
-    assert.equal(res._body.error, 'Too Many Requests');
-    assert.ok('retryAfter' in res._body, 'response should include retryAfter');
   });
 });
 

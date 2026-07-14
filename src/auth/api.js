@@ -1,3 +1,5 @@
+import { apiUrl } from '../utils/apiUrl.js';
+
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 let csrfToken = '';
 let restoreRequest = null;
@@ -34,7 +36,7 @@ export async function apiFetch(endpoint, options = {}) {
     const headers = new Headers(suppliedHeaders || {});
     if (isUnsafe && csrfToken) headers.set('X-CSRF-Token', csrfToken);
 
-    return fetch(endpoint, {
+    return fetch(apiUrl(endpoint), {
       ...requestOptions,
       method,
       headers,
@@ -64,7 +66,7 @@ export async function apiFetch(endpoint, options = {}) {
 
 export async function loginSession(credentials) {
   clearAuthSession();
-  const response = await fetch('/api/auth/login', {
+  const response = await fetch(apiUrl('/api/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
@@ -78,7 +80,7 @@ export async function loginSession(credentials) {
 
 async function requestRestoredSession() {
   clearAuthSession();
-  const response = await fetch('/api/auth/session', {
+  const response = await fetch(apiUrl('/api/auth/session'), {
     credentials: 'include',
     cache: 'no-store',
   });

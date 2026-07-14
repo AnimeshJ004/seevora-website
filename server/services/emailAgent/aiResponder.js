@@ -11,12 +11,15 @@ import { generateAIReply } from '../../utils/ai.js';
 import { sendMail } from '../../utils/mailer.js';
 import { writeLog, detectModelUsed } from './replyLogger.js';
 import * as escalationService from './escalationService.js';
+import { buildCacheKey, getOrSetCache } from '../../utils/cache.js';
+import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../../utils/cacheNamespaces.js';
 
 // ─── System Prompt Cache ─────────────────────────────────────────────────────
 
-let _systemPromptCache = null;
-let _systemPromptCachedAt = 0;
-const SYSTEM_PROMPT_CACHE_TTL_MS = 30_000;
+const SYSTEM_PROMPT_CACHE_TTL_SECONDS = 30;
+const EMAIL_PROMPT_CACHE_KEY = buildCacheKey(`${CACHE_NAMESPACES.systemPrompt}:email`, {
+  setting: 'email_agent_system_prompt',
+});
 
 /** Hardcoded fallback — used when system_settings has no value for key */
 const SEEVORA_SALES_SYSTEM_PROMPT = `You are Seevora's AI Sales Representative handling inbound email enquiries. Your job is to engage prospective clients with helpful, conversion-focused responses that reflect Seevora's brand voice: warm, knowledgeable, and confident.
@@ -133,26 +136,17 @@ export async function getMaxReplies() {
  * @returns {Promise<string>}
  */
 async function getSystemPrompt() {
-  const now = Date.now();
-  if (_systemPromptCache && now - _systemPromptCachedAt < SYSTEM_PROMPT_CACHE_TTL_MS) {
-    return _systemPromptCache;
-  }
-  try {
-    const { rows } = await pool.query(
-      `SELECT value FROM system_settings WHERE key = 'email_agent_system_prompt' LIMIT 1`
-    );
-    if (rows[0]?.value) {
-      _systemPromptCache = rows[0].value;
-      _systemPromptCachedAt = now;
-      return _systemPromptCache;
+  return getOrSetCache(EMAIL_PROMPT_CACHE_KEY, SYSTEM_PROMPT_CACHE_TTL_SECONDS, async () => {
+    try {
+      const { rows } = await pool.query(
+        "SELECT value FROM system_settings WHERE key = 'email_agent_system_prompt' LIMIT 1"
+      );
+      return rows[0]?.value || SEEVORA_SALES_SYSTEM_PROMPT;
+    } catch (err) {
+      console.error('[aiResponder] Failed to read system prompt from DB:', err.message);
+      return SEEVORA_SALES_SYSTEM_PROMPT;
     }
-  } catch (err) {
-    console.error('[aiResponder] Failed to read system prompt from DB:', err.message);
-  }
-  // Cache the fallback too, to avoid hammering DB on every call
-  _systemPromptCache = SEEVORA_SALES_SYSTEM_PROMPT;
-  _systemPromptCachedAt = now;
-  return _systemPromptCache;
+  });
 }
 
 /**
@@ -359,6 +353,7 @@ The Seevora Team`;
     } catch (err) {
       console.error('[aiResponder] Failed to upsert unsubscribed subscriber:', err.message);
     }
+    invalidateCacheNamespaces(`${CACHE_NAMESPACES.emailBot}:subscribers`);
 
     // Log the confirmation email
     const threadId = inboundEmail.thread_id || inboundEmail.from_email;
@@ -376,6 +371,8 @@ The Seevora Team`;
       escalationReason: null,
       processingDurationMs: null,
     });
+
+    invalidateCacheNamespaces(CACHE_NAMESPACES.emailAgent);
 
     console.log(`[aiResponder] unsubscribe_processed — ${inboundEmail.from_email}`);
   } else {
@@ -433,6 +430,7 @@ export async function processInboundEmail(inboundEmail) {
   let thread;
   try {
     thread = await upsertThread(inboundEmail);
+    invalidateCacheNamespaces(CACHE_NAMESPACES.emailAgent);
   } catch (err) {
     console.error('[aiResponder] Failed to upsert thread:', err.message);
     return { sent: false, reason: 'thread_upsert_failed' };
@@ -560,6 +558,7 @@ export async function processInboundEmail(inboundEmail) {
     escalationReason: null,
     processingDurationMs: duration,
   });
+  invalidateCacheNamespaces(CACHE_NAMESPACES.emailAgent);
 
   // ── Step 12: Update DB counters ──────────────────────────────────────────
   const newStatus = mailResult.success ? 'replied' : 'send_failed';
