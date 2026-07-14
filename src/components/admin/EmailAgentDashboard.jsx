@@ -49,6 +49,7 @@ export default function EmailAgentDashboard({ token }) {
   const [logsPage, setLogsPage] = useState(1);
   const [logsLoading, setLogsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedLog, setSelectedLog] = useState(null);
 
   const authHeader = { Authorization: `Bearer ${token}` };
 
@@ -268,6 +269,7 @@ export default function EmailAgentDashboard({ token }) {
             <p style={{ color: '#64748b' }}>Loading logs…</p>
           ) : (
             <>
+              <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '12px' }}>Click any row to preview the email reply.</p>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                   <thead>
@@ -281,7 +283,13 @@ export default function EmailAgentDashboard({ token }) {
                     {logs.length === 0 ? (
                       <tr><td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No reply logs yet</td></tr>
                     ) : logs.map(l => (
-                      <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr
+                        key={l.id}
+                        onClick={() => setSelectedLog(l)}
+                        style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
                         <td style={{ padding: '10px 14px', color: '#0f172a' }}>{l.to_email}</td>
                         <td style={{ padding: '10px 14px', color: '#475569', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.subject}</td>
                         <td style={{ padding: '10px 14px' }}>
@@ -322,6 +330,91 @@ export default function EmailAgentDashboard({ token }) {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Reply Log Detail Modal ─────────────────────────────────────────────── */}
+      {selectedLog && (
+        <div
+          onClick={() => setSelectedLog(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '24px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '720px',
+              maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+            }}
+          >
+            {/* Modal header */}
+            <div style={{
+              padding: '18px 24px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '16px', color: '#0f172a', wordBreak: 'break-word' }}>
+                  {selectedLog.subject || '(no subject)'}
+                </div>
+                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                  To: <strong>{selectedLog.to_email}</strong>
+                  {' · '}
+                  {new Date(selectedLog.sent_at).toLocaleString()}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <StatusBadge label={selectedLog.status} type={selectedLog.status} />
+                  {selectedLog.source && <StatusBadge label={selectedLog.source} type={selectedLog.source} />}
+                  {selectedLog.ai_model_used && (
+                    <code style={{ fontSize: '11px', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', color: '#475569' }}>
+                      {selectedLog.ai_model_used}
+                    </code>
+                  )}
+                  {selectedLog.processing_duration_ms != null && (
+                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+                      {selectedLog.processing_duration_ms}ms
+                    </span>
+                  )}
+                </div>
+                {selectedLog.error_message && (
+                  <div style={{ marginTop: '8px', background: '#fee2e2', color: '#991b1b', padding: '6px 10px', borderRadius: '6px', fontSize: '12px' }}>
+                    ⚠ {selectedLog.error_message}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                style={{
+                  background: '#f1f5f9', border: 'none', borderRadius: '50%',
+                  width: '32px', height: '32px', cursor: 'pointer',
+                  fontSize: '16px', color: '#475569', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >✕</button>
+            </div>
+
+            {/* Email body */}
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {selectedLog.reply_body_html ? (
+                <iframe
+                  srcDoc={selectedLog.reply_body_html}
+                  title="Email preview"
+                  sandbox="allow-same-origin"
+                  style={{ width: '100%', height: '480px', border: 'none', display: 'block' }}
+                />
+              ) : selectedLog.reply_body_text ? (
+                <pre style={{
+                  margin: 0, padding: '20px 24px', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  fontSize: '14px', color: '#334155', lineHeight: 1.7,
+                }}>{selectedLog.reply_body_text}</pre>
+              ) : (
+                <p style={{ padding: '24px', color: '#94a3b8', textAlign: 'center' }}>No reply content available.</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

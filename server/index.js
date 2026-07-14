@@ -47,11 +47,11 @@ if (!process.env.JWT_SECRET) {
 }
 
 // ── API Key validation ────────────────────────────────────────────────────────
-if (!process.env.ANTHROPIC_CHATBOT_API_KEY) {
-  console.warn('[Config] ⚠️  ANTHROPIC_CHATBOT_API_KEY not set — website chatbot will return empty replies');
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('[Config] ⚠️  GEMINI_API_KEY not set — website chatbot will return empty replies');
 }
-if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
-  console.warn('[Config] ⚠️  ANTHROPIC_EMAIL_API_KEY not set — email AI agent is disabled');
+if (!process.env.GEMINI_EMAIL_API_KEY && !process.env.GEMINI_API_KEY) {
+  console.warn('[Config] ⚠️  GEMINI_EMAIL_API_KEY not set — email AI agent is disabled');
 }
 // ─────────────────────────────────────────────────────────────────────────────
 

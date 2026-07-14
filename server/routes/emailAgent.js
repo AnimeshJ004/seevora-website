@@ -381,6 +381,7 @@ router.get('/logs', guard, async (req, res) => {
     values.push(offset);
     const logsResult = await pool.query(
       `SELECT id, thread_id, inbound_email_id, to_email, subject,
+              reply_body_html, reply_body_text,
               ai_model_used, source, status, error_message,
               escalation_reason, processing_duration_ms, sent_at
        FROM email_agent_reply_logs

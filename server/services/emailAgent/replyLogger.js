@@ -1,12 +1,14 @@
 import pool from '../../config/db.js';
 
 /**
- * Detect which AI model is configured based on env var priority.
- * Priority: ANTHROPIC_EMAIL_API_KEY → null
+ * Detect which AI model is configured for the email agent.
+ * Priority: GEMINI_EMAIL_API_KEY → GEMINI_API_KEY → null
  * @returns {string|null}
  */
 export function detectModelUsed() {
-  if (process.env.ANTHROPIC_EMAIL_API_KEY) return process.env.ANTHROPIC_EMAIL_MODEL || 'claude-haiku-4-5';
+  if (process.env.GEMINI_EMAIL_API_KEY || process.env.GEMINI_API_KEY) {
+    return process.env.GEMINI_EMAIL_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  }
   return null;
 }
 

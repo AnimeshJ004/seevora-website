@@ -50,29 +50,24 @@ export async function sendCampaign(campaignId) {
         .replace(/\{\{industry\}\}/g, lead.industry || '')
         .replace(/\{\{sender_name\}\}/g, campaign.sender_persona || 'Seevora Team');
 
-      // AI-personalize each email via Anthropic (email key)
-      if (process.env.ANTHROPIC_EMAIL_API_KEY) {
+      // AI-personalize each email via Gemini (email key)
+      const geminiCampaignKey = process.env.GEMINI_EMAIL_API_KEY || process.env.GEMINI_API_KEY;
+      if (geminiCampaignKey) {
         try {
-          const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+          const geminiCampaignModel = process.env.GEMINI_EMAIL_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+          const geminiCampaignUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiCampaignModel}:generateContent?key=${geminiCampaignKey}`;
+          const aiRes = await fetch(geminiCampaignUrl, {
             method: 'POST',
-            headers: {
-              'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
-              max_tokens: 400,
-              system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
-              messages: [{
-                role: 'user',
-                content: `Personalize this outbound email for ${lead.name} at ${lead.company || 'their company'} in the ${lead.industry || 'industry'}. Keep it under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
-              }]
+              systemInstruction: { parts: [{ text: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.' }] },
+              contents: [{ role: 'user', parts: [{ text: `Personalize this outbound email for ${lead.name} at ${lead.company || 'their company'} in the ${lead.industry || 'industry'}. Keep it under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}` }] }],
+              generationConfig: { maxOutputTokens: 400 },
             })
           });
           if (aiRes.ok) {
             const aiData = await aiRes.json();
-            const raw = aiData.content?.[0]?.text || '';
+            const raw = aiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
             const m = raw.match(/\{[\s\S]*?\}/);
             if (m) {
               const parsed = JSON.parse(m[0]);

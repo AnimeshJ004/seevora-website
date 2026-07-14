@@ -494,6 +494,9 @@ export async function processInboundEmail(inboundEmail) {
       prompt: inboundEmail.body,
       systemPrompt,
       thread: history,
+      // Use email-specific key for separate usage tracking; fall back to shared key
+      apiKey: process.env.GEMINI_EMAIL_API_KEY || process.env.GEMINI_API_KEY,
+      model:  process.env.GEMINI_EMAIL_MODEL   || process.env.GEMINI_MODEL,
     });
   } catch (err) {
     console.error('[aiResponder] generateAIReply threw:', err.message);

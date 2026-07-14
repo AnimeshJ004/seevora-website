@@ -6,22 +6,22 @@ describe('replyLogger — detectModelUsed precedence', () => {
   let originalEmailApiKey;
 
   before(() => {
-    originalEmailApiKey = process.env.ANTHROPIC_EMAIL_API_KEY;
+    originalEmailApiKey = process.env.OPENAI_EMAIL_API_KEY;
   });
 
   after(() => {
-    process.env.ANTHROPIC_EMAIL_API_KEY = originalEmailApiKey;
+    process.env.OPENAI_EMAIL_API_KEY = originalEmailApiKey;
   });
 
-  it("returns configured model when ANTHROPIC_EMAIL_API_KEY is set", () => {
-    process.env.ANTHROPIC_EMAIL_API_KEY = 'sk-ant-123';
+  it("returns configured model when OPENAI_EMAIL_API_KEY is set", () => {
+    process.env.OPENAI_EMAIL_API_KEY = 'sk-proj-123';
 
     const model = detectModelUsed();
-    assert.equal(model, process.env.ANTHROPIC_EMAIL_MODEL || 'claude-haiku-4-5');
+    assert.equal(model, process.env.OPENAI_EMAIL_MODEL || 'gpt-4o-mini');
   });
 
-  it("returns null when ANTHROPIC_EMAIL_API_KEY is not set", () => {
-    delete process.env.ANTHROPIC_EMAIL_API_KEY;
+  it("returns null when OPENAI_EMAIL_API_KEY is not set", () => {
+    delete process.env.OPENAI_EMAIL_API_KEY;
 
     const model = detectModelUsed();
     assert.equal(model, null);

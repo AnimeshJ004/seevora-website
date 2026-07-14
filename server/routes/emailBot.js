@@ -471,30 +471,25 @@ router.post('/preview', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName);
 
-    // Call Anthropic AI directly (email key)
+    // Call Gemini AI directly (email key)
     let aiUsed = false;
-    if (process.env.ANTHROPIC_EMAIL_API_KEY) {
+    const geminiEmailKey = process.env.GEMINI_EMAIL_API_KEY || process.env.GEMINI_API_KEY;
+    if (geminiEmailKey) {
       try {
-        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        const geminiModel = process.env.GEMINI_EMAIL_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiEmailKey}`;
+        const geminiRes = await fetch(geminiUrl, {
           method: 'POST',
-          headers: {
-            'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
-            max_tokens: 400,
-            system: 'You are a high-converting B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
-            messages: [{
-              role: 'user',
-              content: `Refine this email to a "${tone}" tone in "${language}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
-            }]
+            systemInstruction: { parts: [{ text: 'You are a high-converting B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.' }] },
+            contents: [{ role: 'user', parts: [{ text: `Refine this email to a "${tone}" tone in "${language}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}` }] }],
+            generationConfig: { maxOutputTokens: 400 },
           })
         });
-        if (anthropicRes.ok) {
-          const anthropicData = await anthropicRes.json();
-          const raw = anthropicData.content?.[0]?.text || '';
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const raw = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
           const jsonMatch = raw.match(/\{[\s\S]*?\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
@@ -505,11 +500,11 @@ router.post('/preview', async (req, res, next) => {
             }
           }
         } else {
-          const errText = await anthropicRes.text();
-          console.warn('[Preview] Anthropic error:', anthropicRes.status, errText);
+          const errText = await geminiRes.text();
+          console.warn('[Preview] Gemini error:', geminiRes.status, errText);
         }
       } catch (e) {
-        console.warn('[Preview] Anthropic call failed:', e.message);
+        console.warn('[Preview] Gemini call failed:', e.message);
       }
     }
 
@@ -549,30 +544,25 @@ router.post('/send-single', async (req, res, next) => {
       .replace(/\{\{industry\}\}/g, lead.industry || 'your sector')
       .replace(/\{\{sender_name\}\}/g, senderName || 'Seevora Team');
 
-    // Call Anthropic AI directly (email key)
+    // Call Gemini AI directly (email key)
     let aiUsed = false;
-    if (process.env.ANTHROPIC_EMAIL_API_KEY) {
+    const geminiEmailKey2 = process.env.GEMINI_EMAIL_API_KEY || process.env.GEMINI_API_KEY;
+    if (geminiEmailKey2) {
       try {
-        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+        const geminiModel2 = process.env.GEMINI_EMAIL_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+        const geminiUrl2 = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel2}:generateContent?key=${geminiEmailKey2}`;
+        const geminiRes2 = await fetch(geminiUrl2, {
           method: 'POST',
-          headers: {
-            'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
-            max_tokens: 400,
-            system: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.',
-            messages: [{
-              role: 'user',
-              content: `Refine this email to a "${tone || 'professional'}" tone in "${language || 'english'}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}`
-            }]
+            systemInstruction: { parts: [{ text: 'You are a B2B Sales outreach assistant for Seevora. Always respond with ONLY valid JSON containing keys "subject" and "body". No markdown, no extra text.' }] },
+            contents: [{ role: 'user', parts: [{ text: `Refine this email to a "${tone || 'professional'}" tone in "${language || 'english'}". Keep under 150 words.\nSubject: ${subject}\nBody: ${body}\n\nRespond with JSON: {"subject":"...","body":"..."}` }] }],
+            generationConfig: { maxOutputTokens: 400 },
           })
         });
-        if (anthropicRes.ok) {
-          const anthropicData = await anthropicRes.json();
-          const raw = anthropicData.content?.[0]?.text || '';
+        if (geminiRes2.ok) {
+          const geminiData2 = await geminiRes2.json();
+          const raw = geminiData2.candidates?.[0]?.content?.parts?.[0]?.text || '';
           const jsonMatch = raw.match(/\{[\s\S]*?\}/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
@@ -583,11 +573,11 @@ router.post('/send-single', async (req, res, next) => {
             }
           }
         } else {
-          const errText = await anthropicRes.text();
-          console.warn('[SendSingle] Anthropic error:', anthropicRes.status, errText);
+          const errText = await geminiRes2.text();
+          console.warn('[SendSingle] Gemini error:', geminiRes2.status, errText);
         }
       } catch (e) {
-        console.warn('[SendSingle] Anthropic call failed:', e.message);
+        console.warn('[SendSingle] Gemini call failed:', e.message);
       }
     }
 
@@ -724,36 +714,31 @@ router.post('/inbound/:id/ai-suggest', async (req, res, next) => {
       return res.status(404).json({ error: 'Inbound email not found.' });
     }
 
-    if (!process.env.ANTHROPIC_EMAIL_API_KEY) {
-      return res.status(503).json({ error: 'ANTHROPIC_EMAIL_API_KEY is not set in .env' });
+    const geminiAiKey = process.env.GEMINI_EMAIL_API_KEY || process.env.GEMINI_API_KEY;
+    if (!geminiAiKey) {
+      return res.status(503).json({ error: 'GEMINI_EMAIL_API_KEY is not set in .env' });
     }
 
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const geminiAiModel = process.env.GEMINI_EMAIL_MODEL || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    const geminiAiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiAiModel}:generateContent?key=${geminiAiKey}`;
+    const openaiRes = await fetch(geminiAiUrl, {
       method: 'POST',
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_EMAIL_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_EMAIL_MODEL || 'claude-3-5-sonnet-20241022',
-        max_tokens: 600,
-        system: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.',
-        messages: [{
-          role: 'user',
-          content: `Please write a professional reply to this email:\n\nSubject: ${email.subject}\n\nMessage:\n${email.body}`
-        }]
+        systemInstruction: { parts: [{ text: 'You are a professional AI support agent for Seevora. Write polite, helpful, concise email replies. Do not include a subject line, just the reply body text.' }] },
+        contents: [{ role: 'user', parts: [{ text: `Please write a professional reply to this email:\n\nSubject: ${email.subject}\n\nMessage:\n${email.body}` }] }],
+        generationConfig: { maxOutputTokens: 600 },
       })
     });
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      console.error('[ai-suggest] Anthropic error:', anthropicRes.status, errText);
-      return res.status(503).json({ error: `AI API error (${anthropicRes.status}): ${errText.slice(0, 200)}` });
+    if (!openaiRes.ok) {
+      const errText = await openaiRes.text();
+      console.error('[ai-suggest] Gemini error:', openaiRes.status, errText);
+      return res.status(503).json({ error: `AI API error (${openaiRes.status}): ${errText.slice(0, 200)}` });
     }
 
-    const anthropicData = await anthropicRes.json();
-    const aiResponse = anthropicData.content?.[0]?.text || '';
+    const openaiData = await openaiRes.json();
+    const aiResponse = openaiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     if (!aiResponse.trim()) {
       return res.status(503).json({ error: 'AI returned an empty response. Please try again.' });

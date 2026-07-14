@@ -241,7 +241,7 @@ function QuickEmailModal({ lead, templates, token, onClose }) {
               <div style={{ fontWeight: 700, color: result.message?.includes('sent') ? '#10b981' : '#f87171', marginBottom: 8 }}>
                 {result.message?.includes('sent') ? 'Sent Email Sent!' : 'Warning: ' + result.message}
               </div>
-              {result.aiUsed && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)' }}>AI Personalized by Anthropic AI</div>}
+              {result.aiUsed && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted,#64748b)' }}>AI Personalized by OpenAI</div>}
             </div>
             {result.subject && (
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 16 }}>
