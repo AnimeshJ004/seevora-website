@@ -49,6 +49,7 @@ import {
 } from './middleware/security.js';
 import { assertRateLimitConfiguration } from './middleware/rateLimit.js';
 import { cleanupAuthSessions } from './services/auth/sessionService.js';
+import { assertPrivacyConfiguration } from './utils/privacy.js';
 import {
   preventApiResponseCaching,
   preventSpaHtmlCaching,
@@ -212,6 +213,7 @@ function startBackgroundJobs() {
 
 async function startServer() {
   assertRateLimitConfiguration();
+  assertPrivacyConfiguration();
   await initDb();
   await ensureRateLimitSchema(pool);
   await assertInboundEmailSecuritySchema(pool);

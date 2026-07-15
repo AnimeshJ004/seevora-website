@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { CACHE_NAMESPACES, invalidateCacheNamespaces } from './cacheNamespaces.js';
 import pool from '../config/db.js';
 import { sendMail } from './mailer.js';
+import { wrapTrackableEmailLinks } from './emailTracking.js';
 
 export async function sendCampaign(campaignId) {
   try {
@@ -125,12 +126,7 @@ export async function sendCampaign(campaignId) {
       const logId = crypto.randomUUID();
       const openTracker = `<img src="${process.env.VITE_API_URL || 'http://localhost:4000'}/api/email-bot/track/open/${logId}" width="1" height="1" style="display:none;" />`;
       
-      const wrapLink = (url) => {
-        return `${process.env.VITE_API_URL || 'http://localhost:4000'}/api/email-bot/track/click/${logId}?url=${encodeURIComponent(url)}`;
-      };
-
-      finalBody = finalBody.replace(/href="([^"]+)"/g, (match, url) => `href="${wrapLink(url)}"`);
-      finalBody = finalBody.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => `[${text}](${wrapLink(url)})`);
+      finalBody = wrapTrackableEmailLinks(finalBody, { logId });
 
       const htmlBody = `<div style="font-family:sans-serif;color:#333;line-height:1.6;">${finalBody.replace(/\n/g, '<br/>')}</div>${openTracker}`;
 

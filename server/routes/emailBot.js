@@ -7,6 +7,10 @@ import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
 import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { requireRole } from '../middleware/auth.js';
 import { createPostgresRateLimiter } from '../middleware/rateLimit.js';
+import {
+  getSafeEmailTrackingTargetUrl,
+  wrapTrackableEmailLinks,
+} from '../utils/emailTracking.js';
 
 const router = express.Router();
 const [authenticateEmailBot, authorizeEmailBot] = requireRole('admin', 'manager');
@@ -735,12 +739,7 @@ router.post('/send-single', emailSendLimiter, async (req, res, next) => {
 
     const logId = crypto.randomUUID();
     const openTracker = `<img src="${process.env.VITE_API_URL || 'http://localhost:4000'}/api/email-bot/track/open/${logId}" width="1" height="1" style="display:none;" />`;
-    const wrapLink = (url) => {
-      return `${process.env.VITE_API_URL || 'http://localhost:4000'}/api/email-bot/track/click/${logId}?url=${encodeURIComponent(url)}`;
-    };
-
-    body = body.replace(/href="([^"]+)"/g, (match, url) => `href="${wrapLink(url)}"`);
-    body = body.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => `[${text}](${wrapLink(url)})`);
+    body = wrapTrackableEmailLinks(body, { logId });
 
     const htmlBody = `<div style="font-family:sans-serif;color:#333;line-height:1.6;">${body.replace(/\n/g, '<br/>')}</div>${openTracker}`;
 
@@ -803,18 +802,21 @@ router.get('/track/open/:logId', async (req, res) => {
 // Click redirection tracker
 router.get('/track/click/:logId', async (req, res) => {
   const { logId } = req.params;
-  const targetUrl = req.query.url;
+  if (!isUuid(logId)) {
+    return res.status(400).send('Redirect link invalid');
+  }
+
+  const targetUrl = getSafeEmailTrackingTargetUrl(req.query.url);
+  if (!targetUrl) {
+    return res.status(400).send('Redirect link invalid');
+  }
+
   try {
-    if (isUuid(logId)) {
-      await pool.query('UPDATE email_logs SET clicked_at = NOW() WHERE id = $1 AND clicked_at IS NULL', [logId]);
-    }
+    await pool.query('UPDATE email_logs SET clicked_at = NOW() WHERE id = $1 AND clicked_at IS NULL', [logId]);
   } catch (err) {
     console.error('Error tracking email click:', err.message);
   }
-  if (targetUrl) {
-    return res.redirect(targetUrl);
-  }
-  res.send('Redirect link invalid');
+  return res.redirect(targetUrl);
 });
 
 /* ── 8. INBOUND EMAIL BOT ENDPOINTS ── */

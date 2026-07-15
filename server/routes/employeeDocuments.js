@@ -1,15 +1,27 @@
 import crypto from 'crypto';
 import express from 'express';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from '../config/db.js';
 import { normalizeRole, requireAuth } from '../middleware/auth.js';
 import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
+import {
+  DocumentSecurityError,
+  isPathInside,
+  removeFileQuietly,
+  scanUploadedDocument,
+  validateUploadedDocument,
+} from '../utils/documentSecurity.js';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadsDir = path.resolve(__dirname, '../../uploads');
+const legacyUploadsDir = path.resolve(__dirname, '../../uploads');
+const uploadsDir = path.resolve(
+  process.env.DOCUMENT_UPLOAD_DIR || path.join(legacyUploadsDir, 'private-documents')
+);
 
 /* ── Multer configuration ── */
 const ALLOWED_MIME_TYPES = [
@@ -24,10 +36,16 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const storage = multer.diskStorage({
-  destination: uploadsDir,
+  destination: (_req, _file, cb) => {
+    try {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      cb(null, uploadsDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${crypto.randomUUID()}${ext}`);
+    cb(null, `${crypto.randomUUID()}.upload`);
   },
 });
 
@@ -167,10 +185,10 @@ router.post(
     });
   },
   async (req, res, next) => {
-    const client = await pool.connect();
     try {
       const emp = await getEmployeeByUserId(req.user.id);
       if (!emp) {
+        await removeFileQuietly(req.file?.path);
         return res.status(400).json({
           message: 'No employee profile is linked to your account. Please contact HR.',
         });
@@ -183,56 +201,90 @@ router.post(
         return res.status(400).json({ message: 'Please select a file to upload.' });
       }
 
-      const fileName = req.file.originalname;
-      const filePath = req.file.path;
-      const fileSize = `${(req.file.size / 1024).toFixed(0)} KB`;
-      const docId = crypto.randomUUID();
-
-      await client.query('BEGIN');
-
-      /* Check if a document of the same type already exists (replace on re-upload) */
-      const existing = await client.query(
-        `SELECT id FROM employee_documents
-         WHERE employee_id = $1 AND doc_type = $2
-         LIMIT 1`,
-        [emp.id, type]
-      );
-
-      if (existing.rowCount > 0) {
-        /* Update existing document — reset status on re-upload */
-        await client.query(
-          `UPDATE employee_documents
-           SET file_name = $1, file_path = $2, file_url = $3, file_size = $4,
-               doc_status = 'PENDING', rejection_reason = NULL,
-               verified = false, verified_at = NULL, verified_by = NULL,
-               uploaded_at = NOW(), updated_at = NOW()
-           WHERE id = $5`,
-          [fileName, filePath, protectedFileUrl(existing.rows[0].id), fileSize, existing.rows[0].id]
-        );
-      } else {
-        /* Insert new document */
-        await client.query(
-          `INSERT INTO employee_documents
-             (id, employee_id, doc_type, file_name, file_path, file_url, file_size, doc_status)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')`,
-          [docId, emp.id, type, fileName, filePath, protectedFileUrl(docId), fileSize]
-        );
+      let validation;
+      let filePath;
+      try {
+        validation = await validateUploadedDocument(req.file);
+        await scanUploadedDocument(req.file.path);
+        filePath = path.join(uploadsDir, `${crypto.randomUUID()}${validation.safeExtension}`);
+        await fsp.rename(req.file.path, filePath);
+        req.file.path = filePath;
+      } catch (error) {
+        await removeFileQuietly(req.file?.path);
+        if (error instanceof DocumentSecurityError) {
+          return res.status(error.statusCode).json({ message: error.message });
+        }
+        throw error;
       }
 
-      await client.query('COMMIT');
+      const fileName = validation.safeOriginalName;
+      const fileSize = `${(req.file.size / 1024).toFixed(0)} KB`;
+      const docId = crypto.randomUUID();
+      const client = await pool.connect();
+      let oldFilePath = '';
+      let storedDocumentId = docId;
+
+      try {
+        await client.query('BEGIN');
+
+        /* Check if a document of the same type already exists (replace on re-upload) */
+        const existing = await client.query(
+          `SELECT id, file_path FROM employee_documents
+           WHERE employee_id = $1 AND doc_type = $2
+           LIMIT 1`,
+          [emp.id, type]
+        );
+
+        if (existing.rowCount > 0) {
+          oldFilePath = existing.rows[0].file_path || '';
+          storedDocumentId = existing.rows[0].id;
+          /* Update existing document — reset status on re-upload */
+          await client.query(
+            `UPDATE employee_documents
+             SET file_name = $1, file_path = $2, file_url = $3, file_size = $4,
+                 doc_status = 'PENDING', rejection_reason = NULL,
+                 verified = false, verified_at = NULL, verified_by = NULL,
+                 uploaded_at = NOW(), updated_at = NOW()
+             WHERE id = $5`,
+            [fileName, filePath, protectedFileUrl(existing.rows[0].id), fileSize, existing.rows[0].id]
+          );
+        } else {
+          /* Insert new document */
+          await client.query(
+            `INSERT INTO employee_documents
+               (id, employee_id, doc_type, file_name, file_path, file_url, file_size, doc_status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDING')`,
+            [docId, emp.id, type, fileName, filePath, protectedFileUrl(docId), fileSize]
+          );
+        }
+
+        await client.query('COMMIT');
+      } catch (error) {
+        try { await client.query('ROLLBACK'); } catch {}
+        await removeFileQuietly(filePath);
+        throw error;
+      } finally {
+        client.release();
+      }
+
+      if (
+        oldFilePath
+        && oldFilePath !== filePath
+        && (isPathInside(oldFilePath, uploadsDir) || isPathInside(oldFilePath, legacyUploadsDir))
+      ) {
+        await removeFileQuietly(oldFilePath);
+      }
+
       invalidateCacheNamespaces(CACHE_NAMESPACES.documents);
 
       return res.status(201).json({
         message: 'Your documents have been submitted successfully. Please wait for HR verification.',
         docType: type,
         fileName,
-        fileUrl: existing.rowCount > 0 ? protectedFileUrl(existing.rows[0].id) : protectedFileUrl(docId),
+        fileUrl: protectedFileUrl(storedDocumentId),
       });
     } catch (error) {
-      try { await client.query('ROLLBACK'); } catch {}
       return next(error);
-    } finally {
-      client.release();
     }
   }
 );
@@ -257,10 +309,16 @@ router.get('/documents/file/:documentId', requireAuth, async (req, res, next) =>
     }
 
     const resolvedPath = path.resolve(document.file_path || '');
-    if (!resolvedPath.startsWith(`${uploadsDir}${path.sep}`)) {
+    const isAllowedPath = isPathInside(resolvedPath, uploadsDir) || isPathInside(resolvedPath, legacyUploadsDir);
+    if (!isAllowedPath) {
       return res.status(404).json({ message: 'Document file not found.' });
     }
 
+    res.set({
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': 'sandbox',
+      'Cache-Control': 'private, no-store',
+    });
     return res.download(resolvedPath, document.file_name || path.basename(resolvedPath));
   } catch (error) {
     return next(error);

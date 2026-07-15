@@ -409,6 +409,25 @@ router.get('/logs', guard, async (req, res) => {
   }
 });
 
+// ─── GET /api/email-agent/logs/:id ─────────────────────────────────────────────
+// Get full details of a specific reply log
+router.get('/logs/:id', guard, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM email_agent_reply_logs WHERE id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Not Found', message: 'Log not found' });
+    }
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[emailAgent] GET /logs/:id error:', err.message);
+    return res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+});
+
 // ─── Error handler ────────────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
 router.use((err, req, res, _next) => {

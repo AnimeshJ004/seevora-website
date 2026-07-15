@@ -19,11 +19,30 @@ import {
 } from '../services/auth/sessionService.js';
 
 const router = express.Router();
+
 const loginLimiter = createPostgresRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: 20,
   policy: 'auth_login',
   subject: (req) => String(req.body?.identifier || '').trim().toLowerCase() || 'missing',
+});
+
+// Strict limit for forgot-password to prevent inbox spam abuse:
+// max 5 requests per email address per 15 minutes
+const forgotPasswordLimiter = createPostgresRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  policy: 'auth_forgot_password',
+  subject: (req) => String(req.body?.email || '').trim().toLowerCase() || 'missing',
+});
+
+// Limit reset-password attempts to prevent token brute-forcing:
+// max 10 attempts per IP per 15 minutes
+const resetPasswordLimiter = createPostgresRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  policy: 'auth_reset_password',
+  subject: (req) => req.ip || 'unknown',
 });
 
 function toSafeUser(user) {
@@ -95,7 +114,7 @@ router.post('/login', requireTrustedOrigin, loginLimiter, async (req, res, next)
   }
 });
 
-router.post('/forgot-password', async (req, res, next) => {
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email || typeof email !== 'string') {
@@ -131,9 +150,12 @@ router.post('/forgot-password', async (req, res, next) => {
 
     // 4. Send email
     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${rawToken}`;
-    
-    // Log the link to the terminal so the user can test it if SMTP fails (e.g. hPanel blocking)
-    console.log('\n[DEBUG] Password Reset Link generated:', resetLink, '\n');
+
+    console.info(JSON.stringify({
+      event: 'password_reset_requested',
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+    }));
 
     await sendMail({
       to: user.email,
@@ -192,14 +214,14 @@ router.post('/logout-all', requireAuth, async (req, res, next) => {
   }
 });
 
-router.post('/reset-password', async (req, res, next) => {
+router.post('/reset-password', resetPasswordLimiter, async (req, res, next) => {
   try {
     const { token, newPassword } = req.body;
-    
+
     if (!token || typeof token !== 'string') {
       return res.status(400).json({ message: 'Invalid or missing token.' });
     }
-    
+
     if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     }
@@ -208,9 +230,9 @@ router.post('/reset-password', async (req, res, next) => {
 
     // 1. Verify token
     const tokenResult = await pool.query(
-      `SELECT id, user_id FROM password_reset_tokens 
-       WHERE token_hash = $1 
-         AND expires_at > NOW() 
+      `SELECT id, user_id FROM password_reset_tokens
+       WHERE token_hash = $1
+         AND expires_at > NOW()
          AND used_at IS NULL`,
       [tokenHash]
     );
@@ -227,7 +249,7 @@ router.post('/reset-password', async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      
+
       // 3. Update user's password
       await client.query(
         `UPDATE users SET password_hash = $1 WHERE id = $2`,

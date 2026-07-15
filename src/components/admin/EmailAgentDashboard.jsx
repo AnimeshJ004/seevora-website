@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import EmailThreadViewer from './EmailThreadViewer';
+import EmailLogViewer from './EmailLogViewer';
 import { apiFetch } from '../../auth/api';
 
 const TABS = ['Overview', 'Threads', 'Reply Logs'];
@@ -45,6 +46,7 @@ export default function EmailAgentDashboard() {
   const [threadsPage, setThreadsPage] = useState(1);
   const [threadsLoading, setThreadsLoading] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [selectedLogId, setSelectedLogId] = useState(null);
   const [logs, setLogs] = useState([]);
   const [logsTotal, setLogsTotal] = useState(0);
   const [logsPage, setLogsPage] = useState(1);
@@ -103,6 +105,15 @@ export default function EmailAgentDashboard() {
       <EmailThreadViewer
         threadId={selectedThreadId}
         onBack={() => { setSelectedThreadId(null); fetchThreads(threadsPage); }}
+      />
+    );
+  }
+
+  if (selectedLogId) {
+    return (
+      <EmailLogViewer
+        logId={selectedLogId}
+        onBack={() => { setSelectedLogId(null); fetchLogs(logsPage); }}
       />
     );
   }
@@ -279,7 +290,13 @@ export default function EmailAgentDashboard() {
                     {logs.length === 0 ? (
                       <tr><td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No reply logs yet</td></tr>
                     ) : logs.map(l => (
-                      <tr key={l.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr 
+                        key={l.id} 
+                        onClick={() => setSelectedLogId(l.id)}
+                        style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                      >
                         <td style={{ padding: '10px 14px', color: '#0f172a' }}>{l.to_email}</td>
                         <td style={{ padding: '10px 14px', color: '#475569', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.subject}</td>
                         <td style={{ padding: '10px 14px' }}>

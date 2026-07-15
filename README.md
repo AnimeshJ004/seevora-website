@@ -100,6 +100,9 @@ SMTP_USER=your-smtp-user
 SMTP_PASS=your-smtp-password
 SMTP_FROM=hello@seevora.in
 SMTP_SECURE=false
+EMAIL_TRACKING_ALLOWED_ORIGINS=https://seevora.in,https://www.seevora.in
+DOCUMENT_UPLOAD_DIR=uploads/private-documents
+DOCUMENT_SCAN_MODE=disabled
 ```
 
 ## Scripts
