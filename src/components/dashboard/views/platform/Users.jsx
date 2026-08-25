@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../../../auth/api';
+import { STANDARD_JOB_ROLES } from '../../../../config/jobRoles';
 
 export default function Users({ user: currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [newUser, setNewUser] = useState({ username: '', email: '', phone: '', role: 'employee', password: '' });
+  const [newUser, setNewUser] = useState({ username: '', email: '', phone: '', jobTitle: 'Sales & Developer', role: 'sales_developer', password: '' });
+  const [customJobTitle, setCustomJobTitle] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -29,17 +31,22 @@ export default function Users({ user: currentUser }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    const finalJobTitle = newUser.jobTitle === 'custom' ? customJobTitle.trim() : newUser.jobTitle;
     try {
       const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(newUser)
+        body: JSON.stringify({
+          ...newUser,
+          jobTitle: finalJobTitle || 'Employee',
+        })
       });
       if (res.ok) {
         setShowModal(false);
-        setNewUser({ username: '', email: '', phone: '', role: 'employee', password: '' });
+        setNewUser({ username: '', email: '', phone: '', jobTitle: 'Sales & Developer', role: 'sales_developer', password: '' });
+        setCustomJobTitle('');
         fetchUsers();
         window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
       } else {
@@ -107,6 +114,7 @@ export default function Users({ user: currentUser }) {
       manager: { label: 'Manager', color: '#f59e0b', bg: '#fef3c7' },
       support: { label: 'Support', color: '#8b5cf6', bg: '#ede9fe' },
       employee: { label: 'Employee', color: '#64748b', bg: '#f1f5f9' },
+      sales_developer: { label: 'Sales & Developer', color: '#7c3aed', bg: '#f3e8ff' },
     };
     const r = roles[normalizedRole] || roles.employee;
     return (
@@ -189,18 +197,43 @@ export default function Users({ user: currentUser }) {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Role *</label>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Access Role *</label>
                   <select 
                     required value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}
                     style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
                   >
+                    <option value="sales_developer">Sales & Developer</option>
                     <option value="employee">Employee</option>
-                    <option value="hr">HR</option>
                     <option value="manager">Manager</option>
+                    <option value="hr">HR</option>
                     <option value="support">Support</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Company Job Title / Role *</label>
+                <select
+                  value={newUser.jobTitle}
+                  onChange={e => setNewUser({...newUser, jobTitle: e.target.value})}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#fff' }}
+                >
+                  {STANDARD_JOB_ROLES.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                  <option value="custom">Other / Custom Role...</option>
+                </select>
+                {newUser.jobTitle === 'custom' && (
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter custom job title..."
+                    value={customJobTitle}
+                    onChange={e => setCustomJobTitle(e.target.value)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem', marginTop: 8 }}
+                  />
+                )}
               </div>
               
               <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
@@ -267,6 +300,7 @@ export default function Users({ user: currentUser }) {
                     <option value="manager">Manager</option>
                     <option value="support">Support</option>
                     <option value="admin">Admin</option>
+                    <option value="sales_developer">Sales & Developer</option>
                   </select>
                 </div>
               </div>

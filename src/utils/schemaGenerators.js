@@ -14,9 +14,9 @@ import { getCanonicalUrl } from './seoHelpers';
  * @returns {Object} Organization schema
  */
 export function generateOrganizationSchema(customData = {}) {
-  const { business, socialProfiles, logo, siteUrl } = seoConfig;
+  const { business, socialProfiles, logo, siteUrl, knowsAbout } = seoConfig;
   
-  return {
+  const schema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': `${siteUrl}/#organization`,
@@ -40,10 +40,8 @@ export function generateOrganizationSchema(customData = {}) {
     },
     address: {
       '@type': 'PostalAddress',
-      streetAddress: business.address.streetAddress,
       addressLocality: business.address.addressLocality,
       addressRegion: business.address.addressRegion,
-      postalCode: business.address.postalCode,
       addressCountry: business.address.addressCountry
     },
     sameAs: Object.values(socialProfiles).filter(Boolean),
@@ -56,6 +54,16 @@ export function generateOrganizationSchema(customData = {}) {
       availableLanguage: business.languages
     }
   };
+
+  // GEO: Entity expertise signals for AI search engines
+  if (business.slogan) {
+    schema.slogan = business.slogan;
+  }
+  if (knowsAbout && knowsAbout.length > 0) {
+    schema.knowsAbout = knowsAbout;
+  }
+
+  return schema;
 }
 
 /**
@@ -78,10 +86,8 @@ export function generateLocalBusinessSchema(customData = {}) {
     priceRange: business.priceRange,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: business.address.streetAddress,
       addressLocality: business.address.addressLocality,
       addressRegion: business.address.addressRegion,
-      postalCode: business.address.postalCode,
       addressCountry: business.address.addressCountry
     },
     geo: {
@@ -113,7 +119,7 @@ export function generateLocalBusinessSchema(customData = {}) {
       };
     }),
     areaServed: business.serviceAreas.map(area => ({
-      '@type': 'City',
+      '@type': area === 'India' ? 'Country' : 'City',
       name: area
     })),
     ...customData
@@ -133,14 +139,8 @@ export function generateWebSiteSchema() {
     '@id': `${siteUrl}/#website`,
     name: siteName,
     url: siteUrl,
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${siteUrl}/?s={search_term_string}`
-      },
-      'query-input': 'required name=search_term_string'
-    },
+    // Note: SearchAction removed — this SPA has no server-side search endpoint.
+    // Add back only when a real search feature (e.g. /search?q=) is implemented.
     publisher: {
       '@id': `${siteUrl}/#organization`
     }
@@ -435,6 +435,58 @@ export function generatePageSchemas(pageType, customData = {}) {
   return schemas.filter(Boolean); // Remove any null schemas
 }
 
+/**
+ * Generate Speakable schema for AEO voice search optimization
+ * @param {string} pageUrl - The URL of the page
+ * @param {Array<string>} cssSelectors - CSS selectors for speakable content
+ * @returns {Object} Speakable schema
+ */
+export function generateSpeakableSchema(pageUrl, cssSelectors) {
+  if (!cssSelectors || cssSelectors.length === 0) {
+    return null;
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    '@id': pageUrl,
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: cssSelectors
+    },
+    url: pageUrl
+  };
+}
+
+/**
+ * Generate SoftwareApplication schema for GEO product attribution
+ * @returns {Object} SoftwareApplication schema
+ */
+export function generateSoftwareApplicationSchema() {
+  const { business, siteUrl, logo } = seoConfig;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Seevora AI Platform',
+    description: business.description,
+    url: siteUrl,
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    image: logo,
+    author: {
+      '@id': `${siteUrl}/#organization`
+    },
+    offers: {
+      '@type': 'Offer',
+      price: '',
+      priceCurrency: 'INR',
+      description: 'Custom pricing based on business requirements and automation scope. Book a free AI audit to get a tailored quote.',
+      url: `${siteUrl}/book-a-call`
+    }
+  };
+}
+
 export default {
   generateOrganizationSchema,
   generateLocalBusinessSchema,
@@ -448,5 +500,7 @@ export default {
   generateAggregateRatingSchema,
   generateReviewSchema,
   generateContactPageSchema,
-  generatePageSchemas
+  generatePageSchemas,
+  generateSpeakableSchema,
+  generateSoftwareApplicationSchema
 };

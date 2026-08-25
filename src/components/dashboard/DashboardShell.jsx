@@ -129,6 +129,13 @@ const NAV = {
   support: [
     { label: 'Work', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'support-tickets', label: 'Support Tickets' }, { id: 'audit-logs', label: 'Audit Requests' }] },
   ],
+  sales_developer: [
+    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
+    { label: 'Operations & Sales', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }] },
+    { label: 'Email & Marketing', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
+    { label: 'Productivity & Tech', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
+    { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
+  ],
 };
 
 const TITLES = {
@@ -151,6 +158,7 @@ const ACCENT = {
   employee: { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
   manager: { c: '#f97316', bg: 'rgba(249,115,21,0.15)' },
   support: { c: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+  sales_developer: { c: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
 };
 
 /* ── Verification status set — always accessible even if not verified ── */

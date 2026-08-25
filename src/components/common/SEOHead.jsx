@@ -105,7 +105,7 @@ export default function SEOHead({
       <meta name="twitter:image" content={pageImage} />
       <meta name="twitter:image:alt" content={seoConfig.defaultImage.alt} />
       {seoConfig.socialProfiles.twitter && (
-        <meta name="twitter:site" content={seoConfig.socialProfiles.twitter} />
+        <meta name="twitter:site" content={`@${seoConfig.socialProfiles.twitter.replace(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\//, '')}`} />
       )}
 
       {/* Additional Meta Tags */}

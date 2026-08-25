@@ -135,7 +135,7 @@ export default function Footer() {
           </div>
           <div className="footer-social">
             {socials.map(s => (
-              <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}>{s.icon}</a>
+              <a key={s.label} href={s.href} target="_blank" rel="me noopener noreferrer" aria-label={s.label}>{s.icon}</a>
             ))}
           </div>
         </div>

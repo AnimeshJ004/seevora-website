@@ -102,7 +102,11 @@ export default function App() {
     hash: window.location.hash,
   }));
 
-  const path = locationState.pathname;
+  const rawPath = locationState.pathname;
+  // Normalize pathname (strip trailing slash and .html extension if present)
+  const path = (rawPath !== '/' && (rawPath.endsWith('/') || rawPath.endsWith('.html')))
+    ? rawPath.replace(/\/+$/, '').replace(/\.html$/, '') || '/'
+    : rawPath;
   const hash = locationState.hash;
 
   useEffect(() => {

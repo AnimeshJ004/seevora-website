@@ -43,13 +43,11 @@ export const seoConfig = {
     name: 'Seevora',
     legalName: 'Seevora Technologies',
     description: 'Custom AI SaaS solutions for B2B operations across healthcare, education, wellness, diagnostics, fitness, legal, and real estate sectors.',
-    email: 'hello@seevora.in',
-    phone: '+91-XXXXXXXXXX', // TODO: Add real phone number
+    email: 'info@seevora.in',
+    phone: '+91 89822 00895',
     address: {
-      streetAddress: 'XXX Business District', // TODO: Add real address
       addressLocality: 'Indore',
       addressRegion: 'Madhya Pradesh',
-      postalCode: 'XXXXXX', // TODO: Add postal code
       addressCountry: 'IN'
     },
     // Geographic Service Areas
@@ -65,29 +63,35 @@ export const seoConfig = {
       'Ahmedabad'
     ],
     languages: ['English', 'Hindi', 'Hinglish'],
-    priceRange: '$$$',
-    foundingDate: '2024', // TODO: Update with actual founding date
-    numberOfEmployees: '10-50' // TODO: Update with actual range
+    priceRange: '₹₹₹',
+    foundingDate: '2026',
+    numberOfEmployees: '10-50',
+    slogan: 'Turn Your Business Processes into AI-Powered Revenue Engines'
   },
   
-  // Social Media Profiles
+  // Social Media Profiles (verified — matches Footer.jsx)
   socialProfiles: {
-    linkedin: 'https://linkedin.com/company/seevora', // TODO: Add real URL
-    twitter: 'https://twitter.com/seevora', // TODO: Add real URL
-    facebook: 'https://facebook.com/seevora', // TODO: Add real URL
-    instagram: 'https://instagram.com/seevora', // TODO: Add real URL
+    linkedin: 'https://www.linkedin.com/company/seevora/',
+    twitter: 'https://x.com/seevora1',
+    facebook: 'https://www.facebook.com/people/Seevora/61574331010641/',
+    instagram: 'https://www.instagram.com/seevora1/',
+    youtube: 'https://www.youtube.com/@Seevora1',
   },
   
   // Default Open Graph Image
   defaultImage: {
-    url: 'https://seevora.in/og-image.png', // TODO: Create and add OG image (1200x630px)
+    url: 'https://seevora.in/og-image.png',
     width: 1200,
     height: 630,
-    alt: 'Seevora - AI Automation for Indian Businesses'
+    alt: 'Seevora - Custom AI SaaS for B2B Operations'
   },
   
-  // Logo for structured data
-  logo: 'https://seevora.in/logo-icon-clean.png',
+  // Logo for structured data — must be SQUARE for Organization.logo (Google requirement)
+  // favicon-512x512.png is confirmed 512×512 in /public
+  logo: 'https://seevora.in/favicon-512x512.png',
+  
+  // Last modified date — used for GEO entity freshness signals
+  lastModified: '2026-08-01',
   
   // Language & Region Targeting
   language: 'en',
@@ -162,6 +166,28 @@ export const seoConfig = {
     'AI company Indore',
     'business automation Indore',
     'AI solutions India'
+  ],
+
+  // GEO — Entity expertise signals for AI search engines
+  knowsAbout: [
+    'Artificial Intelligence',
+    'B2B Sales Automation',
+    'Multi-Agent AI Systems',
+    'Business Process Automation',
+    'Custom SaaS Development',
+    'WhatsApp Business API Integration',
+    'Voice AI Receptionist',
+    'CRM Integration',
+    'Healthcare AI',
+    'Education Technology'
+  ],
+
+  // AEO — Speakable CSS selectors for voice search
+  speakableSelectors: [
+    '.hero-title',
+    '.section-title',
+    '.bk-hero-subtitle',
+    '.faq-answer'
   ]
 };
 

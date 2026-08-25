@@ -1,15 +1,17 @@
 /* ============================================================
+/* ============================================================
    SEEVORA — Role-Based Access Control (RBAC)
    Add new roles here. The dashboard shell reads this to
    build nav and guard views automatically.
 ============================================================ */
 
 export const ROLES = {
-  ADMIN:       'admin',
-  HR:          'hr',
-  EMPLOYEE:    'employee',
-  MANAGER:     'manager',   // future
-  SUPPORT:     'support',   // future
+  ADMIN:            'admin',
+  HR:               'hr',
+  EMPLOYEE:         'employee',
+  MANAGER:          'manager',   // future
+  SUPPORT:          'support',   // future
+  SALES_DEVELOPER:  'sales_developer',
 };
 
 /* ── Permission keys (match nav item IDs in Dashboard) ── */
@@ -43,15 +45,23 @@ export const PERMISSIONS = {
     'dashboard',
     'support-tickets', 'audit-logs', 'system-logs',
   ],
+  sales_developer: [
+    'dashboard',
+    'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'subscribers', 'campaigns', 'email-templates', 'inbound-emails', 'email-ai-agent',
+    'task-management', 'project-management', 'time-tracking',
+    'my-attendance', 'my-leave', 'my-documents', 'my-tasks', 'team-tasks', 'verification-status',
+  ],
 };
 
 /* ── Role metadata (label, color, badge) ── */
 export const ROLE_META = {
-  admin:       { label: 'Admin',       color: '#14c9e1', bg: 'rgba(20,201,225,0.1)' },
-  hr:          { label: 'HR',          color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-  employee:    { label: 'Employee',    color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-  manager:     { label: 'Manager',     color: '#f97315', bg: 'rgba(249,115,21,0.1)' },
-  support:     { label: 'Support',     color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+  admin:           { label: 'Admin',             color: '#14c9e1', bg: 'rgba(20,201,225,0.1)' },
+  hr:              { label: 'HR',                color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  employee:        { label: 'Employee',          color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+  manager:         { label: 'Manager',           color: '#f97315', bg: 'rgba(249,115,21,0.1)' },
+  support:         { label: 'Support',           color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+  sales_developer: { label: 'Sales & Developer', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
 };
 
 export function hasPermission(role, navId) {

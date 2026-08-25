@@ -2,7 +2,7 @@ import crypto from 'crypto';
 
 export const OFFICE_START_TIME = '10:00:00';
 export const OFFICE_END_TIME = '18:00:00';
-export const TRACKED_ATTENDANCE_ROLES = new Set(['employee', 'manager', 'hr']);
+export const TRACKED_ATTENDANCE_ROLES = new Set(['employee', 'manager', 'hr', 'sales_developer']);
 
 export function isTrackedAttendanceRole(role) {
   return TRACKED_ATTENDANCE_ROLES.has(String(role || '').toLowerCase());

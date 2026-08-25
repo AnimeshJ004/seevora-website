@@ -1,0 +1,63 @@
+# Robots.txt for Seevora
+# https://seevora.in
+
+# Allow all bots to crawl public pages
+User-agent: *
+Allow: /
+Allow: /services
+Allow: /modules
+Allow: /impact
+Allow: /about
+Allow: /book-a-call
+Allow: /faqs
+
+# Disallow private/admin areas
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /hr
+Disallow: /login
+Disallow: /api/
+
+# Disallow uploaded files (private documents)
+Disallow: /uploads/
+
+# Legal pages are crawlable — noindex is set via meta tags in the page itself
+# Removing Disallow here lets Googlebot read the noindex directive correctly
+
+# Crawl delay (optional - 1 second between requests)
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://seevora.in/sitemap.xml
+
+# Specific bot rules
+
+# Google
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /hr
+Disallow: /login
+Disallow: /api/
+Disallow: /uploads/
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /hr
+Disallow: /login
+Disallow: /api/
+Disallow: /uploads/
+
+# Yandex
+User-agent: Yandex
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /hr
+Disallow: /login
+Disallow: /api/
+Disallow: /uploads/

@@ -1,9 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import {
+  generateOrganizationSchema,
+  generateLocalBusinessSchema,
+  generateWebSiteSchema,
+  generateHowToSchema,
+  generateSpeakableSchema,
+  generateSoftwareApplicationSchema
+} from '../../utils/schemaGenerators';
 import img1 from '../../assets/services/img1.jpg';
 import imgVoice from '../../assets/services/img-voice.jpg';
 import imgHandshake from '../../assets/services/img-handshake.jpg';
 import imgAiPlug from '../../assets/services/img-ai-plug.jpg';
 import imgOffice from '../../assets/services/img-office.jpg';
+import Testimonials from './Testimonials';
+
 
 const whyReasons = [
   {
@@ -509,11 +522,53 @@ function Stats() {
 }
 
 export default function HomePage() {
+  // Generate structured data schemas for SEO, AEO, and GEO
+  const organizationSchema = generateOrganizationSchema();
+  const localBusinessSchema = generateLocalBusinessSchema();
+  const webSiteSchema = generateWebSiteSchema();
+  const softwareAppSchema = generateSoftwareApplicationSchema();
+
+  // HowTo schema from the workflow steps
+  const howToSchema = generateHowToSchema({
+    name: 'How Seevora Automates Your Business with AI',
+    description: 'A structured, transparent approach from discovery to deployment of custom AI automation.',
+    totalTime: 'P30D',
+    steps: steps.map(step => ({
+      name: step.title,
+      description: step.desc
+    }))
+  });
+
+  // Speakable schema for voice search / AEO
+  const speakableSchema = generateSpeakableSchema(
+    'https://seevora.in/',
+    ['.hero-title', '.bk-hero-subtitle', '.section-title']
+  );
+
+  const allSchemas = [
+    organizationSchema,
+    localBusinessSchema,
+    webSiteSchema,
+    howToSchema,
+    softwareAppSchema,
+    speakableSchema
+  ].filter(Boolean);
+
   return (
     <main className="home-landing">
+      <SEOHead
+        title={pagesSEO.home.title}
+        description={pagesSEO.home.description}
+        keywords={pagesSEO.home.keywords}
+        path={pagesSEO.home.path}
+        image={pagesSEO.home.image}
+        type={pagesSEO.home.type}
+      />
+      <StructuredData data={allSchemas} />
       <Hero />
       <WhyChooseSeevora />
       <Workflow />
+      <Testimonials />
       <Stats />
     </main>
   );

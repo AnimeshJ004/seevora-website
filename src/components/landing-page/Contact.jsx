@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import SEOHead from '../common/SEOHead';
 import StructuredData from '../common/StructuredData';
 import { pagesSEO } from '../../config/seo';
-import { generateContactPageSchema, generateOrganizationSchema } from '../../utils/schemaGenerators';
+import { generateContactPageSchema, generateOrganizationSchema, generateSpeakableSchema, generateBreadcrumbSchema } from '../../utils/schemaGenerators';
 import logoIcon from '../../assets/logo-icon-clean.png';
 import { apiUrl } from '../../utils/apiUrl';
 
@@ -18,8 +18,8 @@ async function postAuditRequest(payload) {
 
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', company: '', phone: '', message: '' });
-  const [status, setStatus] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState(null);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -28,15 +28,17 @@ export default function Contact() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setStatus(null);
 
     try {
       const response = await postAuditRequest(formData);
+
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setStatus({ type: 'error', text: data.message || 'Unable to submit your audit request. Please try again.' });
+        setStatus({ type: 'error', text: data.message || 'Failed to submit form. Please try again.' });
         return;
       }
 
@@ -52,6 +54,16 @@ export default function Contact() {
 
   const contactPageSchema = generateContactPageSchema();
   const organizationSchema = generateOrganizationSchema();
+  const speakableSchema = generateSpeakableSchema(
+    'https://seevora.in/book-a-call',
+    ['.section-title', '.section-subtitle', '.contact-info-list']
+  );
+
+  // BreadcrumbList schema for rich results in SERPs
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Book a Call', path: '/book-a-call' }
+  ]);
 
   return (
     <>
@@ -63,7 +75,7 @@ export default function Contact() {
         image={pagesSEO.contact.image}
         type={pagesSEO.contact.type}
       />
-      <StructuredData data={[organizationSchema, contactPageSchema]} />
+      <StructuredData data={[organizationSchema, contactPageSchema, speakableSchema, breadcrumbSchema].filter(Boolean)} />
 
       <section className="contact section book-call-page" id="book-a-call">
       <div className="bg-glow bg-glow-1" style={{ top: '50%', right: '-200px', transform: 'translateY(-50%)' }} />

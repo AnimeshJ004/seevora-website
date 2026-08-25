@@ -312,7 +312,7 @@ router.post('/', requireEmployeeManagement, async (req, res, next) => {
   } catch (error) {
     try {
       await client.query('ROLLBACK');
-    } catch {}
+    } catch { }
     return next(error);
   } finally {
     client.release();
@@ -467,7 +467,7 @@ router.put('/:employeeCode', requireEmployeeManagement, async (req, res, next) =
   } catch (error) {
     try {
       await client.query('ROLLBACK');
-    } catch {}
+    } catch { }
     return next(error);
   } finally {
     client.release();
@@ -524,7 +524,7 @@ router.delete('/:employeeCode', requireEmployeeManagement, async (req, res, next
   } catch (error) {
     try {
       await client.query('ROLLBACK');
-    } catch {}
+    } catch { }
     return next(error);
   } finally {
     client.release();
@@ -535,7 +535,7 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
   try {
     const year = new Date().getFullYear();
     const employeeCode = req.params.employeeCode;
-    
+
     const empResult = await pool.query(`
       SELECT e.id, e.user_id, e.employee_code, e.name, e.email, e.phone, e.department, e.job_title,
              e.salary, e.joined_on::text AS joined_on, e.status, e.account_active, e.created_at,
@@ -546,16 +546,16 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
       WHERE e.employee_code = $1 OR e.id::text = $1
       LIMIT 1
     `, [employeeCode]);
-    
+
     const empRow = empResult.rows[0];
     if (!empRow) return res.status(404).json({ message: 'Employee not found.' });
-    
+
     const employee = toEmployee(empRow);
-    
+
     const balResult = await pool.query(`
       SELECT * FROM leave_balances WHERE employee_id = $1 AND year = $2 LIMIT 1
     `, [empRow.id, year]);
-    
+
     let balances;
     if (balResult.rows.length > 0) {
       const r = balResult.rows[0];
@@ -573,7 +573,7 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
         compOff: { total: 0, used: 0, remaining: 0 }
       };
     }
-    
+
     const month = new Date().getMonth() + 1;
 
     const monthlyResult = await pool.query(
@@ -597,7 +597,7 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
 
     const monthlyUsed = Number(monthlyResult.rows[0]?.used || 0);
     const yearlyUsed = Number(yearlyResult.rows[0]?.used || 0);
-    
+
     const MONTHLY_LEAVE_ALLOWANCE = 2;
     const YEARLY_LEAVE_ALLOWANCE = MONTHLY_LEAVE_ALLOWANCE * 12;
 
@@ -613,7 +613,7 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
         remaining: Math.max(YEARLY_LEAVE_ALLOWANCE - yearlyUsed, 0),
       },
     };
-    
+
     const leaveResult = await pool.query(`
       SELECT lr.*, 
              COALESCE(reviewer.username, reviewer.email) AS reviewed_by_name
@@ -622,7 +622,7 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
       WHERE lr.employee_id = $1
       ORDER BY lr.applied_at DESC
     `, [empRow.id]);
-    
+
     const leaves = leaveResult.rows.map(row => ({
       id: row.id,
       type: row.leave_type,
@@ -635,7 +635,7 @@ router.get('/:employeeCode/profile', async (req, res, next) => {
       reviewedByName: row.reviewed_by_name || '',
       reviewedAt: row.reviewed_at,
     }));
-    
+
     return res.json({
       employee,
       balances,

@@ -1,4 +1,8 @@
 import React, { useEffect } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateOrganizationSchema, generateServiceSchema, generateBreadcrumbSchema, generateSpeakableSchema } from '../../utils/schemaGenerators';
 
 /* ── Per-module SVG icons ── */
 const ModuleIcons = {
@@ -159,8 +163,49 @@ export default function ModulesPage() {
     return () => obs.disconnect();
   }, []);
 
+  const organizationSchema = generateOrganizationSchema();
+
+  // Service schemas for all 6 AI modules — enables rich results on /modules
+  const moduleServiceSchemas = modules.map(m =>
+    generateServiceSchema({
+      id: m.hash,
+      name: m.title,
+      description: m.desc,
+      type: 'AI Automation Module',
+      category: 'Artificial Intelligence',
+      additionalProps: {
+        offers: {
+          '@type': 'Offer',
+          availability: 'https://schema.org/InStock',
+          priceSpecification: { '@type': 'PriceSpecification', priceCurrency: 'INR' }
+        }
+      }
+    })
+  );
+
+  // Breadcrumb schema for rich results in SERPs
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'AI Modules', path: '/modules' }
+  ]);
+
+  // Speakable schema for voice search / AEO
+  const speakableSchema = generateSpeakableSchema(
+    'https://seevora.in/modules',
+    ['.mod-content-title', '.mod-content-desc']
+  );
+
   return (
     <div className="modules-page">
+      <SEOHead
+        title={pagesSEO.modules.title}
+        description={pagesSEO.modules.description}
+        keywords={pagesSEO.modules.keywords}
+        path={pagesSEO.modules.path}
+        image={pagesSEO.modules.image}
+        type={pagesSEO.modules.type}
+      />
+      <StructuredData data={[organizationSchema, breadcrumbSchema, speakableSchema, ...moduleServiceSchemas].filter(Boolean)} />
       <div className="container">
 
         {/* Header */}

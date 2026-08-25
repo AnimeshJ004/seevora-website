@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import SEOHead from '../common/SEOHead';
+import StructuredData from '../common/StructuredData';
+import { pagesSEO } from '../../config/seo';
+import { generateOrganizationSchema, generateSpeakableSchema, generateBreadcrumbSchema } from '../../utils/schemaGenerators';
 
 const pillars = [
   {
@@ -115,8 +119,29 @@ export default function AboutPage() {
     return () => observers.forEach((o) => o.disconnect());
   }, []);
 
+  const organizationSchema = generateOrganizationSchema();
+  const speakableSchema = generateSpeakableSchema(
+    'https://seevora.in/about',
+    ['.section-title', '.about-intro-text']
+  );
+
+  // BreadcrumbList schema for rich results in SERPs
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'About Seevora', path: '/about' }
+  ]);
+
   return (
     <section className="about-page">
+      <SEOHead
+        title={pagesSEO.about.title}
+        description={pagesSEO.about.description}
+        keywords={pagesSEO.about.keywords}
+        path={pagesSEO.about.path}
+        image={pagesSEO.about.image}
+        type={pagesSEO.about.type}
+      />
+      <StructuredData data={[organizationSchema, speakableSchema, breadcrumbSchema].filter(Boolean)} />
       <div className="bg-grid" />
       <div className="container">
 

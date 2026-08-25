@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import SEOHead from '../common/SEOHead';
 import StructuredData from '../common/StructuredData';
 import { pagesSEO } from '../../config/seo';
-import { generateOrganizationSchema } from '../../utils/schemaGenerators';
+import { generateOrganizationSchema, generateSpeakableSchema, generateBreadcrumbSchema } from '../../utils/schemaGenerators';
 
 const outcomes = [
   {
@@ -148,6 +148,31 @@ export default function ImpactPage() {
   }, []);
 
   const organizationSchema = generateOrganizationSchema();
+  const speakableSchema = generateSpeakableSchema(
+    'https://seevora.in/impact',
+    ['.impact-hero-title', '.impact-hero-sub']
+  );
+
+  // BreadcrumbList schema for rich results in SERPs
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Impact & Results', path: '/impact' }
+  ]);
+
+  // ItemList schema from the business outcomes data — machine-readable for AI engines
+  const outcomesItemListSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Seevora AI Automation Business Outcomes',
+    description: 'Measurable business outcomes achieved through Seevora AI automation across B2B operations.',
+    numberOfItems: outcomes.length,
+    itemListElement: outcomes.map((o, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: o.title,
+      description: `${o.desc} ${o.benefit}`
+    }))
+  };
 
   return (
     <>
@@ -159,7 +184,7 @@ export default function ImpactPage() {
         image={pagesSEO.impact.image}
         type={pagesSEO.impact.type}
       />
-      <StructuredData data={organizationSchema} />
+      <StructuredData data={[organizationSchema, speakableSchema, breadcrumbSchema, outcomesItemListSchema].filter(Boolean)} />
       
       <style>{`
         .impact-page {

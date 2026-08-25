@@ -5,7 +5,8 @@ import { pagesSEO } from "../../config/seo";
 import {
   generateOrganizationSchema,
   generateLocalBusinessSchema,
-  generateServiceSchema
+  generateServiceSchema,
+  generateBreadcrumbSchema
 } from "../../utils/schemaGenerators";
 
 import img1 from "../../assets/services/img1.jpg";
@@ -119,6 +120,12 @@ export default function ServicesPage() {
   const organizationSchema = generateOrganizationSchema();
   const localBusinessSchema = generateLocalBusinessSchema();
 
+  // BreadcrumbList schema for rich results in SERPs
+  const breadcrumbSchema = generateBreadcrumbSchema([
+    { name: 'Home', path: '/' },
+    { name: 'Services', path: '/services' }
+  ]);
+
   return (
     <>
       <SEOHead
@@ -133,6 +140,7 @@ export default function ServicesPage() {
       <StructuredData data={[
         organizationSchema,
         localBusinessSchema,
+        breadcrumbSchema,
         ...serviceSchemas
       ]} />
 

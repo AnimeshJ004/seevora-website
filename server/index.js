@@ -143,7 +143,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/sales-agent', salesAgentRoutes);
 
-// SEO Routes
+// SEO Routes — must be registered before static/SPA catch-all
 app.get('/sitemap.xml', sitemapHandler);
 app.get('/robots.txt', robotsHandler);
 

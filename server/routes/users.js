@@ -9,8 +9,8 @@ import { revokeUserSessions } from '../services/auth/sessionService.js';
 import { ensureManagerEmployeeProfile } from '../services/hr/employeeProfileService.js';
 
 const router = express.Router();
-const USER_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'employee']);
-const PREVERIFIED_ROLES = new Set(['admin', 'hr', 'manager', 'support']);
+const USER_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'employee', 'sales_developer']);
+const PREVERIFIED_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'sales_developer']);
 
 router.use(requireRole('admin'));
 

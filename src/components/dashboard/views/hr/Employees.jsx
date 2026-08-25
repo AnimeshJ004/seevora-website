@@ -1,17 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PageHeader, Panel, StatsGrid, FilterBar, Badge, Btn, Avatar } from '../shared';
 import { hrApiFetch } from './hrApi';
+import { STANDARD_JOB_ROLES } from '../../../../config/jobRoles';
 
 const EMPTY_FORM = {
   name: '',
   email: '',
   phone: '',
   department: '',
-  jobTitle: '',
+  jobTitle: 'Sales & Developer',
   salary: '',
   joinedOn: new Date().toISOString().slice(0, 10),
   status: 'active',
-  accountRole: 'employee',
+  accountRole: 'sales_developer',
   managerId: '',
   username: '',
   password: 'Seevora@123',
@@ -341,9 +342,9 @@ export default function Employees({ user }) {
       <StatsGrid
         cols={4}
         stats={[
-          { label: 'Total',        value: stats.total,     color: 'blue'   },
-          { label: 'Active',       value: stats.active,    color: 'green'  },
-          { label: 'Inactive',     value: stats.inactive,  color: 'orange' },
+          { label: 'Total', value: stats.total, color: 'blue' },
+          { label: 'Active', value: stats.active, color: 'green' },
+          { label: 'Inactive', value: stats.inactive, color: 'orange' },
           { label: 'On Probation', value: stats.probation, color: 'purple' },
         ]}
       />
@@ -463,8 +464,8 @@ export default function Employees({ user }) {
                     {viewingProfile.role} • {viewingProfile.dept}
                   </p>
                   <div style={{ display: 'flex', gap: 10 }}>
-                     <Badge label={viewingProfile.status} color={viewingProfile.status === 'active' ? 'green' : 'gray'} />
-                     <Badge label={viewingProfile.id} color="cyan" />
+                    <Badge label={viewingProfile.status} color={viewingProfile.status === 'active' ? 'green' : 'gray'} />
+                    <Badge label={viewingProfile.id} color="cyan" />
                   </div>
                 </div>
               </div>
@@ -475,75 +476,75 @@ export default function Employees({ user }) {
                 x
               </button>
             </div>
-            
+
             {isProfileLoading ? (
-               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Loading details...</div>
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Loading details...</div>
             ) : profileData ? (
-               <div>
-                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24, background: 'var(--bg-space)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
-                   <div>
-                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Email</div>
-                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.email}</div>
-                   </div>
-                   <div>
-                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phone</div>
-                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.phone || '-'}</div>
-                   </div>
-                   <div>
-                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Manager</div>
-                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.managerName || '-'}</div>
-                   </div>
-                   <div>
-                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Joined</div>
-                     <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.joined}</div>
-                   </div>
-                 </div>
-                 
-                 <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Leave Allowances</h4>
-                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
-                   {['monthly', 'yearly'].map(type => {
-                     const bal = profileData.policy[type];
-                     return (
-                       <div key={type} style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 12 }}>
-                         <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>{type} Leave</div>
-                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                           <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{bal.remaining}</span>
-                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ {bal.total} remaining</span>
-                         </div>
-                       </div>
-                     );
-                   })}
-                 </div>
-                 
-                 <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Leave History</h4>
-                 <div style={{ overflowX: 'auto', background: 'var(--bg-space)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
-                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                     <thead>
-                       <tr>
-                         {['Type', 'From', 'To', 'Days', 'Reason', 'Status'].map(h => (
-                           <th key={h} style={{ textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', padding: '12px', borderBottom: '1px solid var(--glass-border)' }}>{h}</th>
-                         ))}
-                       </tr>
-                     </thead>
-                     <tbody>
-                       {profileData.leaves.length === 0 ? (
-                         <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No leave requests found.</td></tr>
-                       ) : profileData.leaves.map(l => (
-                         <tr key={l.id}>
-                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><Badge label={l.type} color="blue" /></td>
-                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.from}</td>
-                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.to}</td>
-                           <td style={{ padding: '12px', fontSize: '0.82rem', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.days}</td>
-                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)', maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.reason || '-'}</td>
-                           <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><Badge label={l.status} color={l.status === 'approved' ? 'green' : l.status === 'rejected' ? 'pink' : 'orange'} /></td>
-                         </tr>
-                       ))}
-                     </tbody>
-                   </table>
-                 </div>
-               </div>
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24, background: 'var(--bg-space)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Email</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.email}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phone</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.phone || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Manager</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.managerName || '-'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Joined</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>{profileData.employee.joined}</div>
+                  </div>
+                </div>
+
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Leave Allowances</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 24 }}>
+                  {['monthly', 'yearly'].map(type => {
+                    const bal = profileData.policy[type];
+                    return (
+                      <div key={type} style={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', padding: 16, borderRadius: 12 }}>
+                        <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 8 }}>{type} Leave</div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                          <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{bal.remaining}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ {bal.total} remaining</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Leave History</h4>
+                <div style={{ overflowX: 'auto', background: 'var(--bg-space)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        {['Type', 'From', 'To', 'Days', 'Reason', 'Status'].map(h => (
+                          <th key={h} style={{ textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', padding: '12px', borderBottom: '1px solid var(--glass-border)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profileData.leaves.length === 0 ? (
+                        <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No leave requests found.</td></tr>
+                      ) : profileData.leaves.map(l => (
+                        <tr key={l.id}>
+                          <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><Badge label={l.type} color="blue" /></td>
+                          <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.from}</td>
+                          <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.to}</td>
+                          <td style={{ padding: '12px', fontSize: '0.82rem', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>{l.days}</td>
+                          <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)', maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.reason || '-'}</td>
+                          <td style={{ padding: '12px', fontSize: '0.82rem', borderBottom: '1px solid rgba(0,0,0,0.04)' }}><Badge label={l.status} color={l.status === 'approved' ? 'green' : l.status === 'rejected' ? 'pink' : 'orange'} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             ) : (
-               <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Could not load profile.</div>
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Could not load profile.</div>
             )}
           </div>
         </div>
@@ -588,7 +589,33 @@ export default function Employees({ user }) {
               <EmployeeField label="Email" name="email" type="email" value={form.email} error={errors.email} onChange={updateForm} placeholder="employee@company.com" />
               <EmployeeField label="Phone" name="phone" value={form.phone} onChange={updateForm} placeholder="+91 98765 43210" />
               <EmployeeField label="Department" name="department" value={form.department} error={errors.department} onChange={updateForm} placeholder="Operations" />
-              <EmployeeField label="Role" name="jobTitle" value={form.jobTitle} error={errors.jobTitle} onChange={updateForm} placeholder="Customer Success Executive" />
+              <div>
+                <label style={fieldLabelStyle}>Job Role / Designation</label>
+                <select
+                  value={STANDARD_JOB_ROLES.includes(form.jobTitle) ? form.jobTitle : 'custom'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val !== 'custom') updateForm('jobTitle', val);
+                    else updateForm('jobTitle', '');
+                  }}
+                  style={fieldInputStyle}
+                >
+                  {STANDARD_JOB_ROLES.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                  <option value="custom">Other / Custom Role...</option>
+                </select>
+                {(!STANDARD_JOB_ROLES.includes(form.jobTitle) || form.jobTitle === '') && (
+                  <input
+                    type="text"
+                    placeholder="Type custom role..."
+                    value={form.jobTitle}
+                    onChange={(e) => updateForm('jobTitle', e.target.value)}
+                    style={{ ...fieldInputStyle, marginTop: 8 }}
+                  />
+                )}
+                {errors.jobTitle && <div style={{ color: 'var(--accent-pink)', fontSize: '0.72rem', marginTop: 5 }}>{errors.jobTitle}</div>}
+              </div>
               <EmployeeField label="Monthly Salary" name="salary" type="number" value={form.salary} error={errors.salary} onChange={updateForm} placeholder="35000" />
               <EmployeeField label="Joining Date" name="joinedOn" type="date" value={form.joinedOn} onChange={updateForm} />
               <div>
@@ -600,11 +627,14 @@ export default function Employees({ user }) {
                 </select>
               </div>
               <div>
-                <label style={fieldLabelStyle}>Access Role</label>
+                <label style={fieldLabelStyle}>Dashboard Access Role</label>
                 <select value={form.accountRole} onChange={(e) => updateForm('accountRole', e.target.value)} style={fieldInputStyle}>
+                  <option value="sales_developer">Sales & Developer</option>
                   <option value="employee">Employee</option>
                   <option value="manager">Manager</option>
-                  <option value="hr">Hr</option>
+                  <option value="hr">HR</option>
+                  <option value="support">Support</option>
+                  <option value="admin">Admin</option>
                 </select>
               </div>
               <div>
