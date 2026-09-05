@@ -122,16 +122,14 @@
   --font-body: 'Euclid Circular A', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Euclid Circular A', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  --gradient-primary: linear-gradient(
-    110deg,
-    #1F2937 0%,
-    #4B5563 30%,
-    #9CA3AF 45%,
-    #D1D5DB 50%,
-    #9CA3AF 55%,
-    #4B5563 70%,
-    #1F2937 100%
-  );
+  --gradient-primary: linear-gradient(110deg,
+      #1F2937 0%,
+      #4B5563 30%,
+      #9CA3AF 45%,
+      #D1D5DB 50%,
+      #9CA3AF 55%,
+      #4B5563 70%,
+      #1F2937 100%);
   --gradient-hero: #ffffff;
   --gradient-card-glow: radial-gradient(ellipse at 50% 0%, rgba(20, 201, 225, 0.08) 0%, transparent 60%);
 
@@ -13805,6 +13803,7 @@ textarea.form-input {
 
 /* Button Entrance & Hover Animations */
 @media (min-width: 769px) {
+
   .btn-primary,
   .btn-glass,
   .btn-secondary,
@@ -14203,6 +14202,7 @@ textarea.form-input {
 .bk-hero-title .reveal-mask {
   overflow: visible !important;
 }
+
 .bk-hero-title .hero-typed-3d,
 .bk-hero-title .hero-typed-gradient,
 .bk-hero-title .hero-rotating-phrase-text {
@@ -14348,7 +14348,9 @@ textarea.form-input {
 
 /* ── 1. Global Base ─────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  html, body {
+
+  html,
+  body {
     overflow-x: hidden;
   }
 
@@ -14377,6 +14379,7 @@ textarea.form-input {
 
 /* ── 2. Navbar ──────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
+
   .jnav-links,
   .jnav-actions {
     display: none !important;
@@ -14532,9 +14535,10 @@ textarea.form-input {
     transform: none !important;
   }
 }
+
 /* ── 4. Why Choose Seevora (Home) ───────────────────────────────────────── */
 @media (max-width: 767px) {
-  .why-choose-seevora .container > div[style] {
+  .why-choose-seevora .container>div[style] {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
   }
@@ -14602,6 +14606,7 @@ textarea.form-input {
 
 /* ── 6. Services Page ───────────────────────────────────────────────────── */
 @media (max-width: 767px) {
+
   .services-page-hero,
   .services-hero {
     padding: 100px 16px 60px !important;
@@ -14658,6 +14663,7 @@ textarea.form-input {
 
 /* ── 7. Modules Page ────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
+
   .modules-page-hero,
   .modules-hero {
     padding: 100px 16px 60px !important;
@@ -14726,6 +14732,7 @@ textarea.form-input {
 
 /* ── 8. About Page ──────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
+
   .about-page-hero,
   .about-hero {
     padding: 100px 16px 60px !important;
@@ -14769,6 +14776,7 @@ textarea.form-input {
 }
 
 @media (max-width: 1023px) and (min-width: 768px) {
+
   .about-pillars-grid,
   .about-cards {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -14781,6 +14789,7 @@ textarea.form-input {
 
 /* ── 9. Contact / Book a Call Page ─────────────────────────────────────── */
 @media (max-width: 767px) {
+
   .contact-grid,
   .book-call-page .contact-grid {
     grid-template-columns: 1fr !important;
@@ -14789,7 +14798,7 @@ textarea.form-input {
   }
 
   /* Hide vertical divider on mobile */
-  .book-call-page .contact-grid > div:nth-child(2):not(.contact-info):not(.contact-form) {
+  .book-call-page .contact-grid>div:nth-child(2):not(.contact-info):not(.contact-form) {
     display: none !important;
   }
 
@@ -14893,6 +14902,7 @@ textarea.form-input {
 
 /* ── 12. Privacy & Terms Pages ──────────────────────────────────────────── */
 @media (max-width: 767px) {
+
   .privacy-page,
   .terms-page {
     padding: 100px 16px 60px !important;
@@ -14922,7 +14932,8 @@ textarea.form-input {
     left: 0 !important;
     right: 0 !important;
     width: 100vw !important;
-    height: 100dvh !important; /* Full height */
+    height: 100dvh !important;
+    /* Full height */
     max-height: 100% !important;
     border-radius: 0 !important;
     border: none !important;
@@ -14936,6 +14947,7 @@ textarea.form-input {
 
 /* ── 14. Home Sections (Problem / Workflow / Stats) ─────────────────────── */
 @media (max-width: 767px) {
+
   .problem-grid,
   .problem-cards {
     grid-template-columns: 1fr !important;
@@ -14986,6 +14998,7 @@ textarea.form-input {
 }
 
 @media (max-width: 1023px) and (min-width: 768px) {
+
   .problem-grid,
   .problem-cards {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -15080,9 +15093,9 @@ textarea.form-input {
   opacity: 0;
   transform: perspective(1000px) rotateX(10deg) translateY(45px) scale(0.95);
   transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.75s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-              border-color 0.35s ease;
+    transform 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.35s ease;
   will-change: opacity, transform;
 }
 
@@ -15263,5 +15276,3 @@ textarea.form-input {
     padding: 24px 20px 20px;
   }
 }
-
-

@@ -92,7 +92,7 @@ export default function Navbar() {
           </button>
         </nav>
       </div>
- 
+
       <div className={`mobile-overlay${mobileOpen ? ' open' : ''}`} onClick={() => setMobileOpen(false)} />
       <div className={`mobile-nav${mobileOpen ? ' open' : ''}`}>
         <div className="mobile-nav-header">
