@@ -115,6 +115,9 @@ export default function Users({ user: currentUser }) {
       support: { label: 'Support', color: '#8b5cf6', bg: '#ede9fe' },
       employee: { label: 'Employee', color: '#64748b', bg: '#f1f5f9' },
       sales_developer: { label: 'Sales & Developer', color: '#7c3aed', bg: '#f3e8ff' },
+      developer:       { label: 'Developer',         color: '#0891b2', bg: '#cffafe' },
+      sales:           { label: 'Sales',             color: '#d97706', bg: '#fef3c7' },
+      telecaller:      { label: 'Telecaller',        color: '#db2777', bg: '#fce7f3' },
     };
     const r = roles[normalizedRole] || roles.employee;
     return (
@@ -203,6 +206,9 @@ export default function Users({ user: currentUser }) {
                     style={{ width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
                   >
                     <option value="sales_developer">Sales & Developer</option>
+                    <option value="developer">Developer</option>
+                    <option value="sales">Sales</option>
+                    <option value="telecaller">Telecaller</option>
                     <option value="employee">Employee</option>
                     <option value="manager">Manager</option>
                     <option value="hr">HR</option>
@@ -301,6 +307,9 @@ export default function Users({ user: currentUser }) {
                     <option value="support">Support</option>
                     <option value="admin">Admin</option>
                     <option value="sales_developer">Sales & Developer</option>
+                    <option value="developer">Developer</option>
+                    <option value="sales">Sales</option>
+                    <option value="telecaller">Telecaller</option>
                   </select>
                 </div>
               </div>

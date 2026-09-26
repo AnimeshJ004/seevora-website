@@ -94,7 +94,7 @@ function validateEmployee(body) {
   if (!Number.isFinite(data.salary) || data.salary < 0) errors.salary = 'Enter a valid salary.';
   if (data.password.length < 8) errors.password = 'Password must be at least 8 characters.';
   if (!['active', 'inactive', 'probation'].includes(data.status)) data.status = 'active';
-  if (!['employee', 'manager', 'hr'].includes(data.accountRole)) data.accountRole = 'employee';
+  if (!['employee', 'manager', 'hr', 'admin', 'support', 'sales_developer', 'developer', 'sales', 'telecaller'].includes(data.accountRole)) data.accountRole = 'employee';
   if (!data.joinedOn) data.joinedOn = new Date().toISOString().slice(0, 10);
 
   return { isValid: Object.keys(errors).length === 0, errors, data };
@@ -262,8 +262,8 @@ router.post('/', requireEmployeeManagement, async (req, res, next) => {
     const username = await createUniqueUsername(client, data.username, data.email);
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    /* Employees start as PENDING_VERIFICATION; HR/admin are pre-verified */
-    const verificationStatus = ['hr', 'admin', 'manager', 'support'].includes(data.accountRole)
+    /* Standard Employees start as PENDING_VERIFICATION; role/staff accounts are pre-verified */
+    const verificationStatus = ['hr', 'admin', 'manager', 'support', 'sales_developer', 'developer', 'sales', 'telecaller'].includes(data.accountRole)
       ? 'VERIFIED'
       : 'PENDING_VERIFICATION';
 

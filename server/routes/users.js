@@ -6,11 +6,11 @@ import { normalizeRole, requireRole } from '../middleware/auth.js';
 import { buildCacheKey, getOrSetCache } from '../utils/cache.js';
 import { CACHE_NAMESPACES, invalidateCacheNamespaces } from '../utils/cacheNamespaces.js';
 import { revokeUserSessions } from '../services/auth/sessionService.js';
-import { ensureManagerEmployeeProfile } from '../services/hr/employeeProfileService.js';
+import { ensureEmployeeProfile, ensureManagerEmployeeProfile } from '../services/hr/employeeProfileService.js';
 
 const router = express.Router();
-const USER_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'employee', 'sales_developer']);
-const PREVERIFIED_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'sales_developer']);
+const USER_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'employee', 'sales_developer', 'developer', 'sales', 'telecaller']);
+const PREVERIFIED_ROLES = new Set(['admin', 'hr', 'manager', 'support', 'sales_developer', 'developer', 'sales', 'telecaller']);
 
 router.use(requireRole('admin'));
 
@@ -117,8 +117,8 @@ router.post('/', async (req, res) => {
       verificationStatus,
     ]);
 
-    if (nextRole === 'manager') {
-      await ensureManagerEmployeeProfile(client, rows[0]);
+    if (USER_ROLES.has(nextRole)) {
+      await ensureEmployeeProfile(client, rows[0], { jobTitle: req.body.jobTitle });
     }
 
     await client.query('COMMIT');

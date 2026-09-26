@@ -8,11 +8,11 @@ const EMPTY_FORM = {
   email: '',
   phone: '',
   department: '',
-  jobTitle: 'Sales & Developer',
+  jobTitle: 'Software Engineer',
   salary: '',
   joinedOn: new Date().toISOString().slice(0, 10),
   status: 'active',
-  accountRole: 'sales_developer',
+  accountRole: 'employee',
   managerId: '',
   username: '',
   password: 'Seevora@123',
@@ -629,8 +629,11 @@ export default function Employees({ user }) {
               <div>
                 <label style={fieldLabelStyle}>Dashboard Access Role</label>
                 <select value={form.accountRole} onChange={(e) => updateForm('accountRole', e.target.value)} style={fieldInputStyle}>
-                  <option value="sales_developer">Sales & Developer</option>
                   <option value="employee">Employee</option>
+                  <option value="developer">Developer</option>
+                  <option value="sales">Sales</option>
+                  <option value="telecaller">Telecaller</option>
+                  <option value="sales_developer">Sales & Developer</option>
                   <option value="manager">Manager</option>
                   <option value="hr">HR</option>
                   <option value="support">Support</option>

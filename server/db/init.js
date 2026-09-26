@@ -1325,5 +1325,66 @@ Use short sentences. Avoid jargon. Be direct and confident.`]).catch(e => consol
     CREATE INDEX IF NOT EXISTS system_audit_logs_created_at_idx ON system_audit_logs (created_at DESC);
   `).catch(e => console.error('Failed to create dashboard indexes:', e.message));
 
+  // ── WhatsApp CRM tables ────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS whatsapp_conversations (
+      id              UUID PRIMARY KEY,
+      contact_waid    VARCHAR(40)  NOT NULL UNIQUE,
+      contact_phone   VARCHAR(40)  NOT NULL,
+      contact_name    VARCHAR(160),
+      lead_id         UUID REFERENCES leads(id) ON DELETE SET NULL,
+      status          VARCHAR(20)  NOT NULL DEFAULT 'open',
+      unread_count    INTEGER      NOT NULL DEFAULT 0,
+      last_message_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+      created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create whatsapp_conversations table:', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS whatsapp_messages (
+      id              UUID PRIMARY KEY,
+      conversation_id UUID         NOT NULL REFERENCES whatsapp_conversations(id) ON DELETE CASCADE,
+      wamid           TEXT         UNIQUE,
+      direction       VARCHAR(10)  NOT NULL CHECK (direction IN ('inbound','outbound')),
+      message_type    VARCHAR(20)  NOT NULL DEFAULT 'text',
+      body            TEXT         NOT NULL DEFAULT '',
+      media_url       TEXT,
+      status          VARCHAR(20)  NOT NULL DEFAULT 'sent',
+      sent_at         TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+      created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create whatsapp_messages table:', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS whatsapp_automation_rules (
+      id                UUID PRIMARY KEY,
+      name              VARCHAR(160) NOT NULL,
+      trigger_type      VARCHAR(30)  NOT NULL DEFAULT 'keyword',
+      trigger_keyword   TEXT,
+      response_template TEXT         NOT NULL,
+      is_active         BOOLEAN      NOT NULL DEFAULT TRUE,
+      created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create whatsapp_automation_rules table:', e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS wa_conversations_last_msg_idx ON whatsapp_conversations (last_message_at DESC);
+    CREATE INDEX IF NOT EXISTS wa_conversations_lead_id_idx  ON whatsapp_conversations (lead_id);
+    CREATE INDEX IF NOT EXISTS wa_messages_conv_id_idx       ON whatsapp_messages (conversation_id, sent_at ASC);
+  `).catch(e => console.error('Failed to create WhatsApp indexes:', e.message));
+
+  // Seed a default welcome automation rule if none exist
+  await pool.query(`
+    INSERT INTO whatsapp_automation_rules (id, name, trigger_type, response_template, is_active)
+    SELECT gen_random_uuid(),
+           'Welcome Message',
+           'first_message',
+           'Hello! 👋 Thank you for reaching out to Seevora. We help businesses automate with AI. Our team will get back to you shortly. You can also visit us at https://seevora.in or call +91 82692 97967.',
+           TRUE
+    WHERE NOT EXISTS (SELECT 1 FROM whatsapp_automation_rules LIMIT 1);
+  `).catch(e => console.error('Failed to seed WhatsApp automation rules:', e.message));
+
   await backfillManagerEmployeeProfiles(pool);
 }

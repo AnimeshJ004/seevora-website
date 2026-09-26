@@ -3,7 +3,7 @@ import { apiFetch } from '../../../../auth/api';
 import { STANDARD_JOB_ROLES } from '../../../../config/jobRoles';
 
 export default function CreateAccount({ user }) {
-  const [newUser, setNewUser] = useState({ username: '', email: '', phone: '', jobTitle: 'Sales & Developer', role: 'sales_developer', password: '' });
+  const [newUser, setNewUser] = useState({ username: '', email: '', phone: '', jobTitle: 'Software Engineer', role: 'employee', password: '' });
   const [customJobTitle, setCustomJobTitle] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -49,13 +49,13 @@ export default function CreateAccount({ user }) {
       });
       if (res.ok) {
         setMsg({ type: 'success', text: 'Account created successfully!' });
-        setNewUser({ username: '', email: '', phone: '', jobTitle: 'Sales & Developer', role: 'sales_developer', password: '' });
+        setNewUser({ username: '', email: '', phone: '', jobTitle: 'Software Engineer', role: 'employee', password: '' });
         setCustomJobTitle('');
         fetchUsers();
         window.dispatchEvent(new CustomEvent('seevora:hr-employees-changed'));
       } else {
         const err = await res.json();
-        setMsg({ type: 'error', text: err.error || 'Failed to create account' });
+        setMsg({ type: 'error', text: err.error || err.message || 'Failed to create account' });
       }
     } catch (err) {
       console.error(err);
@@ -92,7 +92,7 @@ export default function CreateAccount({ user }) {
       {/* LEFT COLUMN: FORM */}
       <div>
         <h2 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.6rem', marginBottom: '8px' }}>Create New Account</h2>
-        <p style={{ color: '#64748b', marginBottom: '24px', fontSize: '0.9rem' }}>Create an account for any role (Employee, Manager, HR, Support, etc.) and assign them a temporary password.</p>
+        <p style={{ color: '#64748b', marginBottom: '24px', fontSize: '0.9rem' }}>Create an account for any role (Employee, Developer, Sales, HR, Telecaller, etc.) and assign them a temporary password.</p>
         
         {msg.text && (
           <div style={{ padding: '12px', marginBottom: '20px', borderRadius: '8px', background: msg.type === 'error' ? '#fee2e2' : '#dcfce7', color: msg.type === 'error' ? '#991b1b' : '#166534', fontWeight: 600 }}>
@@ -143,8 +143,11 @@ export default function CreateAccount({ user }) {
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Dashboard Access Role *</label>
             <select required value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff' }}>
-              <option value="sales_developer">Sales & Developer</option>
               <option value="employee">Employee</option>
+              <option value="developer">Developer</option>
+              <option value="sales">Sales</option>
+              <option value="telecaller">Telecaller</option>
+              <option value="sales_developer">Sales & Developer</option>
               <option value="manager">Manager</option>
               <option value="hr">HR</option>
               <option value="support">Support</option>
@@ -153,8 +156,11 @@ export default function CreateAccount({ user }) {
           </div>
           
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>Temporary Password *</label>
-            <input type="text" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} placeholder="e.g. Welcome123!" />
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '4px' }}>Temporary Password *</label>
+            <input type="text" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} placeholder="e.g. Seevora@123" />
+            <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+              Must be 8+ chars with uppercase, lowercase, number & special char (e.g., Seevora@123)
+            </span>
           </div>
           
           <button type="submit" disabled={loading} style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', marginTop: '10px' }}>

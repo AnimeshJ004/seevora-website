@@ -23,6 +23,7 @@ export const CACHE_NAMESPACES = Object.freeze({
   systemEvents: 'system_events',
   systemPrompt: 'system_prompt',
   users: 'users',
+  whatsapp: 'whatsapp',
 });
 
 export function invalidateCacheNamespaces(...namespaces) {

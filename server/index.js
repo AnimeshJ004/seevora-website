@@ -36,6 +36,7 @@ import analyticsRoutes from './routes/analytics.js';
 import emailBotRoutes from './routes/emailBot.js';
 import emailAgentRoutes from './routes/emailAgent.js';
 import salesAgentRoutes from './routes/salesAgent.js';
+import whatsappRoutes from './routes/whatsapp.js';
 import { runSessionCleanup } from './utils/sessionCleanup.js';
 import { startImapPoller } from './services/emailAgent/imapPoller.js';
 import { startContactFormProcessor } from './services/emailAgent/contactFormProcessor.js';
@@ -142,6 +143,7 @@ app.use('/api/system', systemRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/sales-agent', salesAgentRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // SEO Routes — must be registered before static/SPA catch-all
 app.get('/sitemap.xml', sitemapHandler);

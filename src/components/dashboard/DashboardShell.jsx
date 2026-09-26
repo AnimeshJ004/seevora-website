@@ -105,7 +105,7 @@ const NAVICONS = {
 const NAV = {
   admin: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }] },
-    { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }] },
+    { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
     { label: 'System', items: [{ id: 'audit-logs', label: 'Audit Logs' }, { id: 'security-center', label: 'Security Center' }] },
@@ -131,9 +131,25 @@ const NAV = {
   ],
   sales_developer: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
-    { label: 'Operations & Sales', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Marketing' }] },
+    { label: 'Operations & Sales', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Email & Marketing', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity & Tech', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
+    { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
+  ],
+  developer: [
+    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
+    { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
+    { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
+  ],
+  sales: [
+    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
+    { label: 'Sales', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
+    { label: 'Email & Marketing', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
+    { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
+  ],
+  telecaller: [
+    { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
+    { label: 'Calls & Leads', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
   ],
 };
@@ -141,7 +157,7 @@ const NAV = {
 const TITLES = {
   dashboard: 'Dashboard', businesses: 'Businesses', users: 'Users & Roles', 'create-account': 'Create Account',
   'support-tickets': 'Support Tickets', leads: 'CRM / Leads', appointments: 'Appointments',
-  'ai-voice-logs': 'AI Voice Agent', 'whatsapp-logs': 'WhatsApp Marketing', reviews: 'Reputation', 'audit-logs': 'Audit Requests', 'security-center': 'Security Center', analytics: 'Analytics',
+  'ai-voice-logs': 'AI Voice Agent', 'whatsapp-logs': 'WhatsApp Hub', reviews: 'Reputation', 'audit-logs': 'Audit Requests', 'security-center': 'Security Center', analytics: 'Analytics',
   subscribers: 'Subscribers', campaigns: 'Email Campaigns', 'email-templates': 'Email Templates', 'inbound-emails': 'Email Inbox', 'email-ai-agent': 'Email AI Agent',
   employees: 'Employees', attendance: 'Attendance', leave: 'Leave Management',
   recruitment: 'Recruitment', payroll: 'Payroll', documents: 'Employee Documents',
@@ -153,12 +169,15 @@ const TITLES = {
 };
 
 const ACCENT = {
-  admin: { c: '#4f8ef7', bg: 'rgba(79,142,247,0.15)' },
-  hr: { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-  employee: { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-  manager: { c: '#f97316', bg: 'rgba(249,115,21,0.15)' },
-  support: { c: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+  admin:           { c: '#4f8ef7', bg: 'rgba(79,142,247,0.15)' },
+  hr:              { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+  employee:        { c: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+  manager:         { c: '#f97316', bg: 'rgba(249,115,21,0.15)' },
+  support:         { c: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
   sales_developer: { c: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
+  developer:       { c: '#06b6d4', bg: 'rgba(6,182,212,0.15)'  },
+  sales:           { c: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+  telecaller:      { c: '#ec4899', bg: 'rgba(236,72,153,0.15)' },
 };
 
 /* ── Verification status set — always accessible even if not verified ── */
@@ -189,7 +208,7 @@ function getView(id, role, user, onNavigate, canNavigate) {
 
   const map = {
     businesses: <Businesses user={user} />, users: <Users user={user} />, 'create-account': <CreateAccount user={user} />, 'support-tickets': <SupportTickets />,
-    leads: <CRMLeads user={user} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
+    leads: <CRMLeads user={user} onNavigate={onNavigate} />, appointments: <Appointments user={user} />, 'ai-voice-logs': <AIVoiceLogs />,
     'whatsapp-logs': <WhatsAppLogs />, subscribers: <Subscribers />, campaigns: <Campaigns />, 'email-templates': <EmailTemplates />, 'inbound-emails': <InboundEmails />,
     'email-ai-agent': <EmailAgentDashboard />,
     reviews: <Reviews user={user} />, 'audit-logs': <AuditLogs user={user} />,
