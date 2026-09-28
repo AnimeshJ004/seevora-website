@@ -24,6 +24,7 @@ import Analytics from './views/admin/Analytics';
 import EmailAgentDashboard from '../admin/EmailAgentDashboard';
 
 import CreateAccount from './views/admin/CreateAccount';
+import SalesPanel from './views/sales/SalesPanel';
 
 // HR views
 import HRDashboard from './views/hr/HRDashboard';
@@ -65,6 +66,7 @@ const NAVICONS = {
   businesses: <Ic d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" />,
   users: <Ic d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" />,
   'create-account': <Ic d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M20 8v6 M17 11h6" />,
+  'sales-panel': <Ic d="M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />,
   'support-tickets': <Ic d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   leads: <Ic d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" />,
   appointments: <Ic d="M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18" />,
@@ -105,7 +107,7 @@ const NAVICONS = {
 const NAV = {
   admin: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'businesses', label: 'Businesses' }, { id: 'users', label: 'Users & Roles' }] },
-    { label: 'Operations', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
+    { label: 'Operations', items: [{ id: 'sales-panel', label: 'Sales Panel' }, { id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
     { label: 'System', items: [{ id: 'audit-logs', label: 'Audit Logs' }, { id: 'security-center', label: 'Security Center' }] },
@@ -123,7 +125,7 @@ const NAV = {
     { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
   ],
   manager: [
-    { label: 'Work', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'team-tasks', label: 'Team Tasks' }, { id: 'team-attendance', label: 'Team Attendance' }, { id: 'team-leave', label: 'Team Leave' }, { id: 'leads', label: 'Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'analytics', label: 'Analytics' }] },
+    { label: 'Work', items: [{ id: 'dashboard', label: 'Dashboard' }, { id: 'sales-panel', label: 'Sales Panel' }, { id: 'team-tasks', label: 'Team Tasks' }, { id: 'team-attendance', label: 'Team Attendance' }, { id: 'team-leave', label: 'Team Leave' }, { id: 'leads', label: 'Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'analytics', label: 'Analytics' }] },
     { label: 'Email Bot', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
   ],
   support: [
@@ -131,7 +133,7 @@ const NAV = {
   ],
   sales_developer: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
-    { label: 'Operations & Sales', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
+    { label: 'Operations & Sales', items: [{ id: 'sales-panel', label: 'Sales Panel' }, { id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'ai-voice-logs', label: 'AI Voice Agent' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Email & Marketing', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Productivity & Tech', items: [{ id: 'task-management', label: 'Task Management' }, { id: 'project-management', label: 'Project Management' }, { id: 'time-tracking', label: 'Time Tracking' }] },
     { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
@@ -143,19 +145,19 @@ const NAV = {
   ],
   sales: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
-    { label: 'Sales', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
+    { label: 'Sales', items: [{ id: 'sales-panel', label: 'Sales Panel' }, { id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Email & Marketing', items: [{ id: 'email-templates', label: 'Email Templates' }, { id: 'campaigns', label: 'Campaigns' }, { id: 'inbound-emails', label: 'Email Inbox' }, { id: 'email-ai-agent', label: 'Email AI Agent' }] },
     { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
   ],
   telecaller: [
     { label: 'Platform', items: [{ id: 'dashboard', label: 'Dashboard' }] },
-    { label: 'Calls & Leads', items: [{ id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
+    { label: 'Calls & Leads', items: [{ id: 'sales-panel', label: 'Sales Panel' }, { id: 'leads', label: 'CRM / Leads' }, { id: 'appointments', label: 'Appointments' }, { id: 'whatsapp-logs', label: 'WhatsApp Hub' }] },
     { label: 'Self Service', items: [{ id: 'my-attendance', label: 'My Attendance' }, { id: 'my-leave', label: 'My Leave' }, { id: 'my-documents', label: 'My Documents' }, { id: 'my-tasks', label: 'My Tasks' }] },
   ],
 };
 
 const TITLES = {
-  dashboard: 'Dashboard', businesses: 'Businesses', users: 'Users & Roles', 'create-account': 'Create Account',
+  dashboard: 'Dashboard', 'sales-panel': 'Sales Panel', businesses: 'Businesses', users: 'Users & Roles', 'create-account': 'Create Account',
   'support-tickets': 'Support Tickets', leads: 'CRM / Leads', appointments: 'Appointments',
   'ai-voice-logs': 'AI Voice Agent', 'whatsapp-logs': 'WhatsApp Hub', reviews: 'Reputation', 'audit-logs': 'Audit Requests', 'security-center': 'Security Center', analytics: 'Analytics',
   subscribers: 'Subscribers', campaigns: 'Email Campaigns', 'email-templates': 'Email Templates', 'inbound-emails': 'Email Inbox', 'email-ai-agent': 'Email AI Agent',
@@ -215,7 +217,8 @@ function getView(id, role, user, onNavigate, canNavigate) {
     'security-center': <SecurityCenter user={user} />, analytics: <Analytics />,
     employees: <Employees user={user} />, attendance: <Attendance />, leave: <Leave />,
     recruitment: <Recruitment />, payroll: <Payroll />, documents: <Documents />,
-    'project-management': <ProjectManagement user={user} />, 'task-management': <TaskManagement user={user} />, 'time-tracking': <TimeTracking user={user} />
+    'project-management': <ProjectManagement user={user} />, 'task-management': <TaskManagement user={user} />, 'time-tracking': <TimeTracking user={user} />,
+    'sales-panel': <SalesPanel user={user} onNavigate={onNavigate} />
   };
   return map[id] || <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>View coming soon.</div>;
 }
@@ -1198,16 +1201,65 @@ export default function DashboardShell({ user, onLogout }) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Document Verification', body: 'Vashu uploaded Aadhaar Card for verification.', time: '10 mins ago', unread: true },
-    { id: 2, title: 'Leave Application', body: 'Animesh Jain requested annual leave for 3 days.', time: '2 hours ago', unread: true },
-    { id: 3, title: 'System Notice', body: 'Database maintenance scheduled for Sunday.', time: '1 day ago', unread: true },
-  ]);
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchNotifications() {
+      try {
+        const res = await apiFetch('/api/productivity/notifications');
+        if (res.ok && !cancelled) {
+          const d = await res.json();
+          if (Array.isArray(d.notifications) && d.notifications.length > 0) {
+            setNotifications(d.notifications.map(n => ({
+              id: n.id,
+              title: n.title,
+              body: n.message,
+              time: new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              unread: !n.is_read,
+              taskId: n.task_id
+            })));
+          } else {
+            setNotifications([
+              { id: 1, title: 'Document Verification', body: 'Vashu uploaded Aadhaar Card for verification.', time: '10 mins ago', unread: true },
+              { id: 2, title: 'Leave Application', body: 'Animesh Jain requested annual leave for 3 days.', time: '2 hours ago', unread: true },
+              { id: 3, title: 'System Notice', body: 'Database maintenance scheduled for Sunday.', time: '1 day ago', unread: false },
+            ]);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setNotifications([
+            { id: 1, title: 'Document Verification', body: 'Vashu uploaded Aadhaar Card for verification.', time: '10 mins ago', unread: true },
+            { id: 2, title: 'Leave Application', body: 'Animesh Jain requested annual leave for 3 days.', time: '2 hours ago', unread: true },
+          ]);
+        }
+      }
+    }
+    fetchNotifications();
+    return () => { cancelled = true; };
+  }, []);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    try {
+      await apiFetch('/api/productivity/notifications/read-all', { method: 'PUT' });
+    } catch (e) {}
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
+
+  const handleNotificationItemClick = async (n) => {
+    try {
+      if (n.unread && n.id) {
+        await apiFetch(`/api/productivity/notifications/${n.id}/read`, { method: 'PUT' });
+        setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, unread: false } : item));
+      }
+      if (n.taskId && allowed.includes('task-management')) {
+        setActive('task-management');
+        setShowNotifications(false);
+      }
+    } catch (e) {}
   };
 
   const toggleNotifications = (e) => {
@@ -1383,10 +1435,10 @@ export default function DashboardShell({ user, onLogout }) {
                     <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No new notifications.</div>
                   ) : (
                     notifications.map(n => (
-                      <div key={n.id} style={{
+                      <div key={n.id} onClick={() => handleNotificationItemClick(n)} style={{
                         padding: '12px 16px', borderBottom: '1px solid var(--glass-border)',
                         background: n.unread ? 'rgba(16,185,129,0.03)' : 'none',
-                        display: 'flex', gap: 10, alignItems: 'flex-start',
+                        display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer'
                       }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: n.unread ? 'var(--accent-green)' : 'transparent', marginTop: 6, flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>

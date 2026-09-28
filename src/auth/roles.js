@@ -22,7 +22,7 @@ export const PERMISSIONS = {
   admin: [
     'dashboard',
     'businesses', 'users', 'create-account',
-    'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'sales-panel', 'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     'subscribers', 'campaigns', 'email-templates', 'scheduled-campaigns', 'email-history', 'ai-agent-config', 'inbound-emails', 'email-ai-agent',
     'task-management', 'project-management', 'time-tracking',
     'audit-logs', 'system-logs', 'security-center',
@@ -41,7 +41,7 @@ export const PERMISSIONS = {
   ],
   manager: [
     'dashboard',
-    'team-tasks', 'team-attendance', 'team-leave', 'leads', 'appointments', 'analytics',
+    'sales-panel', 'team-tasks', 'team-attendance', 'team-leave', 'leads', 'appointments', 'analytics',
     'email-templates', 'campaigns', 'inbound-emails', 'email-ai-agent'
   ],
   support: [
@@ -50,7 +50,7 @@ export const PERMISSIONS = {
   ],
   sales_developer: [
     'dashboard',
-    'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
+    'sales-panel', 'leads', 'crm', 'appointments', 'ai-voice-logs', 'whatsapp-logs', 'reviews',
     'subscribers', 'campaigns', 'email-templates', 'inbound-emails', 'email-ai-agent',
     'task-management', 'project-management', 'time-tracking',
     'my-attendance', 'my-leave', 'my-documents', 'my-tasks', 'team-tasks', 'verification-status',
@@ -62,13 +62,13 @@ export const PERMISSIONS = {
   ],
   sales: [
     'dashboard',
-    'leads', 'appointments', 'whatsapp-logs',
+    'sales-panel', 'leads', 'appointments', 'whatsapp-logs',
     'campaigns', 'email-templates', 'inbound-emails', 'email-ai-agent',
     'my-attendance', 'my-leave', 'my-documents', 'my-tasks',
   ],
   telecaller: [
     'dashboard',
-    'leads', 'appointments', 'whatsapp-logs',
+    'sales-panel', 'leads', 'appointments', 'whatsapp-logs',
     'my-attendance', 'my-leave', 'my-documents', 'my-tasks',
   ],
 };

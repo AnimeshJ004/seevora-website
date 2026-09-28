@@ -20,6 +20,7 @@ export const CACHE_NAMESPACES = Object.freeze({
   recruitment: 'recruitment',
   reviews: 'reviews',
   salesAdmin: 'sales_admin',
+  salesPanel: 'sales_panel',
   systemEvents: 'system_events',
   systemPrompt: 'system_prompt',
   users: 'users',

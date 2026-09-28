@@ -1386,5 +1386,138 @@ Use short sentences. Avoid jargon. Be direct and confident.`]).catch(e => consol
     WHERE NOT EXISTS (SELECT 1 FROM whatsapp_automation_rules LIMIT 1);
   `).catch(e => console.error('Failed to seed WhatsApp automation rules:', e.message));
 
+  // ── Sales Panel Tables ─────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sales_deals (
+      id UUID PRIMARY KEY,
+      deal_name VARCHAR(255) NOT NULL,
+      lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+      client_name VARCHAR(200) NOT NULL,
+      client_email VARCHAR(255),
+      client_phone VARCHAR(50),
+      client_company VARCHAR(200),
+      amount NUMERIC(14, 2) NOT NULL DEFAULT 0,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      stage VARCHAR(50) NOT NULL DEFAULT 'discovery',
+      probability INTEGER NOT NULL DEFAULT 20,
+      service_type VARCHAR(100) NOT NULL DEFAULT 'AI Solutions',
+      assigned_rep_id UUID REFERENCES hr_employees(id) ON DELETE SET NULL,
+      assigned_rep_name VARCHAR(160),
+      payment_status VARCHAR(40) NOT NULL DEFAULT 'pending',
+      expected_close_date DATE,
+      actual_close_date DATE,
+      notes TEXT,
+      created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create sales_deals table:', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sales_targets (
+      id UUID PRIMARY KEY,
+      period VARCHAR(40) NOT NULL UNIQUE,
+      target_revenue NUMERIC(14, 2) NOT NULL DEFAULT 2500000,
+      currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+      notes VARCHAR(255),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create sales_targets table:', e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS sales_deals_stage_idx ON sales_deals (stage);
+    CREATE INDEX IF NOT EXISTS sales_deals_created_at_idx ON sales_deals (created_at DESC);
+    CREATE INDEX IF NOT EXISTS sales_deals_rep_idx ON sales_deals (assigned_rep_id);
+  `).catch(e => console.error('Failed to create sales indexes:', e.message));
+
+  // ── Enhanced Task Management Tables ────────────────────────────────
+  await pool.query(`
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS estimated_hours NUMERIC(6, 2) DEFAULT 0;
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+  `).catch(e => console.error('Failed to alter tasks table:', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS task_checklists (
+      id UUID PRIMARY KEY,
+      task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      title VARCHAR(255) NOT NULL,
+      is_completed BOOLEAN NOT NULL DEFAULT false,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create task_checklists table:', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS task_activities (
+      id UUID PRIMARY KEY,
+      task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      actor_name VARCHAR(160) NOT NULL DEFAULT 'System',
+      action_type VARCHAR(60) NOT NULL,
+      details JSONB DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create task_activities table:', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS task_notifications (
+      id UUID PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      employee_id UUID REFERENCES hr_employees(id) ON DELETE SET NULL,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      type VARCHAR(50) NOT NULL DEFAULT 'general',
+      task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+      is_read BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `).catch(e => console.error('Failed to create task_notifications table:', e.message));
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS task_checklists_task_id_idx ON task_checklists (task_id);
+    CREATE INDEX IF NOT EXISTS task_activities_task_id_idx ON task_activities (task_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS task_notifications_user_idx ON task_notifications (user_id, is_read, created_at DESC);
+    CREATE INDEX IF NOT EXISTS task_notifications_emp_idx ON task_notifications (employee_id, is_read, created_at DESC);
+  `).catch(e => console.error('Failed to create task management indexes:', e.message));
+
+  // Seed default sales target if missing
+  await pool.query(`
+    INSERT INTO sales_targets (id, period, target_revenue, currency, notes)
+    VALUES (
+      '00000000-0000-0000-0000-000000000001',
+      'Q3 2026',
+      3500000,
+      'INR',
+      'Q3 Target across Enterprise & Mid-market AI deployments'
+    )
+    ON CONFLICT (period) DO NOTHING;
+  `).catch(e => console.error('Failed to seed sales target:', e.message));
+
+  // Seed initial realistic deals if table empty
+  await pool.query(`
+    INSERT INTO sales_deals (
+      id, deal_name, client_name, client_email, client_company, amount, currency,
+      stage, probability, service_type, assigned_rep_name, payment_status,
+      expected_close_date, actual_close_date, notes
+    )
+    SELECT
+      d.id, d.deal_name, d.client_name, d.client_email, d.client_company, d.amount, d.currency,
+      d.stage, d.probability, d.service_type, d.assigned_rep_name, d.payment_status,
+      d.expected_close_date::DATE, d.actual_close_date::DATE, d.notes
+    FROM (
+      VALUES
+        ('d1111111-1111-4111-8111-111111111101'::UUID, 'Apollo Hospitals - AI Voice Triage Bot', 'Dr. Ramesh Sharma', 'r.sharma@apollohosp.mock', 'Apollo Healthcare', 680000, 'INR', 'won', 100, 'AI Voice Agents', 'Arjun Kapoor', 'paid', '2026-09-15', '2026-09-14', 'Enterprise annual agreement signed for 3 centers.'),
+        ('d1111111-1111-4111-8111-111111111102'::UUID, 'Max FinServ - Omnichannel Inbound Engine', 'Pooja Mehta', 'pooja@maxfinserv.mock', 'Max Financial Services', 520000, 'INR', 'won', 100, 'Email & WhatsApp AI', 'Neha Singhal', 'paid', '2026-09-20', '2026-09-19', 'Integrated with existing Salesforce instance.'),
+        ('d1111111-1111-4111-8111-111111111103'::UUID, 'Lumina Tech - Custom Automated Pipeline', 'Karan Verma', 'karan@luminatech.mock', 'Lumina Technologies', 850000, 'INR', 'negotiation', 80, 'Custom AI Pipeline', 'Arjun Kapoor', 'pending', '2026-10-05', NULL, 'Contract draft sent. Reviewing SLA and data compliance clauses.'),
+        ('d1111111-1111-4111-8111-111111111104'::UUID, 'Zenith Realty - CRM Lead Qualification AI', 'Vikram Sethi', 'v.sethi@zenithrealty.mock', 'Zenith Realty Group', 420000, 'INR', 'proposal_sent', 60, 'CRM Automation', 'Rohan Desai', 'pending', '2026-10-12', NULL, 'Demo presented to CEO; awaiting formal commercial clearance.'),
+        ('d1111111-1111-4111-8111-111111111105'::UUID, 'HealthFirst Diagnostics - Patient Recall Bot', 'Anita Iyer', 'anita@healthfirst.mock', 'HealthFirst Diagnostics', 340000, 'INR', 'proposal_sent', 50, 'AI Voice Agents', 'Neha Singhal', 'pending', '2026-10-18', NULL, 'Proposal delivered for 10 diagnostic lab chains in Mumbai.'),
+        ('d1111111-1111-4111-8111-111111111106'::UUID, 'Nova Retail - WhatsApp Support & Orders', 'Rajesh Gupta', 'rajesh@novaretail.mock', 'Nova Retail India', 290000, 'INR', 'discovery', 25, 'Email & WhatsApp AI', 'Rohan Desai', 'pending', '2026-10-28', NULL, 'Initial requirements gathering call completed.'),
+        ('d1111111-1111-4111-8111-111111111107'::UUID, 'Starlight Academy - EduBot Admissions AI', 'Sunita Rao', 'sunita@starlight.mock', 'Starlight Education', 450000, 'INR', 'won', 100, 'AI Chatbot System', 'Arjun Kapoor', 'partial', '2026-09-08', '2026-09-07', '50% advance received, deploying next week.'),
+        ('d1111111-1111-4111-8111-111111111108'::UUID, 'BlueRidge Logistics - Route Inbound Support', 'Manish Agarwal', 'manish@blueridge.mock', 'BlueRidge Freight', 380000, 'INR', 'lost', 0, 'Custom AI Pipeline', 'Neha Singhal', 'cancelled', '2026-09-02', '2026-09-05', 'Client decided to defer AI project to next fiscal year.')
+    ) AS d(id, deal_name, client_name, client_email, client_company, amount, currency, stage, probability, service_type, assigned_rep_name, payment_status, expected_close_date, actual_close_date, notes)
+    WHERE NOT EXISTS (SELECT 1 FROM sales_deals LIMIT 1);
+  `).catch(e => console.error('Failed to seed sample sales deals:', e.message));
+
   await backfillManagerEmployeeProfiles(pool);
 }

@@ -59,9 +59,39 @@ function isAdminRole(role) {
   return role === 'admin' || role === 'super_admin';
 }
 
+async function recordTaskActivity(taskId, actorId, actorName, actionType, details = {}) {
+  if (!taskId) return;
+  try {
+    await pool.query(`
+      INSERT INTO task_activities (id, task_id, actor_id, actor_name, action_type, details)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `, [crypto.randomUUID(), taskId, actorId || null, actorName || 'System', actionType, JSON.stringify(details)]);
+  } catch (err) {
+    console.error('Failed to record task activity:', err);
+  }
+}
+
+async function notifyEmployee(employeeId, title, message, type, taskId) {
+  if (!employeeId) return;
+  try {
+    const { rows } = await pool.query('SELECT user_id FROM hr_employees WHERE id = $1 LIMIT 1', [employeeId]);
+    const userId = rows[0]?.user_id || null;
+    await pool.query(`
+      INSERT INTO task_notifications (id, user_id, employee_id, title, message, type, task_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [crypto.randomUUID(), userId, employeeId, title, message, type || 'task_assigned', taskId || null]);
+  } catch (err) {
+    console.error('Failed to insert task notification:', err);
+  }
+}
+
 async function loadTask(id) {
   const { rows } = await pool.query(
-    `SELECT t.*, p.name as project_name, e.name as assigned_to_name
+    `SELECT t.*, p.name as project_name, 
+            e.name as assigned_to_name, e.job_title as assigned_to_role, e.department as assigned_to_department,
+            (SELECT COUNT(*) FROM task_checklists tc WHERE tc.task_id = t.id) as checklist_total,
+            (SELECT COUNT(*) FROM task_checklists tc WHERE tc.task_id = t.id AND tc.is_completed = true) as checklist_completed,
+            (SELECT COUNT(*) FROM task_comments tcomm WHERE tcomm.task_id = t.id) as comment_count
      FROM tasks t
      LEFT JOIN projects p ON t.project_id = p.id
      LEFT JOIN hr_employees e ON t.assigned_to = e.id
@@ -265,7 +295,12 @@ router.get('/tasks', async (req, res) => {
       const { rows } = await pool.query(`
         SELECT t.*,
                p.name as project_name,
-               e.name as assigned_to_name
+               e.name as assigned_to_name,
+               e.job_title as assigned_to_role,
+               e.department as assigned_to_department,
+               (SELECT COUNT(*) FROM task_checklists tc WHERE tc.task_id = t.id) as checklist_total,
+               (SELECT COUNT(*) FROM task_checklists tc WHERE tc.task_id = t.id AND tc.is_completed = true) as checklist_completed,
+               (SELECT COUNT(*) FROM task_comments tcomm WHERE tcomm.task_id = t.id) as comment_count
         FROM tasks t
         LEFT JOIN projects p ON t.project_id = p.id
         LEFT JOIN hr_employees e ON t.assigned_to = e.id
@@ -281,9 +316,152 @@ router.get('/tasks', async (req, res) => {
   }
 });
 
+// ── Workflow Summary Metrics ─────────────────────────────────────────────
+router.get('/workflow-summary', async (req, res) => {
+  try {
+    const role = req.user?.role;
+    let where = '';
+    const values = [];
+
+    if (role === 'employee') {
+      const employeeId = await resolveEmployeeId(req.user?.id);
+      if (!employeeId) {
+        return res.json({ todo: 0, in_progress: 0, review: 0, done: 0, total: 0, overdue: 0, due_today: 0, high_priority: 0 });
+      }
+      values.push(employeeId);
+      where = 'WHERE assigned_to = $1';
+    }
+
+    const { rows } = await pool.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN status = 'todo' THEN 1 END) as todo,
+        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+        COUNT(CASE WHEN status = 'review' THEN 1 END) as review,
+        COUNT(CASE WHEN status = 'done' THEN 1 END) as done,
+        COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_priority,
+        COUNT(CASE WHEN due_date < CURRENT_DATE AND status <> 'done' THEN 1 END) as overdue,
+        COUNT(CASE WHEN due_date = CURRENT_DATE AND status <> 'done' THEN 1 END) as due_today
+      FROM tasks
+      ${where}
+    `, values);
+
+    res.json(rows[0] || { todo: 0, in_progress: 0, review: 0, done: 0, total: 0, overdue: 0, due_today: 0, high_priority: 0 });
+  } catch (error) {
+    console.error('Error fetching workflow summary:', error);
+    res.status(500).json({ error: 'Server error fetching workflow summary' });
+  }
+});
+
+// ── Task Notifications ───────────────────────────────────────────────────
+router.get('/notifications', async (req, res) => {
+  try {
+    const userId = realUserId(req);
+    const empId = await resolveEmployeeId(req.user?.id);
+
+    const conditions = [];
+    const values = [];
+
+    if (userId && empId) {
+      values.push(userId, empId);
+      conditions.push('(n.user_id = $1 OR n.employee_id = $2)');
+    } else if (userId) {
+      values.push(userId);
+      conditions.push('n.user_id = $1');
+    } else if (empId) {
+      values.push(empId);
+      conditions.push('n.employee_id = $1');
+    } else {
+      return res.json({ notifications: [], unreadCount: 0 });
+    }
+
+    const { rows } = await pool.query(`
+      SELECT n.*, t.title as task_title, t.status as task_status, t.priority as task_priority
+      FROM task_notifications n
+      LEFT JOIN tasks t ON n.task_id = t.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY n.created_at DESC
+      LIMIT 40
+    `, values);
+
+    const unreadCount = rows.filter(r => !r.is_read).length;
+    res.json({ notifications: rows, unreadCount });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Server error fetching notifications' });
+  }
+});
+
+router.put('/notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('UPDATE task_notifications SET is_read = true WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking notification read:', error);
+    res.status(500).json({ error: 'Server error updating notification' });
+  }
+});
+
+router.put('/notifications/read-all', async (req, res) => {
+  try {
+    const userId = realUserId(req);
+    const empId = await resolveEmployeeId(req.user?.id);
+    if (userId && empId) {
+      await pool.query('UPDATE task_notifications SET is_read = true WHERE user_id = $1 OR employee_id = $2', [userId, empId]);
+    } else if (userId) {
+      await pool.query('UPDATE task_notifications SET is_read = true WHERE user_id = $1', [userId]);
+    } else if (empId) {
+      await pool.query('UPDATE task_notifications SET is_read = true WHERE employee_id = $1', [empId]);
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking all notifications read:', error);
+    res.status(500).json({ error: 'Server error updating notifications' });
+  }
+});
+
+// ── GET /tasks/:id Single Task with Details ──────────────────────────────
+router.get('/tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const task = await loadTask(id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    const allowed = await canAccessTask(req, task);
+    if (!allowed) return res.status(403).json({ error: 'You do not have access to this task.' });
+
+    const [checklistsRes, commentsRes, activitiesRes] = await Promise.all([
+      pool.query('SELECT * FROM task_checklists WHERE task_id = $1 ORDER BY sort_order ASC, created_at ASC', [id]),
+      pool.query(`
+        SELECT c.*, COALESCE(u.username, 'Unknown user') AS author_name, u.role AS author_role
+        FROM task_comments c
+        LEFT JOIN users u ON u.id = c.author_id
+        WHERE c.task_id = $1 ORDER BY c.created_at ASC
+      `, [id]),
+      pool.query('SELECT * FROM task_activities WHERE task_id = $1 ORDER BY created_at DESC LIMIT 30', [id])
+    ]);
+
+    res.json({
+      ...task,
+      checklists: checklistsRes.rows,
+      comments: commentsRes.rows,
+      activities: activitiesRes.rows,
+    });
+  } catch (error) {
+    console.error('Error fetching task details:', error);
+    res.status(500).json({ error: 'Server error fetching task details' });
+  }
+});
+
+// ── POST /tasks Create Task ──────────────────────────────────────────────
 router.post('/tasks', async (req, res) => {
   try {
-    const { title, description, project_id, project_name, status, priority, category, assigned_to, due_date } = req.body;
+    const {
+      title, description, project_id, project_name, status, priority, category,
+      assigned_to, due_date, estimated_hours, tags, checklists
+    } = req.body;
+
     if (!title) return res.status(400).json({ error: 'Task title is required' });
 
     let nextAssignee = assigned_to || null;
@@ -303,24 +481,62 @@ router.post('/tasks', async (req, res) => {
 
     const resolvedProjectId = await resolveProjectId({ project_id, project_name, req });
     const id = crypto.randomUUID();
+    const actorName = req.user?.username || req.user?.name || 'User';
+
     const { rows } = await pool.query(`
-      INSERT INTO tasks (id, title, description, project_id, status, priority, category, assigned_to, due_date, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO tasks (
+        id, title, description, project_id, status, priority, category,
+        assigned_to, due_date, estimated_hours, tags, created_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `, [
       id, title, description, resolvedProjectId, 
       status || 'todo', priority || 'medium', category || 'general',
-      nextAssignee, due_date || null, realUserId(req)
+      nextAssignee, due_date || null, Number(estimated_hours) || 0,
+      Array.isArray(tags) ? tags : [], realUserId(req)
     ]);
 
+    // Record activity
+    await recordTaskActivity(id, realUserId(req), actorName, 'created', {
+      title, priority: priority || 'medium', status: status || 'todo'
+    });
+
+    // Handle initial checklists
+    if (Array.isArray(checklists) && checklists.length > 0) {
+      for (let i = 0; i < checklists.length; i++) {
+        const item = checklists[i];
+        const itemTitle = typeof item === 'string' ? item : item.title;
+        if (itemTitle && itemTitle.trim()) {
+          await pool.query(`
+            INSERT INTO task_checklists (id, task_id, title, is_completed, sort_order)
+            VALUES ($1, $2, $3, false, $4)
+          `, [crypto.randomUUID(), id, itemTitle.trim(), i]);
+        }
+      }
+    }
+
+    // Send assignment notification
+    if (nextAssignee) {
+      await notifyEmployee(
+        nextAssignee,
+        'New Task Assigned',
+        `${actorName} assigned you task "${title}".`,
+        'task_assigned',
+        id
+      );
+    }
+
     bustProductivityCache();
-    res.status(201).json(rows[0]);
+    const fullTask = await loadTask(id);
+    res.status(201).json(fullTask || rows[0]);
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ error: 'Server error creating task' });
   }
 });
 
+// ── PUT /tasks/:id Update Task ───────────────────────────────────────────
 router.put('/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -331,52 +547,208 @@ router.put('/tasks/:id', async (req, res) => {
     const canAccess = await canAccessTask(req, existing);
     if (!canAccess) return res.status(403).json({ error: 'You do not have access to this task.' });
 
+    const actorName = req.user?.username || req.user?.name || 'User';
+
     if (role === 'employee') {
+      const nextStatus = req.body.status !== undefined ? req.body.status : existing.status;
       const { rows } = await pool.query(`
         UPDATE tasks
         SET status = COALESCE($1, status), updated_at = NOW()
         WHERE id = $2
         RETURNING *
       `, [req.body.status, id]);
+
+      if (req.body.status && req.body.status !== existing.status) {
+        await recordTaskActivity(id, realUserId(req), actorName, 'status_changed', {
+          from: existing.status, to: req.body.status
+        });
+      }
+
       bustProductivityCache();
-      return res.json(rows[0]);
+      const updated = await loadTask(id);
+      return res.json(updated || rows[0]);
     }
 
-    const { title, description, project_id, project_name, status, priority, category, assigned_to, due_date } = req.body;
-    let nextAssignee = assigned_to;
+    const {
+      title, description, project_id, project_name, status, priority, category,
+      assigned_to, due_date, estimated_hours, tags
+    } = req.body;
 
-    if (role === 'manager' && nextAssignee !== undefined) {
-      if (!nextAssignee) return res.status(400).json({ error: 'Managers must assign tasks to a direct report.' });
+    let nextAssignee = assigned_to !== undefined ? assigned_to : existing.assigned_to;
+
+    if (role === 'manager' && assigned_to !== undefined) {
+      if (!assigned_to) return res.status(400).json({ error: 'Managers must assign tasks to a direct report.' });
       const managerEmployeeId = await resolveEmployeeId(req.user?.id);
-      const allowed = await canAssignToEmployee(managerEmployeeId, nextAssignee);
+      const allowed = await canAssignToEmployee(managerEmployeeId, assigned_to);
       if (!allowed) return res.status(400).json({ error: 'Managers can only assign tasks to direct reports.' });
     }
 
     const resolvedProjectId = project_name ? await resolveProjectId({ project_id, project_name, req }) : project_id;
+
     const { rows } = await pool.query(`
       UPDATE tasks 
        SET title = COALESCE($1, title), 
            description = COALESCE($2, description), 
-          project_id = COALESCE($3, project_id),
-          status = COALESCE($4, status),
-          priority = COALESCE($5, priority),
-          category = COALESCE($6, category),
-          assigned_to = COALESCE($7, assigned_to),
-          due_date = COALESCE($8, due_date),
-          updated_at = NOW()
-      WHERE id = $9
+           project_id = COALESCE($3, project_id),
+           status = COALESCE($4, status),
+           priority = COALESCE($5, priority),
+           category = COALESCE($6, category),
+           assigned_to = COALESCE($7, assigned_to),
+           due_date = COALESCE($8, due_date),
+           estimated_hours = COALESCE($9, estimated_hours),
+           tags = COALESCE($10, tags),
+           updated_at = NOW()
+      WHERE id = $11
       RETURNING *
-    `, [title, description, resolvedProjectId, status, priority, category, nextAssignee, due_date, id]);
+    `, [
+      title, description, resolvedProjectId, status, priority, category,
+      nextAssignee, due_date, 
+      estimated_hours !== undefined ? Number(estimated_hours) : null,
+      tags !== undefined ? (Array.isArray(tags) ? tags : []) : null,
+      id
+    ]);
     
     if (rows.length === 0) return res.status(404).json({ error: 'Task not found' });
+
+    // Activity tracking & Notifications
+    if (status && status !== existing.status) {
+      await recordTaskActivity(id, realUserId(req), actorName, 'status_changed', {
+        from: existing.status, to: status
+      });
+      if (existing.assigned_to) {
+        await notifyEmployee(
+          existing.assigned_to,
+          'Task Status Updated',
+          `Task "${existing.title}" changed status to "${status}".`,
+          'status_changed',
+          id
+        );
+      }
+    }
+
+    if (assigned_to !== undefined && assigned_to !== existing.assigned_to) {
+      await recordTaskActivity(id, realUserId(req), actorName, 'assigned', {
+        to: assigned_to
+      });
+      if (assigned_to) {
+        await notifyEmployee(
+          assigned_to,
+          'Task Assigned to You',
+          `${actorName} assigned you to "${existing.title}".`,
+          'task_assigned',
+          id
+        );
+      }
+    }
+
+    if (priority && priority !== existing.priority) {
+      await recordTaskActivity(id, realUserId(req), actorName, 'priority_changed', {
+        from: existing.priority, to: priority
+      });
+    }
+
     bustProductivityCache();
-    res.json(rows[0]);
+    const updated = await loadTask(id);
+    res.json(updated || rows[0]);
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ error: 'Server error updating task' });
   }
 });
 
+// ── Checklists Endpoints ─────────────────────────────────────────────────
+router.get('/tasks/:id/checklists', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(`
+      SELECT * FROM task_checklists 
+      WHERE task_id = $1 
+      ORDER BY sort_order ASC, created_at ASC
+    `, [id]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching checklists:', error);
+    res.status(500).json({ error: 'Server error fetching checklists' });
+  }
+});
+
+router.post('/tasks/:id/checklists', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Checklist item title is required' });
+    }
+    const itemId = crypto.randomUUID();
+    const { rows } = await pool.query(`
+      INSERT INTO task_checklists (id, task_id, title, is_completed)
+      VALUES ($1, $2, $3, false)
+      RETURNING *
+    `, [itemId, id, title.trim()]);
+
+    const actorName = req.user?.username || req.user?.name || 'User';
+    await recordTaskActivity(id, realUserId(req), actorName, 'checklist_added', { title: title.trim() });
+    bustProductivityCache();
+    res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error adding checklist item:', error);
+    res.status(500).json({ error: 'Server error creating checklist item' });
+  }
+});
+
+router.put('/tasks/:id/checklists/:itemId', async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { is_completed, title } = req.body;
+    const { rows } = await pool.query(`
+      UPDATE task_checklists
+      SET 
+        is_completed = COALESCE($1, is_completed),
+        title = COALESCE($2, title)
+      WHERE id = $3 AND task_id = $4
+      RETURNING *
+    `, [is_completed !== undefined ? Boolean(is_completed) : null, title ? title.trim() : null, itemId, id]);
+
+    if (rows.length === 0) return res.status(404).json({ error: 'Checklist item not found' });
+    bustProductivityCache();
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Error updating checklist item:', error);
+    res.status(500).json({ error: 'Server error updating checklist item' });
+  }
+});
+
+router.delete('/tasks/:id/checklists/:itemId', async (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { rowCount } = await pool.query('DELETE FROM task_checklists WHERE id = $1 AND task_id = $2', [itemId, id]);
+    if (rowCount === 0) return res.status(404).json({ error: 'Checklist item not found' });
+    bustProductivityCache();
+    res.json({ message: 'Checklist item deleted' });
+  } catch (error) {
+    console.error('Error deleting checklist item:', error);
+    res.status(500).json({ error: 'Server error deleting checklist item' });
+  }
+});
+
+// ── Activities Endpoint ──────────────────────────────────────────────────
+router.get('/tasks/:id/activities', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(`
+      SELECT * FROM task_activities 
+      WHERE task_id = $1 
+      ORDER BY created_at DESC
+      LIMIT 40
+    `, [id]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching task activities:', error);
+    res.status(500).json({ error: 'Server error fetching activities' });
+  }
+});
+
+// ── DELETE /tasks/:id Delete Task ────────────────────────────────────────
 router.delete('/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
